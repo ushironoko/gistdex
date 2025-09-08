@@ -82,7 +82,7 @@
     "@types/node": "24.2.0",
     "@typescript/native-preview": "7.0.0-dev.20250804.1",
     "@vitest/coverage-v8": "^2.1.8",
-    "tsdown": "0.14.1",
+    "tsdown": "0.14.2",
     "tsx": "4.19.2",
     "typescript": "5.7.3",
     "vitepress": "2.0.0-alpha.12",
