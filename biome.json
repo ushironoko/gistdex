@@ -20,7 +20,7 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noExplicitAny": "off"
+        "noExplicitAny": "error"
       },
       "complexity": {
         "noForEach": "off"
