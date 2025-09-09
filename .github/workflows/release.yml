@@ -120,15 +120,15 @@ jobs:
         run: |
           git tag -a "v${{ steps.bump.outputs.version }}" -m "Release v${{ steps.bump.outputs.version }}"
 
+      - name: Publish to NPM
+        run: |
+          npm install -g npm@latest
+          pnpm publish --access public --no-git-checks
+
       - name: Push changes
         run: |
           git push origin main
           git push origin "v${{ steps.bump.outputs.version }}"
-
-      - name: Publish to NPM
-        run: |
-          pnpm install -g npm@latest
-          pnpm publish --access public --no-git-checks
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
