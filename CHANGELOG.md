@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1] - 2025-09-09
+
+- fix ci format
+- remove NPM_TOKEN
+- upgrade packages
+- fix
+
+
 ## [1.2.0] - 2025-09-01
 
 - Merge pull request #81 from ushironoko:feature/add-vue-support
