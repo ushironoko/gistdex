@@ -202,7 +202,7 @@ function second() {}`;
       const code = "<template><div></div></template>";
 
       let fallbackCalled = false;
-      const fallback = (code: string, _lang: string, _opts: any) => {
+      const fallback = (code: string, _lang: string, _opts: unknown) => {
         fallbackCalled = true;
         return [
           {

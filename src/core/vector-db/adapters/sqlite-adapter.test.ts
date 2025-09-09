@@ -4,61 +4,63 @@ import type { VectorDBAdapter, VectorDocument } from "./types.js";
 
 // Mock node:sqlite to avoid actual SQLite initialization in tests
 vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi.fn().mockImplementation((_path: string, _options?: any) => ({
-    exec: vi.fn(),
-    prepare: vi.fn().mockImplementation((query: string) => {
-      // Mock for SELECT vec_rowid query
-      if (query.includes("SELECT vec_rowid FROM documents")) {
+  DatabaseSync: vi
+    .fn()
+    .mockImplementation((_path: string, _options?: unknown) => ({
+      exec: vi.fn(),
+      prepare: vi.fn().mockImplementation((query: string) => {
+        // Mock for SELECT vec_rowid query
+        if (query.includes("SELECT vec_rowid FROM documents")) {
+          return {
+            get: vi.fn().mockReturnValue(null),
+          };
+        }
+        // Mock for COUNT query
+        if (query.includes("COUNT(*)")) {
+          return {
+            get: vi.fn().mockReturnValue({ count: 0 }),
+          };
+        }
+        // Mock for INSERT INTO vec_documents
+        if (query.includes("INSERT INTO vec_documents")) {
+          return {
+            run: vi.fn().mockReturnValue({ lastInsertRowid: 1 }),
+          };
+        }
+        // Mock for INSERT OR REPLACE INTO documents
+        if (query.includes("INSERT OR REPLACE INTO documents")) {
+          return {
+            run: vi.fn(),
+          };
+        }
+        // Mock for SELECT FROM sources
+        if (query.includes("SELECT source_id FROM sources")) {
+          return {
+            get: vi.fn().mockReturnValue(null),
+          };
+        }
+        // Mock for INSERT INTO sources
+        if (query.includes("INSERT INTO sources")) {
+          return {
+            run: vi.fn(),
+          };
+        }
+        // Mock for INSERT INTO documents
+        if (query.includes("INSERT INTO documents")) {
+          return {
+            run: vi.fn(),
+          };
+        }
+        // Default mock
         return {
-          get: vi.fn().mockReturnValue(null),
-        };
-      }
-      // Mock for COUNT query
-      if (query.includes("COUNT(*)")) {
-        return {
-          get: vi.fn().mockReturnValue({ count: 0 }),
-        };
-      }
-      // Mock for INSERT INTO vec_documents
-      if (query.includes("INSERT INTO vec_documents")) {
-        return {
-          run: vi.fn().mockReturnValue({ lastInsertRowid: 1 }),
-        };
-      }
-      // Mock for INSERT OR REPLACE INTO documents
-      if (query.includes("INSERT OR REPLACE INTO documents")) {
-        return {
+          get: vi.fn(),
           run: vi.fn(),
+          all: vi.fn().mockReturnValue([]),
         };
-      }
-      // Mock for SELECT FROM sources
-      if (query.includes("SELECT source_id FROM sources")) {
-        return {
-          get: vi.fn().mockReturnValue(null),
-        };
-      }
-      // Mock for INSERT INTO sources
-      if (query.includes("INSERT INTO sources")) {
-        return {
-          run: vi.fn(),
-        };
-      }
-      // Mock for INSERT INTO documents
-      if (query.includes("INSERT INTO documents")) {
-        return {
-          run: vi.fn(),
-        };
-      }
-      // Default mock
-      return {
-        get: vi.fn(),
-        run: vi.fn(),
-        all: vi.fn().mockReturnValue([]),
-      };
-    }),
-    close: vi.fn(),
-    loadExtension: vi.fn(),
-  })),
+      }),
+      close: vi.fn(),
+      loadExtension: vi.fn(),
+    })),
 }));
 
 // Mock sqlite-vec

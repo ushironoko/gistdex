@@ -4,16 +4,18 @@ import { createRegistry } from "./registry.js";
 
 // Mock node:sqlite to avoid actual database initialization in tests
 vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi.fn().mockImplementation((_path: string, _options?: any) => ({
-    exec: vi.fn(),
-    prepare: vi.fn().mockReturnValue({
-      run: vi.fn(),
-      get: vi.fn(),
-      all: vi.fn().mockReturnValue([]),
-    }),
-    close: vi.fn(),
-    loadExtension: vi.fn(),
-  })),
+  DatabaseSync: vi
+    .fn()
+    .mockImplementation((_path: string, _options?: unknown) => ({
+      exec: vi.fn(),
+      prepare: vi.fn().mockReturnValue({
+        run: vi.fn(),
+        get: vi.fn(),
+        all: vi.fn().mockReturnValue([]),
+      }),
+      close: vi.fn(),
+      loadExtension: vi.fn(),
+    })),
 }));
 
 // Mock sqlite-vec

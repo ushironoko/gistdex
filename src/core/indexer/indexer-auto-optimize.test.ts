@@ -169,10 +169,13 @@ describe("indexer with automatic chunk optimization", () => {
       console.log("WARNING: Too many chunks for text file:", savedItems.length);
       console.log(
         "Sample chunks:",
-        savedItems.slice(0, 3).map((item: any) => ({
-          content: item.content?.substring(0, 30),
-          length: item.content?.length,
-        })),
+        savedItems.slice(0, 3).map((item) => {
+          const typedItem = item as { content?: string };
+          return {
+            content: typedItem.content?.substring(0, 30),
+            length: typedItem.content?.length,
+          };
+        }),
       );
     }
 

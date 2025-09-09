@@ -861,7 +861,7 @@ describe("list-tool", () => {
           expect(error.code).toBe(-32602); // ErrorCode.InvalidParams
           expect(error.message).toContain("Invalid input");
           expect(error.data).toHaveProperty("errors");
-          const errors = (error.data as any).errors;
+          const errors = (error.data as { errors: string[] }).errors;
           expect(errors).toHaveLength(3);
           expect(errors).toContain("Expected number, received string");
           expect(errors).toContain(
@@ -902,7 +902,7 @@ describe("list-tool", () => {
           expect(error.code).toBe(-32602); // ErrorCode.InvalidParams
           expect(error.message).toContain("Invalid input");
           expect(error.data).toHaveProperty("errors");
-          const errors = (error.data as any).errors;
+          const errors = (error.data as { errors: string[] }).errors;
           expect(errors?.length).toBeGreaterThan(0);
         }
       }

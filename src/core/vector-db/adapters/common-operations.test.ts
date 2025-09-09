@@ -6,7 +6,9 @@ describe("createBatchOperations", () => {
     it("should insert multiple items sequentially", async () => {
       const insertFn = vi
         .fn()
-        .mockImplementation((item: any) => Promise.resolve(`id-${item.name}`));
+        .mockImplementation((item: { name: string }) =>
+          Promise.resolve(`id-${item.name}`),
+        );
 
       const batchOps = createBatchOperations();
       const items = [{ name: "item1" }, { name: "item2" }, { name: "item3" }];
