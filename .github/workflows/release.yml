@@ -42,7 +42,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.0.0
+          version: 10.15.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -85,7 +85,7 @@ jobs:
         run: |
           VERSION=${{ steps.bump.outputs.version }}
           DATE=$(date +"%Y-%m-%d")
-          
+
           # Create changelog entry
           if [ -f CHANGELOG.md ]; then
             TEMP_FILE=$(mktemp)
@@ -126,10 +126,9 @@ jobs:
           git push origin "v${{ steps.bump.outputs.version }}"
 
       - name: Publish to NPM
-        run: pnpm publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
+        run: |
+          pnpm install -g npm@latest
+          pnpm publish --access public --no-git-checks
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
@@ -140,17 +139,17 @@ jobs:
           release_name: Release v${{ steps.bump.outputs.version }}
           body: |
             ## What's Changed
-            
+
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
-            
+
             ## Installation
-            
+
             ```bash
             pnpm add @ushironoko/gistdex@${{ steps.bump.outputs.version }}
             ```
-            
+
             or use directly:
-            
+
             ```bash
             npx @ushironoko/gistdex@${{ steps.bump.outputs.version }}
             ```
