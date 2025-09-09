@@ -1,3 +1,4 @@
+import type { SpyInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./index.js";
 
@@ -33,22 +34,24 @@ vi.mock("./commands/info.js", () => ({
 // Mock gunshi
 vi.mock("gunshi", () => ({
   cli: vi.fn(() => Promise.resolve()),
-  define: vi.fn((command: any) => command),
+  define: vi.fn((command: unknown) => command),
 }));
 
 describe("CLI main entry point", () => {
   let originalArgv: string[];
-  let mockExit: any;
-  let mockConsoleError: any;
+  let mockExit: SpyInstance;
+  let mockConsoleError: SpyInstance;
 
   beforeEach(() => {
     originalArgv = process.argv;
-    mockExit = vi.spyOn(process, "exit").mockImplementation((code?: any) => {
-      // Don't throw error for code 0 (normal exit)
-      if (code !== 0) {
-        throw new Error(`Process exited with code ${code}`);
-      }
-    });
+    mockExit = vi
+      .spyOn(process, "exit")
+      .mockImplementation((code?: string | number | null | undefined) => {
+        // Don't throw error for code 0 (normal exit)
+        if (code !== 0) {
+          throw new Error(`Process exited with code ${code}`);
+        }
+      });
     mockConsoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.clearAllMocks();
   });

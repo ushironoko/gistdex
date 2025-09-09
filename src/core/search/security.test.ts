@@ -105,12 +105,12 @@ describe("Security Module", () => {
       await expect(validateFilePath("", testDir)).rejects.toThrow(
         SecurityError,
       );
-      await expect(validateFilePath(null as any, testDir)).rejects.toThrow(
-        SecurityError,
-      );
-      await expect(validateFilePath(undefined as any, testDir)).rejects.toThrow(
-        SecurityError,
-      );
+      await expect(
+        validateFilePath(null as unknown as string, testDir),
+      ).rejects.toThrow(SecurityError);
+      await expect(
+        validateFilePath(undefined as unknown as string, testDir),
+      ).rejects.toThrow(SecurityError);
     });
   });
 
@@ -156,7 +156,9 @@ describe("Security Module", () => {
     it("should reject invalid URLs", () => {
       expect(() => validateExternalUrl("not-a-url")).toThrow(SecurityError);
       expect(() => validateExternalUrl("")).toThrow(SecurityError);
-      expect(() => validateExternalUrl(null as any)).toThrow(SecurityError);
+      expect(() => validateExternalUrl(null as unknown as string)).toThrow(
+        SecurityError,
+      );
     });
   });
 

@@ -79,12 +79,12 @@ export function parseStringArray(
 /**
  * Parse options object with type hints and defaults
  */
-export function parseOptions<T extends Record<string, any>>(
-  input: Record<string, any>,
+export function parseOptions<T extends Record<string, unknown>>(
+  input: Record<string, unknown>,
   schema: Record<keyof T, "string" | "number" | "boolean" | "array">,
   defaults?: Partial<T>,
 ): T {
-  const result: any = {};
+  const result: Record<string, unknown> = {};
 
   for (const [key, type] of Object.entries(schema)) {
     const value = input[key];
@@ -92,13 +92,21 @@ export function parseOptions<T extends Record<string, any>>(
 
     switch (type) {
       case "number":
-        result[key] = parseInteger(value, defaultValue as number);
+        result[key] = parseInteger(
+          value as string | number | undefined,
+          defaultValue as number | undefined,
+        );
         break;
       case "boolean":
-        result[key] = parseBoolean(value, defaultValue as boolean);
+        result[key] = parseBoolean(
+          value as string | boolean | undefined,
+          defaultValue as boolean | undefined,
+        );
         break;
       case "array":
-        result[key] = value ? parseStringArray(value) : defaultValue || [];
+        result[key] = value
+          ? parseStringArray(value as string | string[])
+          : (defaultValue as string[] | undefined) || [];
         break;
       default:
         result[key] = value || defaultValue || undefined;

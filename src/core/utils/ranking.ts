@@ -14,7 +14,8 @@ export function sortByScore<T>(
   items: T[],
   scoreAccessor?: (item: T) => number,
 ): T[] {
-  const getScore = scoreAccessor || ((item: any) => item.score);
+  const getScore =
+    scoreAccessor || ((item: T) => (item as T & { score: number }).score);
 
   return [...items].sort((a, b) => getScore(b) - getScore(a));
 }

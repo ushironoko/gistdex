@@ -1,3 +1,4 @@
+import type { CommandContext } from "gunshi";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleQuery } from "./query.js";
 
@@ -80,7 +81,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: {},
       positionals: ["test", "query"],
-    } as any);
+    } as CommandContext);
 
     const { semanticSearch } = await import("../../core/search/search.js");
     // TODO: The third parameter uses expect.any(Object) which doesn't verify
@@ -100,7 +101,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { hybrid: true },
       positionals: ["test", "query"],
-    } as any);
+    } as CommandContext);
 
     const { hybridSearch } = await import("../../core/search/search.js");
     // TODO: The third parameter uses expect.any(Object) which doesn't verify
@@ -118,7 +119,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: {},
       positionals: [],
-    } as any);
+    } as CommandContext);
 
     expect(console.error).toHaveBeenCalledWith("Error: No query specified");
     expect(process.exit).toHaveBeenCalledWith(1);
@@ -131,7 +132,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: {},
       positionals: ["test"],
-    } as any);
+    } as CommandContext);
 
     expect(console.log).toHaveBeenCalledWith("No results found");
   });
@@ -162,7 +163,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { full: true, "top-k": "1" },
       positionals: ["test", "query"],
-    } as any);
+    } as CommandContext);
 
     expect(console.log).toHaveBeenCalledWith('Searching for: "test query"\n');
     expect(getOriginalContent).toHaveBeenCalledWith(
@@ -198,7 +199,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { full: true },
       positionals: ["test", "query"],
-    } as any);
+    } as CommandContext);
 
     expect(console.log).toHaveBeenCalledWith('Searching for: "test query"\n');
     expect(console.log).toHaveBeenCalledWith("Found 1 results\n");
@@ -216,7 +217,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { type: "file" },
       positionals: ["test", "query"],
-    } as any);
+    } as CommandContext);
 
     const { semanticSearch } = await import("../../core/search/search.js");
     expect(semanticSearch).toHaveBeenCalledWith(
@@ -230,7 +231,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { hybrid: true },
       positionals: ["test", "query"],
-    } as any);
+    } as CommandContext);
 
     const { hybridSearch } = await import("../../core/search/search.js");
     expect(hybridSearch).toHaveBeenCalledWith(
@@ -244,7 +245,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { "no-rerank": true },
       positionals: ["test", "query"],
-    } as any);
+    } as CommandContext);
 
     const { semanticSearch } = await import("../../core/search/search.js");
     expect(semanticSearch).toHaveBeenCalledWith(

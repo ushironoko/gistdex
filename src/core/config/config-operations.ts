@@ -271,7 +271,7 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
    * Get vector DB configuration with CLI overrides
    */
   const getVectorDBConfig = async (
-    cliOverrides?: any,
+    cliOverrides?: Partial<VectorDBConfig> & { db?: string },
   ): Promise<VectorDBConfig> => {
     const config = await load();
     let dbConfig = config.vectorDB || {

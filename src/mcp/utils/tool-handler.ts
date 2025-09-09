@@ -36,7 +36,7 @@ export function createToolHandler<
   TOptions extends BaseToolOptions,
   TResult extends BaseToolResult,
 >(
-  schema: ZodType<any, ZodTypeDef, any>,
+  schema: ZodType<TInput, ZodTypeDef, TInput>,
   handler: ToolHandler<TInput, TOptions, TResult>,
 ): (input: unknown, options: TOptions) => Promise<TResult> {
   return async (input: unknown, options: TOptions): Promise<TResult> => {

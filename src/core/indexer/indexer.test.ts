@@ -196,7 +196,7 @@ describe("indexFiles", () => {
       for (const file of mockFiles) {
         yield file;
       }
-    } as any);
+    } as unknown);
 
     vi.mocked(validateFilePath).mockImplementation((path) =>
       Promise.resolve(path),
@@ -241,7 +241,7 @@ describe("indexFiles", () => {
           yield file;
         }
       }
-    } as any);
+    } as unknown);
 
     vi.mocked(validateFilePath).mockImplementation((path) =>
       Promise.resolve(path),
@@ -271,7 +271,7 @@ describe("indexFiles", () => {
       for (const file of mockFiles) {
         yield file;
       }
-    } as any);
+    } as unknown);
 
     vi.mocked(validateFilePath)
       .mockResolvedValueOnce("/test/file1.md")
@@ -294,7 +294,7 @@ describe("indexFiles", () => {
   test("handles no matching files", async () => {
     vi.mocked(glob).mockImplementation(async function* () {
       // Return empty iterator
-    } as any);
+    } as unknown);
 
     const result = await indexFiles(["*.nonexistent"], {}, {}, mockService);
 
@@ -324,7 +324,7 @@ describe("indexFiles", () => {
       for (const file of mockFiles) {
         yield file;
       }
-    } as any);
+    } as unknown);
 
     vi.mocked(validateFilePath).mockImplementation((path) =>
       Promise.resolve(path),
