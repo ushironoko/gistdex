@@ -1,6 +1,8 @@
 // Node type definitions for each language
 // Extracted from Tree-sitter parser documents and node-types.json
 
+import type { SyntaxNode } from "web-tree-sitter";
+
 export const LANGUAGE_NODE_TYPES = {
   javascript: {
     functions: [
@@ -150,7 +152,7 @@ export const createBoundaryNodeTypes = (language: string): Set<string> => {
 
 // Language-specific node name extraction
 export const createNodeNameExtractor = (language: string) => {
-  return (node: any): string | undefined => {
+  return (node: SyntaxNode): string | undefined => {
     // Check common name field
     const nameField = node.childForFieldName?.("name");
     if (nameField?.text) {
@@ -218,7 +220,7 @@ export const createNodeNameExtractor = (language: string) => {
 
     // Fallback: look for identifier node
     const identifierChild = node.children?.find?.(
-      (child: any) => child.type === "identifier",
+      (child) => child.type === "identifier",
     );
     return identifierChild?.text;
   };
