@@ -313,8 +313,8 @@ Second paragraph of section 2.`;
         const nextChunk = chunks[i + 1];
 
         if (currentChunk && nextChunk) {
-          const currentEnd = currentChunk.content.slice(-30);
-          const nextStart = nextChunk.content.slice(0, 30);
+          const _currentEnd = currentChunk.content.slice(-30);
+          const _nextStart = nextChunk.content.slice(0, 30);
 
           // There should be some overlap in content (not exact due to boundary preservation)
           expect(currentChunk.endOffset).toBeLessThanOrEqual(

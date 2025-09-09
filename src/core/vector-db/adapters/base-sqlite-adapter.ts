@@ -9,12 +9,12 @@ import { buildSQLWhereClause } from "../utils/filter.js";
 import { generateDocumentId, validateDimension } from "../utils/validation.js";
 import { createBatchOperations } from "./common-operations.js";
 import {
-  type SQLiteRowWithSource,
   ensureInitialized as ensureInit,
   rowToSearchResult,
   rowToVectorDocument,
+  type SQLiteRowWithSource,
 } from "./sqlite-common.js";
-import { SQLiteQueries, createSQLiteSchema } from "./sqlite-schema.js";
+import { createSQLiteSchema, SQLiteQueries } from "./sqlite-schema.js";
 import type {
   ListOptions,
   SearchOptions,

@@ -1,7 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import {
   createCSTChunkingOperations,
-  createCSTOperations,
   withCSTParsing,
 } from "./cst-operations.js";
 import { createParserFactory } from "./parser-factory.js";
@@ -203,7 +202,7 @@ function second() {}`;
       const code = "<template><div></div></template>";
 
       let fallbackCalled = false;
-      const fallback = (code: string, lang: string, opts: any) => {
+      const fallback = (code: string, _lang: string, _opts: any) => {
         fallbackCalled = true;
         return [
           {

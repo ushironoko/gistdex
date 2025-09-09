@@ -4,9 +4,9 @@
 
 import { VectorDBError } from "../errors.js";
 import {
+  createSQLiteAdapterBase,
   type SQLiteOperations,
   type SQLitePreparedStatement,
-  createSQLiteAdapterBase,
 } from "./base-sqlite-adapter.js";
 import { SQLiteQueries } from "./sqlite-schema.js";
 import type { VectorDBAdapter, VectorDBConfig } from "./types.js";
@@ -191,7 +191,7 @@ ${possiblePaths.join("\n")}`,
           try {
             const sqliteVec = await import("sqlite-vec");
             sqliteVecPath = sqliteVec.getLoadablePath();
-          } catch (importError) {
+          } catch (_importError) {
             throw new Error(
               "sqlite-vec package not found. Please install it with: bun add sqlite-vec",
             );

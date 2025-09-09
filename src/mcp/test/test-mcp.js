@@ -25,7 +25,7 @@ mcpServer.stdout.on("data", (data) => {
         console.log("Parsed response:", JSON.stringify(response, null, 2));
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Not JSON, just raw output
   }
 });

@@ -1,4 +1,4 @@
-import { promises as fs, existsSync } from "node:fs";
+import { existsSync, promises as fs } from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
 import { confirm, input, password, select } from "@inquirer/prompts";

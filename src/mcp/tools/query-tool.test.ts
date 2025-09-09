@@ -96,7 +96,7 @@ vi.mock("../../core/search/search.js", () => ({
     maxScore: 0.95,
     sourceTypes: { text: 1, file: 1 },
   }),
-  rerankResults: vi.fn((query, results) => results),
+  rerankResults: vi.fn((_query, results) => results),
 }));
 
 vi.mock("../../core/embedding/embedding.js", () => ({

@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import Parser from "web-tree-sitter";
 import type { Language } from "web-tree-sitter";
+import Parser from "web-tree-sitter";
 import {
-  type SupportedLanguage,
   isSupportedLanguage,
+  type SupportedLanguage,
 } from "./file-extensions.js";
 
 // Create require function for resolving module paths in ESM

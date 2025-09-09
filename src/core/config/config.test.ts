@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  type GistdexConfig,
   createConfigOperations,
+  type GistdexConfig,
 } from "./config-operations.js";
 
 // Mock fs module
@@ -48,7 +48,10 @@ describe("createConfigOperations", () => {
         },
       };
 
-      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(existsSync).mockImplementation((path) => {
+        // Only return true for JSON config files, not TS/JS files
+        return path === "./gistdex.config.json";
+      });
       vi.mocked(readFile).mockResolvedValue(JSON.stringify(mockConfig));
 
       const config = await configOperations.load();
@@ -93,7 +96,9 @@ describe("createConfigOperations", () => {
         },
       };
 
-      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(existsSync).mockImplementation((path) => {
+        return path === "./gistdex.config.json";
+      });
       vi.mocked(readFile).mockResolvedValue(JSON.stringify(mockConfig));
 
       const config = await configOperations.load();
@@ -205,7 +210,9 @@ describe("createConfigOperations", () => {
         },
       };
 
-      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(existsSync).mockImplementation((path) => {
+        return path === "./gistdex.config.json";
+      });
       vi.mocked(readFile).mockResolvedValue(JSON.stringify(mockConfig));
 
       const cliOverrides = {

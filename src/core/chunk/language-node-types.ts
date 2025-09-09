@@ -134,13 +134,17 @@ export const createBoundaryNodeTypes = (language: string): Set<string> => {
     const defaultConfig = LANGUAGE_NODE_TYPES.javascript;
     Object.values(defaultConfig)
       .flat()
-      .forEach((type) => nodeTypes.add(type));
+      .forEach((type) => {
+        nodeTypes.add(type);
+      });
     return nodeTypes;
   }
 
   Object.values(langConfig)
     .flat()
-    .forEach((type) => nodeTypes.add(type));
+    .forEach((type) => {
+      nodeTypes.add(type);
+    });
   return nodeTypes;
 };
 

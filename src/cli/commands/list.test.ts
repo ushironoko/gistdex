@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ListContext } from "./list.js";
 import { handleList } from "./list.js";
 
 // Mock node:sqlite to avoid import errors

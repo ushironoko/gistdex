@@ -1,4 +1,4 @@
-import { type RegistryInterface, createRegistry } from "./registry.js";
+import { createRegistry, type RegistryInterface } from "./registry.js";
 import type { AdapterFactory } from "./types.js";
 
 /**

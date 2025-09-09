@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
+  cosineSimilarity,
   EMBEDDING_DIMENSION,
   EMBEDDING_MODEL,
-  cosineSimilarity,
   generateEmbedding,
   generateEmbeddings,
   generateEmbeddingsBatch,

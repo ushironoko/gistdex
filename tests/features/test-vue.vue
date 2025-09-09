@@ -19,19 +19,19 @@ interface Item {
   name: string;
 }
 
-const title = ref("Hello Vue 3");
+const _title = ref("Hello Vue 3");
 const count = ref(0);
-const items = ref<Item[]>([
+const _items = ref<Item[]>([
   { id: 1, name: "Item 1" },
   { id: 2, name: "Item 2" },
   { id: 3, name: "Item 3" },
 ]);
 
-const increment = () => {
+const _increment = () => {
   count.value++;
 };
 
-const doubleCount = computed(() => count.value * 2);
+const _doubleCount = computed(() => count.value * 2);
 </script>
 
 <style scoped>

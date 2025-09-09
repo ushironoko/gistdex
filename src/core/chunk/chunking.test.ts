@@ -1,9 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  type ChunkOptions,
-  type ChunkWithMetadata,
-  chunkText,
-} from "./chunking.js";
+import { chunkText } from "./chunking.js";
 
 describe("chunkText", () => {
   test("returns single chunk for short text", () => {

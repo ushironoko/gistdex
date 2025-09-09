@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { VectorDBConfig } from "../vector-db/adapters/types.js";
 import {
-  type DatabaseOperations,
   createDatabaseOperations,
+  type DatabaseOperations,
 } from "./database-operations.js";
 import { createDatabaseService } from "./database-service.js";
 
@@ -51,7 +51,7 @@ describe("DatabaseOperations", () => {
   describe("withDatabase", () => {
     test("initializes and closes database correctly", async () => {
       const mockCreateService = vi.mocked(createDatabaseService);
-      const result = await operations.withDatabase(async (service) => {
+      const result = await operations.withDatabase(async (_service) => {
         return "test-result";
       });
 

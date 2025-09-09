@@ -170,7 +170,7 @@ export async function validateFilePath(
         // Re-validate the link target
         await validateFilePath(linkTarget, baseDir, allowedBasePaths);
       }
-    } catch (error) {
+    } catch (_error) {
       // If we can't validate the symlink target, reject it for safety
       throw new SecurityError(
         "Symbolic link target validation failed",
@@ -200,7 +200,7 @@ function parseAndValidateUrl(url: string): URL {
 
   try {
     return new URL(url);
-  } catch (error) {
+  } catch (_error) {
     throw new SecurityError("Invalid URL format", "INVALID_URL_FORMAT");
   }
 }

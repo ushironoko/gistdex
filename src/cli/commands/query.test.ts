@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { calculateSearchStats } from "../../core/search/search.js";
 import { handleQuery } from "./query.js";
 
 // Mock node:sqlite to avoid import errors

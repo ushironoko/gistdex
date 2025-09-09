@@ -6,9 +6,9 @@ import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import * as sqliteVec from "sqlite-vec";
 import { VectorDBError } from "../errors.js";
 import {
+  createSQLiteAdapterBase,
   type SQLiteOperations,
   type SQLitePreparedStatement,
-  createSQLiteAdapterBase,
 } from "./base-sqlite-adapter.js";
 import type { VectorDBAdapter, VectorDBConfig } from "./types.js";
 

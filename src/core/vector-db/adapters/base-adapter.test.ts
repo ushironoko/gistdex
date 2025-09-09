@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentNotFoundError } from "../errors.js";
-import { createBaseAdapter } from "./base-adapter.js";
 import type { BaseAdapterConfig, StorageOperations } from "./base-adapter.js";
+import { createBaseAdapter } from "./base-adapter.js";
 import type { VectorDocument, VectorSearchResult } from "./types.js";
 
 describe("createBaseAdapter", () => {

@@ -2,11 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import type { VectorDocument } from "../../core/vector-db/adapters/types.js";
 import { listToolSchema } from "../schemas/validation.js";
-import {
-  type ListToolOptions,
-  type ListToolResult,
-  handleListTool,
-} from "./list-tool.js";
+import { handleListTool, type ListToolOptions } from "./list-tool.js";
 
 // Mock the core modules
 vi.mock("../../core/database/database-operations.js", () => ({

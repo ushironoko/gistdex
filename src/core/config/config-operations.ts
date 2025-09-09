@@ -69,7 +69,8 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
 
           // Handle JSON config files
           const content = await readFile(p, "utf-8");
-          return JSON.parse(content) as GistdexConfig;
+          const parsed = JSON.parse(content) as GistdexConfig;
+          return parsed;
         } catch {
           // Continue to next path
         }
@@ -94,24 +95,33 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
           dimension: 768,
         },
       };
-    } else if (!result.vectorDB.options) {
-      result.vectorDB.options = {
-        path: "./gistdex.db",
-        dimension: 768,
-      };
     } else {
-      // Ensure dimension is set
-      if (!result.vectorDB.options.dimension) {
-        result.vectorDB.options.dimension = 768;
-      }
-      // Ensure path is set for sqlite providers
-      if (
-        (result.vectorDB.provider === "sqlite" ||
-          result.vectorDB.provider === "bun-sqlite" ||
-          result.vectorDB.provider === "sqlite-bun") &&
-        !result.vectorDB.options.path
-      ) {
-        result.vectorDB.options.path = "./gistdex.db";
+      // Apply defaults to options only if needed
+      if (!result.vectorDB.options) {
+        result.vectorDB.options = {
+          path: "./gistdex.db",
+          dimension: 768,
+        };
+      } else {
+        // Preserve existing options, only apply missing defaults
+        result.vectorDB.options = {
+          ...result.vectorDB.options,
+        };
+
+        // Ensure dimension is set
+        if (result.vectorDB.options.dimension === undefined) {
+          result.vectorDB.options.dimension = 768;
+        }
+
+        // Ensure path is set for sqlite providers
+        if (
+          (result.vectorDB.provider === "sqlite" ||
+            result.vectorDB.provider === "bun-sqlite" ||
+            result.vectorDB.provider === "sqlite-bun") &&
+          !result.vectorDB.options.path
+        ) {
+          result.vectorDB.options.path = "./gistdex.db";
+        }
       }
     }
 
@@ -145,8 +155,11 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
     // Load config file
     const configFile = await loadConfigFile(path);
 
-    // Apply defaults
-    const config = applyDefaults(configFile);
+    // Apply defaults only if config is empty or missing critical properties
+    const config =
+      Object.keys(configFile).length === 0
+        ? applyDefaults(configFile)
+        : configFile;
 
     cachedConfig = config;
     return config;
@@ -180,7 +193,7 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
         const module = await import(resolvedPath);
 
         // Try to find the factory function in multiple patterns
-        let factory: unknown = undefined;
+        let factory: unknown;
 
         // 1. Try the recommended standard name
         if (
@@ -270,18 +283,15 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
     };
 
     if (cliOverrides) {
-      if (cliOverrides.provider) {
-        dbConfig = {
-          ...dbConfig,
-          provider: cliOverrides.provider,
-        };
-      }
-      if (cliOverrides.db) {
-        dbConfig.options = {
+      // Create a new config object preserving existing options
+      dbConfig = {
+        ...dbConfig,
+        provider: cliOverrides.provider || dbConfig.provider,
+        options: {
           ...dbConfig.options,
-          path: cliOverrides.db,
-        };
-      }
+          ...(cliOverrides.db && { path: cliOverrides.db }),
+        },
+      };
     }
 
     return dbConfig;

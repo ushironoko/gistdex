@@ -4,7 +4,7 @@ import type { VectorDBAdapter, VectorDocument } from "./types.js";
 
 // Mock node:sqlite to avoid actual SQLite initialization in tests
 vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi.fn().mockImplementation((path: string, options?: any) => ({
+  DatabaseSync: vi.fn().mockImplementation((_path: string, _options?: any) => ({
     exec: vi.fn(),
     prepare: vi.fn().mockImplementation((query: string) => {
       // Mock for SELECT vec_rowid query

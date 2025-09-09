@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IndexContext } from "./index.js";
 import { handleIndex } from "./index.js";
 
 vi.mock("../../core/database/database-operations.js", () => ({
@@ -220,7 +219,7 @@ describe("handleIndex", () => {
           file: "../../../etc/passwd",
         },
       });
-    } catch (err) {
+    } catch (_err) {
       // TODO: This catch block is intentionally swallowing errors because
       // process.exit is mocked and doesn't actually terminate the process.
       // Consider refactoring handleIndex to return error codes instead of

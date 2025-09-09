@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
 import type { IndexToolInput } from "../schemas/validation.js";
 import { indexToolSchema } from "../schemas/validation.js";
 
