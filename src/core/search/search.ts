@@ -234,6 +234,89 @@ export async function getOriginalContent(
   return result.content;
 }
 
+/**
+ * Get the full content of a section for markdown files with boundary information
+ */
+export async function getSectionContent(
+  result: VectorSearchResult,
+  service: DatabaseService,
+): Promise<string | null> {
+  const sourceId = result.metadata?.sourceId;
+  const boundary = result.metadata?.boundary as
+    | {
+        type?: string;
+        level?: number;
+        title?: string;
+        name?: string;
+      }
+    | undefined;
+
+  if (!sourceId || !boundary) {
+    // No section information available, fallback to chunk content
+    return result.content;
+  }
+
+  try {
+    // Get all chunks from the same section
+    const allChunks = await service.listItems({
+      limit: 1000,
+      filter: {
+        sourceId,
+        ...(boundary.type ? { "boundary.type": boundary.type } : {}),
+        ...(boundary.title ? { "boundary.title": boundary.title } : {}),
+        ...(boundary.level !== undefined
+          ? { "boundary.level": boundary.level }
+          : {}),
+      },
+    });
+
+    if (allChunks.length === 0) {
+      return result.content;
+    }
+
+    // Sort chunks by their index
+    const sortedChunks = allChunks.sort((a, b) => {
+      const indexA = a.metadata?.chunkIndex ?? 0;
+      const indexB = b.metadata?.chunkIndex ?? 0;
+      return indexA - indexB;
+    });
+
+    // Reconstruct section content from chunks
+    if (sortedChunks.length === 1) {
+      return sortedChunks[0]?.content || result.content;
+    }
+
+    // Handle multiple chunks in the same section
+    const chunkOverlap = 200; // Default overlap
+    let reconstructed = sortedChunks[0]?.content || "";
+
+    for (let i = 1; i < sortedChunks.length; i++) {
+      const currentChunk = sortedChunks[i];
+      if (!currentChunk) continue;
+      const chunk = currentChunk.content;
+
+      // Try to remove overlap by finding common substring
+      const overlapStart = Math.max(0, reconstructed.length - chunkOverlap);
+      const overlapText = reconstructed.substring(overlapStart);
+      const overlapIndex = chunk.indexOf(overlapText);
+
+      if (overlapIndex === 0) {
+        // Found overlap, append only the new part
+        reconstructed += chunk.substring(overlapText.length);
+      } else {
+        // No clear overlap found, just append with a newline
+        reconstructed += `\n${chunk}`;
+      }
+    }
+
+    return reconstructed;
+  } catch (error) {
+    console.error("Error retrieving section content:", error);
+  }
+
+  return result.content;
+}
+
 export function calculateSearchStats(
   results: VectorSearchResult[],
 ): SearchStats {

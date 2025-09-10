@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { glob, readFile } from "node:fs/promises";
 import { getOptimalChunkSettings } from "../chunk/chunk-optimizer.js";
-import { chunkTextWithCST } from "../chunk/chunking.js";
+import { chunkTextWithCSTAndMetadata } from "../chunk/chunking.js";
 import { isTextFile } from "../chunk/file-extensions.js";
 import type {
   DatabaseService,
@@ -53,17 +53,19 @@ export async function indexText(
       onProgress("Chunking text...");
     }
 
-    const chunks = await chunkTextWithCST(text, {
+    const chunksWithMetadata = await chunkTextWithCSTAndMetadata(text, {
       size: chunkSize,
       overlap: chunkOverlap,
       preserveBoundaries: options.preserveBoundaries,
       filePath: metadata.filePath as string | undefined,
     });
 
-    if (chunks.length === 0) {
+    if (chunksWithMetadata.length === 0) {
       result.errors.push("No chunks generated from text");
       return result;
     }
+
+    const chunks = chunksWithMetadata.map((chunk) => chunk.content);
 
     if (onProgress) {
       onProgress(`Generating embeddings for ${chunks.length} chunks...`);
@@ -88,14 +90,16 @@ export async function indexText(
     // Generate a unique source ID for this content
     const sourceId = randomUUID();
 
-    const items = chunks.map((chunk, i) => ({
-      content: chunk,
+    const items = chunksWithMetadata.map((chunk, i) => ({
+      content: chunk.content,
       embedding: embeddings[i] ?? [],
       metadata: {
         ...metadata,
         sourceId,
         chunkIndex: i,
         totalChunks: chunks.length,
+        // Store boundary information if available
+        ...(chunk.boundary ? { boundary: chunk.boundary } : {}),
         // Store original content only in the first chunk to save space
         ...(i === 0 ? { originalContent: text } : {}),
       },

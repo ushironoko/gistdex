@@ -56,6 +56,7 @@ vi.mock("../../core/search/search.js", () => ({
     sourceTypes: { text: 1 },
   }),
   getOriginalContent: vi.fn().mockResolvedValue("Original full content"),
+  getSectionContent: vi.fn().mockResolvedValue("Section content from markdown"),
 }));
 
 describe("handleQuery", () => {
@@ -253,5 +254,96 @@ describe("handleQuery", () => {
       expect.objectContaining({ rerank: false }),
       expect.any(Object),
     );
+  });
+
+  it("displays section content with --section option", async () => {
+    const mockResult = {
+      content: "Section chunk content",
+      score: 0.95,
+      metadata: {
+        title: "Test Document",
+        sourceType: "file",
+        filePath: "test.md",
+        boundary: {
+          type: "heading",
+          level: 2,
+          title: "Introduction",
+        },
+      },
+    };
+
+    const { semanticSearch, getSectionContent } = await import(
+      "../../core/search/search.js"
+    );
+    vi.mocked(semanticSearch).mockResolvedValue([mockResult]);
+    vi.mocked(getSectionContent).mockResolvedValue(
+      "## Introduction\n\nThis is the full introduction section content with multiple paragraphs.",
+    );
+
+    await handleQuery({
+      values: { section: true },
+      positionals: ["test", "query"],
+    } as CommandContext);
+
+    expect(getSectionContent).toHaveBeenCalledWith(
+      mockResult,
+      expect.any(Object),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining("Section: Introduction (Level 2)"),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining("## Introduction"),
+    );
+  });
+
+  it("rejects both --full and --section options together", async () => {
+    // Test will throw error, so we catch it
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    try {
+      await handleQuery({
+        values: { full: true, section: true },
+        positionals: ["test", "query"],
+      } as CommandContext);
+    } catch (error) {
+      // Expected to throw
+    }
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Cannot use both --full and --section"),
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("works with -s shorthand for section", async () => {
+    const mockResult = {
+      content: "Section content",
+      score: 0.95,
+      metadata: {
+        title: "Test",
+        sourceType: "file",
+        boundary: {
+          type: "heading",
+          level: 1,
+          title: "Main Title",
+        },
+      },
+    };
+
+    const { semanticSearch, getSectionContent } = await import(
+      "../../core/search/search.js"
+    );
+    vi.mocked(semanticSearch).mockResolvedValue([mockResult]);
+
+    await handleQuery({
+      values: { section: true },
+      positionals: ["test"],
+    } as CommandContext);
+
+    expect(getSectionContent).toHaveBeenCalled();
   });
 });

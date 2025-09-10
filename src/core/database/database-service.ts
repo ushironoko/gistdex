@@ -16,6 +16,14 @@ export interface ItemMetadata {
   totalChunks?: number;
   originalContent?: string;
 
+  // Boundary information for structured content (e.g., markdown sections)
+  boundary?: {
+    type: string;
+    level?: number;
+    name?: string;
+    title?: string;
+  };
+
   // Document information
   title?: string;
   url?: string;

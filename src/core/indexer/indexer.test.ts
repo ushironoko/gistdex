@@ -19,6 +19,7 @@ vi.mock("node:fs/promises", () => ({
 vi.mock("../chunk/chunking.js", () => ({
   chunkText: vi.fn(),
   chunkTextWithCST: vi.fn(),
+  chunkTextWithCSTAndMetadata: vi.fn(),
 }));
 
 vi.mock("../embedding/embedding.js", () => ({
@@ -33,7 +34,10 @@ vi.mock("../security/security.js", () => ({
 }));
 
 import { glob } from "node:fs/promises";
-import { chunkTextWithCST } from "../chunk/chunking.js";
+import {
+  chunkTextWithCST,
+  chunkTextWithCSTAndMetadata,
+} from "../chunk/chunking.js";
 import { generateEmbeddingsBatch } from "../embedding/embedding.js";
 import {
   validateFilePath,
@@ -60,13 +64,19 @@ describe("indexText", () => {
   });
 
   test("indexes text with chunks and embeddings", async () => {
+    const chunksWithMetadata = [
+      { content: "chunk1", index: 0, start: 0, end: 6 },
+      { content: "chunk2", index: 1, start: 7, end: 13 },
+    ];
     const chunks = ["chunk1", "chunk2"];
     const embeddings = [
       [0.1, 0.2],
       [0.3, 0.4],
     ];
 
-    vi.mocked(chunkTextWithCST).mockResolvedValue(chunks);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue(
+      chunksWithMetadata,
+    );
     vi.mocked(generateEmbeddingsBatch).mockResolvedValue(embeddings);
 
     const result = await indexText(
@@ -76,9 +86,11 @@ describe("indexText", () => {
       mockService,
     );
 
-    expect(chunkTextWithCST).toHaveBeenCalledWith("test text", {
+    expect(chunkTextWithCSTAndMetadata).toHaveBeenCalledWith("test text", {
       size: 100,
       overlap: 10,
+      preserveBoundaries: undefined,
+      filePath: undefined,
     });
     expect(generateEmbeddingsBatch).toHaveBeenCalledWith(chunks, {
       batchSize: 100,
@@ -93,7 +105,7 @@ describe("indexText", () => {
   });
 
   test("handles empty chunks", async () => {
-    vi.mocked(chunkTextWithCST).mockResolvedValue([]);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue([]);
 
     const result = await indexText("test text", {}, {}, mockService);
 
@@ -105,7 +117,9 @@ describe("indexText", () => {
   });
 
   test("handles database save errors", async () => {
-    vi.mocked(chunkTextWithCST).mockResolvedValue(["chunk1"]);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue([
+      { content: "chunk1", index: 0, start: 0, end: 6 },
+    ]);
     vi.mocked(generateEmbeddingsBatch).mockResolvedValue([[0.1, 0.2]]);
     vi.mocked(mockService.saveItems).mockRejectedValue(new Error("DB error"));
 
@@ -116,6 +130,97 @@ describe("indexText", () => {
       chunksCreated: 0,
       errors: ["Failed to save chunks: DB error"],
     });
+  });
+
+  test("preserves boundary information in metadata when available", async () => {
+    const chunksWithBoundary = [
+      {
+        content: "## Introduction\n\nThis is intro",
+        index: 0,
+        start: 0,
+        end: 30,
+        boundary: {
+          type: "heading",
+          level: 2,
+          title: "Introduction",
+        },
+      },
+      {
+        content: "More intro content",
+        index: 1,
+        start: 31,
+        end: 49,
+        boundary: {
+          type: "heading",
+          level: 2,
+          title: "Introduction",
+        },
+      },
+    ];
+
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue(
+      chunksWithBoundary,
+    );
+    vi.mocked(generateEmbeddingsBatch).mockResolvedValue([
+      [0.1, 0.2],
+      [0.3, 0.4],
+    ]);
+
+    await indexText(
+      "## Introduction\n\nThis is intro\nMore intro content",
+      { filePath: "test.md" },
+      { preserveBoundaries: true },
+      mockService,
+    );
+
+    expect(mockService.saveItems).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          content: "## Introduction\n\nThis is intro",
+          metadata: expect.objectContaining({
+            boundary: {
+              type: "heading",
+              level: 2,
+              title: "Introduction",
+            },
+          }),
+        }),
+        expect.objectContaining({
+          content: "More intro content",
+          metadata: expect.objectContaining({
+            boundary: {
+              type: "heading",
+              level: 2,
+              title: "Introduction",
+            },
+          }),
+        }),
+      ]),
+    );
+  });
+
+  test("omits boundary information when not present", async () => {
+    const chunksWithoutBoundary = [
+      { content: "Regular text", index: 0, start: 0, end: 12 },
+    ];
+
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue(
+      chunksWithoutBoundary,
+    );
+    vi.mocked(generateEmbeddingsBatch).mockResolvedValue([[0.1, 0.2]]);
+
+    await indexText("Regular text", {}, {}, mockService);
+
+    expect(mockService.saveItems).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          content: "Regular text",
+          metadata: expect.not.objectContaining({
+            boundary: expect.anything(),
+          }),
+        }),
+      ]),
+    );
   });
 });
 
@@ -140,7 +245,9 @@ describe("indexFile", () => {
   test("reads file and indexes content", async () => {
     const fileContent = "file content";
     vi.mocked(readFile).mockResolvedValue(fileContent);
-    vi.mocked(chunkTextWithCST).mockResolvedValue(["chunk1"]);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue([
+      { content: "chunk1", index: 0, start: 0, end: 6 },
+    ]);
     vi.mocked(generateEmbeddingsBatch).mockResolvedValue([[0.1, 0.2]]);
 
     const result = await indexFile(
@@ -202,7 +309,9 @@ describe("indexFiles", () => {
       Promise.resolve(path),
     );
     vi.mocked(readFile).mockResolvedValue("file content");
-    vi.mocked(chunkTextWithCST).mockResolvedValue(["chunk1"]);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue([
+      { content: "chunk1", index: 0, start: 0, end: 6 },
+    ]);
     vi.mocked(generateEmbeddingsBatch).mockResolvedValue([[0.1, 0.2]]);
 
     const result = await indexFiles(
@@ -247,7 +356,9 @@ describe("indexFiles", () => {
       Promise.resolve(path),
     );
     vi.mocked(readFile).mockResolvedValue("file content");
-    vi.mocked(chunkTextWithCST).mockResolvedValue(["chunk1"]);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue([
+      { content: "chunk1", index: 0, start: 0, end: 6 },
+    ]);
     vi.mocked(generateEmbeddingsBatch).mockResolvedValue([[0.1, 0.2]]);
 
     const result = await indexFiles(
@@ -280,7 +391,9 @@ describe("indexFiles", () => {
       );
 
     vi.mocked(readFile).mockResolvedValue("file content");
-    vi.mocked(chunkTextWithCST).mockResolvedValue(["chunk1"]);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue([
+      { content: "chunk1", index: 0, start: 0, end: 6 },
+    ]);
     vi.mocked(generateEmbeddingsBatch).mockResolvedValue([[0.1, 0.2]]);
 
     const result = await indexFiles(["*.md"], {}, {}, mockService);
@@ -330,7 +443,9 @@ describe("indexFiles", () => {
       Promise.resolve(path),
     );
     vi.mocked(readFile).mockResolvedValue("file content");
-    vi.mocked(chunkTextWithCST).mockResolvedValue(["chunk1"]);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue([
+      { content: "chunk1", index: 0, start: 0, end: 6 },
+    ]);
     vi.mocked(generateEmbeddingsBatch).mockResolvedValue([[0.1, 0.2]]);
 
     const progressCalls: string[] = [];
@@ -387,7 +502,9 @@ describe("indexGist", () => {
       ok: true,
       json: async () => gistData,
     } as Response);
-    vi.mocked(chunkTextWithCST).mockResolvedValue(["chunk1"]);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue([
+      { content: "chunk1", index: 0, start: 0, end: 6 },
+    ]);
     vi.mocked(generateEmbeddingsBatch).mockResolvedValue([[0.1, 0.2]]);
 
     const result = await indexGist(
@@ -467,7 +584,9 @@ describe("indexGitHubRepo", () => {
         ok: true,
         text: async () => "file content",
       } as Response);
-    vi.mocked(chunkTextWithCST).mockResolvedValue(["chunk1"]);
+    vi.mocked(chunkTextWithCSTAndMetadata).mockResolvedValue([
+      { content: "chunk1", index: 0, start: 0, end: 6 },
+    ]);
     vi.mocked(generateEmbeddingsBatch).mockResolvedValue([[0.1, 0.2]]);
 
     const result = await indexGitHubRepo(

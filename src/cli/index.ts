@@ -131,6 +131,12 @@ const queryArgs = {
     short: "f",
     description: "Show full original source content",
   },
+  section: {
+    type: "boolean" as const,
+    short: "s",
+    description:
+      "Show full section content for markdown files (mutually exclusive with --full)",
+  },
 };
 
 const queryCommand = define({

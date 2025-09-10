@@ -1,6 +1,7 @@
 import type { DatabaseService } from "../../core/database/database-service.js";
 import {
   getOriginalContent,
+  getSectionContent,
   hybridSearch,
   rerankResults,
   semanticSearch,
@@ -73,7 +74,23 @@ async function handleQueryOperation(
       results.map(async (result) => {
         let content = result.content;
 
-        if (data.full && result.metadata?.sourceId) {
+        // Check for mutually exclusive options
+        if (data.full && data.section) {
+          throw new Error(
+            "Cannot use both 'full' and 'section' options together",
+          );
+        }
+
+        if (data.section && result.metadata?.boundary) {
+          try {
+            const sectionContent = await getSectionContent(result, service);
+            if (sectionContent) {
+              content = sectionContent;
+            }
+          } catch {
+            // Fall back to chunk content if section content retrieval fails
+          }
+        } else if (data.full && result.metadata?.sourceId) {
           try {
             const fullContent = await getOriginalContent(result, service);
             if (fullContent) {

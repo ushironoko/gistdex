@@ -1445,4 +1445,90 @@ describe("query-tool", () => {
       // In real implementation, verify connections were properly closed
     });
   });
+
+  describe("section option", () => {
+    it("returns section content when section option is true", async () => {
+      const input: QueryToolInput = {
+        query: "markdown sections",
+        section: true,
+      };
+
+      mockQueryTool.mockResolvedValue({
+        success: true,
+        message: "Search completed successfully",
+        results: [
+          {
+            id: "section-1",
+            content: "## Introduction\n\nThis is the full introduction section",
+            score: 0.92,
+            metadata: {
+              title: "Documentation",
+              sourceType: "file",
+              filePath: "docs.md",
+              boundary: {
+                type: "heading",
+                level: 2,
+                title: "Introduction",
+              },
+            },
+          },
+        ],
+      });
+
+      const result = await mockQueryTool(input);
+
+      expect(result.success).toBe(true);
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].content).toContain("## Introduction");
+      expect(result.results[0].metadata.boundary).toBeDefined();
+    });
+
+    it("rejects both full and section options together", async () => {
+      const input: QueryToolInput = {
+        query: "test query",
+        full: true,
+        section: true,
+      };
+
+      mockQueryTool.mockResolvedValue({
+        success: false,
+        error: "Cannot use both 'full' and 'section' options together",
+      });
+
+      const result = await mockQueryTool(input);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Cannot use both 'full' and 'section'");
+    });
+
+    it("falls back to chunk content when no boundary info", async () => {
+      const input: QueryToolInput = {
+        query: "regular text",
+        section: true,
+      };
+
+      mockQueryTool.mockResolvedValue({
+        success: true,
+        message: "Search completed successfully",
+        results: [
+          {
+            id: "chunk-1",
+            content: "Regular chunk content without section info",
+            score: 0.88,
+            metadata: {
+              title: "Document",
+              sourceType: "text",
+            },
+          },
+        ],
+      });
+
+      const result = await mockQueryTool(input);
+
+      expect(result.success).toBe(true);
+      expect(result.results[0].content).toBe(
+        "Regular chunk content without section info",
+      );
+    });
+  });
 });
