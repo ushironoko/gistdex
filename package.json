@@ -1,6 +1,6 @@
 {
   "name": "@ushironoko/gistdex",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "RAG search system for Gist, GitHub, and Local Files.",
   "type": "module",
   "main": "dist/index.js",

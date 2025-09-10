@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.4] - 2025-09-10
+
+- fix
+- fix
+- Merge pull request #92 from ushironoko:feature/markdown-section-display
+- fix
+- test: add test data for markdown section functionality
+- test: add comprehensive tests for markdown section display feature
+- feat: add section option to MCP query tool
+- feat: add --section CLI option for markdown section display
+- feat: preserve boundary metadata during indexing
+- feat: add markdown section display functionality to core
+- Merge pull request #91 from ushironoko:fix/eliminate-any-types
+- test: eliminate 'any' types from test files
+- fix: replace 'any' with proper types in production code
+- refactor: enable BiomeJS noExplicitAny rule
+
+
 ## [1.2.3] - 2025-09-09
 
 - fix
