@@ -102,7 +102,9 @@ function parseMarkdownSections(markdown: string): Array<{
     // Check for headings
     const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
     if (headingMatch) {
-      // Save previous section
+      const newLevel = headingMatch[1]?.length || 1;
+
+      // Save previous section before starting a new heading
       if (currentSection) {
         sections.push({
           content: currentSection.lines.join("\n"),
@@ -119,11 +121,14 @@ function parseMarkdownSections(markdown: string): Array<{
         lines: [line],
         startOffset: offset,
         type: "heading",
-        level: headingMatch[1]?.length || 1,
+        level: newLevel,
         title: headingMatch[2],
       };
+    } else if (currentSection && currentSection.type === "heading") {
+      // We're in a heading section - add all content to it
+      currentSection.lines.push(line);
     } else if (line.match(/^[-*+]\s+/) || line.match(/^\d+\.\s+/)) {
-      // List item
+      // List item outside of heading section
       if (currentSection?.type !== "list") {
         if (currentSection) {
           sections.push({
@@ -144,24 +149,19 @@ function parseMarkdownSections(markdown: string): Array<{
         currentSection.lines.push(line);
       }
     } else if (line.trim() === "") {
-      // Empty line - might be paragraph boundary
+      // Empty line
       if (currentSection) {
         currentSection.lines.push(line);
       }
     } else {
       // Regular text line
-      if (!currentSection || currentSection.type === "heading") {
-        if (currentSection && currentSection.type === "heading") {
-          // Continue heading section with content
-          currentSection.lines.push(line);
-        } else {
-          // Start new paragraph
-          currentSection = {
-            lines: [line],
-            startOffset: offset,
-            type: "paragraph",
-          };
-        }
+      if (!currentSection) {
+        // Start new paragraph
+        currentSection = {
+          lines: [line],
+          startOffset: offset,
+          type: "paragraph",
+        };
       } else {
         currentSection.lines.push(line);
       }
