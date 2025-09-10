@@ -1,6 +1,7 @@
 import {
   calculateSearchStats,
   getOriginalContent,
+  getSectionContent,
   hybridSearch,
   semanticSearch,
 } from "../../core/search/search.js";
@@ -17,6 +18,7 @@ interface QueryContext {
     hybrid?: boolean;
     "no-rerank"?: boolean;
     full?: boolean;
+    section?: boolean;
     [key: string]: string | boolean | undefined;
   };
   positionals?: string[]; // gunshi provides positionals in the context
@@ -33,6 +35,14 @@ export const handleQuery = createReadOnlyCommandHandler<QueryContext>(
     }
 
     const values = ctx.values;
+
+    // Check for mutually exclusive options
+    if (values.full && values.section) {
+      handleCliError(
+        new Error("Cannot use both --full and --section options together"),
+      );
+    }
+
     const options = {
       k: parseCliInteger(values["top-k"] as string | undefined, 5) ?? 5,
       sourceType: values.type as string | undefined,
@@ -85,9 +95,28 @@ export const handleQuery = createReadOnlyCommandHandler<QueryContext>(
         console.log(`   Type: ${metadata.sourceType || "unknown"}`);
 
         const showFull = !!values.full;
+        const showSection = !!values.section;
         let contentToShow: string;
 
-        if (showFull) {
+        if (showSection) {
+          // Get the full section content for markdown files
+          const sectionContent = await getSectionContent(result, service);
+          contentToShow = sectionContent || result.content;
+
+          // Show section info if available
+          const boundary = metadata.boundary as
+            | {
+                type?: string;
+                level?: number;
+                title?: string;
+              }
+            | undefined;
+          if (boundary) {
+            console.log(
+              `   Section: ${boundary.title || boundary.type || "Section"} (Level ${boundary.level || "N/A"})`,
+            );
+          }
+        } else if (showFull) {
           // Get the full original content from the source
           const originalContent = await getOriginalContent(result, service);
           contentToShow = originalContent || result.content;
@@ -101,7 +130,7 @@ export const handleQuery = createReadOnlyCommandHandler<QueryContext>(
           .map((line: string) => `   | ${line}`);
         console.log(lines.join("\n"));
 
-        if (!showFull && result.content.length > 200) {
+        if (!showFull && !showSection && result.content.length > 200) {
           console.log("   | ...");
         }
 
