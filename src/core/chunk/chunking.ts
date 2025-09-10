@@ -24,6 +24,12 @@ export interface ChunkWithMetadata {
   index: number;
   start: number;
   end: number;
+  boundary?: {
+    type: string;
+    level?: number;
+    name?: string;
+    title?: string;
+  };
 }
 
 /**
@@ -114,6 +120,7 @@ function handleMarkdownBoundaryChunking(
     index,
     start: chunk.startOffset,
     end: chunk.endOffset,
+    boundary: chunk.boundary,
   }));
 }
 
@@ -134,6 +141,7 @@ function handleCodeBoundaryChunking(
     index,
     start: chunk.startOffset,
     end: chunk.endOffset,
+    boundary: chunk.boundary,
   }));
 }
 
@@ -197,6 +205,46 @@ export async function chunkTextWithCST(
 
   // Fallback to simple chunking
   return createChunks(text, options).map((chunk) => chunk.content);
+}
+
+// CST-aware chunking with metadata (includes boundary information)
+export async function chunkTextWithCSTAndMetadata(
+  text: string,
+  options: ChunkOptions = {},
+): Promise<ChunkWithMetadata[]> {
+  // Try CST-based chunking for supported file types
+  if (options.preserveBoundaries && options.filePath) {
+    const ext = path.extname(options.filePath).toLowerCase();
+
+    // Handle Markdown files (synchronous)
+    if (isMarkdownFile(ext)) {
+      return handleMarkdownBoundaryChunking(text, options);
+    }
+
+    // Check if tree-sitter is supported for this file type
+    if (isTreeSitterSupported(ext)) {
+      const cstOperations = createCSTChunkingOperations();
+      const boundaryChunks = await cstOperations.chunkWithFallback(
+        text,
+        options.filePath,
+        {
+          maxChunkSize: options.size || 1000,
+          overlap: options.overlap || 100,
+        },
+        chunkCodeByBoundary,
+      );
+      return boundaryChunks.map((chunk, index) => ({
+        content: chunk.content,
+        index,
+        start: chunk.startOffset,
+        end: chunk.endOffset,
+        boundary: chunk.boundary,
+      }));
+    }
+  }
+
+  // Fallback to simple chunking
+  return createChunks(text, options);
 }
 
 // Backward compatible synchronous version
