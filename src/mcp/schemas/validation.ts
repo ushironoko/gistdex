@@ -102,6 +102,11 @@ export const queryToolSchema = z.object({
     .optional()
     .default(false)
     .describe("Return full original content"),
+  section: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Return full section content for markdown files"),
   provider: z
     .string()
     .optional()
