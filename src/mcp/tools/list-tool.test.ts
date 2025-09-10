@@ -145,7 +145,7 @@ describe("list-tool", () => {
       const result = listToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain("Invalid enum value");
+        expect(result.error.issues[0]?.message).toContain("Invalid enum value");
       }
     });
 
@@ -157,7 +157,7 @@ describe("list-tool", () => {
       const result = listToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain(
+        expect(result.error.issues[0]?.message).toContain(
           "Number must be greater than 0",
         );
       }
@@ -171,7 +171,7 @@ describe("list-tool", () => {
       const result = listToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain(
+        expect(result.error.issues[0]?.message).toContain(
           "Number must be greater than 0",
         );
       }
@@ -185,7 +185,7 @@ describe("list-tool", () => {
       const result = listToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain("Expected integer");
+        expect(result.error.issues[0]?.message).toContain("Expected integer");
       }
     });
 
@@ -245,8 +245,8 @@ describe("list-tool", () => {
 
       expect(result.success).toBe(true);
       expect(result.items).toHaveLength(2);
-      expect(result.items?.[0].id).toBe("item1");
-      expect(result.items?.[1].id).toBe("item2");
+      expect(result.items?.[0]?.id).toBe("item1");
+      expect(result.items?.[1]?.id).toBe("item2");
       expect(result.stats).toEqual(mockStats);
       expect(mockService.listItems).toHaveBeenCalledWith({ limit: 100 });
     });
@@ -281,7 +281,7 @@ describe("list-tool", () => {
       const result = await handleListTool({}, options);
 
       expect(result.success).toBe(true);
-      expect(result.items?.[0].metadata).toEqual(mockItems[0].metadata);
+      expect(result.items?.[0]?.metadata).toEqual(mockItems[0]?.metadata);
     });
 
     it("handles items without metadata", async () => {
@@ -301,8 +301,8 @@ describe("list-tool", () => {
       const result = await handleListTool({}, options);
 
       expect(result.success).toBe(true);
-      expect(result.items?.[0].id).toBe("item1");
-      expect(result.items?.[0].metadata).toBeUndefined();
+      expect(result.items?.[0]?.id).toBe("item1");
+      expect(result.items?.[0]?.metadata).toBeUndefined();
     });
   });
 
@@ -413,7 +413,7 @@ describe("list-tool", () => {
 
       expect(result.success).toBe(true);
       expect(result.items).toHaveLength(1);
-      expect(result.items?.[0].metadata?.sourceType).toBe("gist");
+      expect(result.items?.[0]?.metadata?.sourceType).toBe("gist");
       expect(mockService.listItems).toHaveBeenCalledWith({
         limit: 100,
         filter: { sourceType: "gist" },
@@ -445,7 +445,7 @@ describe("list-tool", () => {
       const result = await handleListTool(input, options);
 
       expect(result.success).toBe(true);
-      expect(result.items?.[0].metadata?.sourceType).toBe("github");
+      expect(result.items?.[0]?.metadata?.sourceType).toBe("github");
       expect(mockService.listItems).toHaveBeenCalledWith({
         limit: 100,
         filter: { sourceType: "github" },
@@ -475,7 +475,7 @@ describe("list-tool", () => {
       const result = await handleListTool(input, options);
 
       expect(result.success).toBe(true);
-      expect(result.items?.[0].metadata?.sourceType).toBe("file");
+      expect(result.items?.[0]?.metadata?.sourceType).toBe("file");
       expect(mockService.listItems).toHaveBeenCalledWith({
         limit: 100,
         filter: { sourceType: "file" },
@@ -504,7 +504,7 @@ describe("list-tool", () => {
       const result = await handleListTool(input, options);
 
       expect(result.success).toBe(true);
-      expect(result.items?.[0].metadata?.sourceType).toBe("text");
+      expect(result.items?.[0]?.metadata?.sourceType).toBe("text");
       expect(mockService.listItems).toHaveBeenCalledWith({
         limit: 100,
         filter: { sourceType: "text" },
@@ -1032,8 +1032,8 @@ describe("list-tool", () => {
 
       expect(result.success).toBe(true);
       expect(result.items).toHaveLength(1);
-      expect(result.items?.[0].content).toBe("");
-      expect(result.items?.[0].metadata?.title).toBe("Empty Content Item");
+      expect(result.items?.[0]?.content).toBe("");
+      expect(result.items?.[0]?.metadata?.title).toBe("Empty Content Item");
     });
 
     it("handles database with partial data corruption", async () => {
@@ -1062,7 +1062,7 @@ describe("list-tool", () => {
       expect(result.success).toBe(true);
       // Items without ID are filtered out
       expect(result.items).toHaveLength(1);
-      expect(result.items?.[0].id).toBe("item1");
+      expect(result.items?.[0]?.id).toBe("item1");
     });
   });
 
@@ -1097,7 +1097,7 @@ describe("list-tool", () => {
 
       expect(result.success).toBe(true);
       expect(result.items).toHaveLength(1);
-      expect(result.items?.[0].metadata?.sourceType).toBe("gist");
+      expect(result.items?.[0]?.metadata?.sourceType).toBe("gist");
       expect(result.stats?.totalItems).toBe(1);
       expect(mockService.listItems).toHaveBeenCalledWith({
         limit: 25,

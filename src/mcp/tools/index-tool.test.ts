@@ -222,7 +222,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain("Invalid enum value");
+        expect(result.error.issues[0]?.message).toContain("Invalid enum value");
       }
     });
 
@@ -236,7 +236,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain(
+        expect(result.error.issues[0]?.message).toContain(
           "Number must be greater than 0",
         );
       }
@@ -252,7 +252,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain(
+        expect(result.error.issues[0]?.message).toContain(
           "Number must be greater than or equal to 0",
         );
       }
@@ -267,7 +267,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain("Invalid url");
+        expect(result.error.issues[0]?.message).toContain("Invalid url");
       }
     });
 
@@ -280,7 +280,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain("Invalid url");
+        expect(result.error.issues[0]?.message).toContain("Invalid url");
       }
     });
 
@@ -823,7 +823,7 @@ describe("index-tool", () => {
       const schemaResult = indexToolSchema.safeParse(input);
       expect(schemaResult.success).toBe(false);
       if (!schemaResult.success) {
-        expect(schemaResult.error.issues[0].path).toContain("type");
+        expect(schemaResult.error.issues[0]?.path).toContain("type");
       }
     });
 

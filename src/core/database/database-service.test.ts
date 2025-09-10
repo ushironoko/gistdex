@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { createRegistry } from "../vector-db/adapters/registry.js";
+// import { createRegistry } from "../vector-db/adapters/registry.js";
 import type { VectorDBConfig } from "../vector-db/adapters/types.js";
 import {
   createDatabaseService,
@@ -13,11 +13,11 @@ vi.mock("node:sqlite", () => ({
 
 describe("DatabaseService", () => {
   let service: ReturnType<typeof createDatabaseService>;
-  let _registry: ReturnType<typeof createRegistry>;
+  // let _registry: ReturnType<typeof createRegistry>;
 
   beforeEach(() => {
     // Create a fresh registry for each test
-    _registry = createRegistry();
+    // _registry = createRegistry();
     service = createDatabaseService();
   });
 

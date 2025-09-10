@@ -34,10 +34,7 @@ vi.mock("../security/security.js", () => ({
 }));
 
 import { glob } from "node:fs/promises";
-import {
-  chunkTextWithCST,
-  chunkTextWithCSTAndMetadata,
-} from "../chunk/chunking.js";
+import { chunkTextWithCSTAndMetadata } from "../chunk/chunking.js";
 import { generateEmbeddingsBatch } from "../embedding/embedding.js";
 import {
   validateFilePath,
@@ -299,11 +296,13 @@ describe("indexFiles", () => {
   test("indexes multiple files with glob patterns", async () => {
     // Mock glob to return an async iterator
     const mockFiles = ["/test/file1.md", "/test/file2.md"];
-    vi.mocked(glob).mockImplementation(async function* () {
-      for (const file of mockFiles) {
-        yield file;
-      }
-    } as unknown);
+    vi.mocked(glob).mockImplementation(
+      async function* (): AsyncIterator<string> {
+        for (const file of mockFiles) {
+          yield file;
+        }
+      } as unknown as typeof glob,
+    );
 
     vi.mocked(validateFilePath).mockImplementation((path) =>
       Promise.resolve(path),
@@ -340,7 +339,7 @@ describe("indexFiles", () => {
 
     vi.mocked(glob).mockImplementation(async function* (
       pattern: string | readonly string[],
-    ) {
+    ): AsyncIterator<string> {
       if (pattern === "*.md") {
         for (const file of pattern1Files) {
           yield file;
@@ -350,7 +349,7 @@ describe("indexFiles", () => {
           yield file;
         }
       }
-    } as unknown);
+    } as unknown as typeof glob);
 
     vi.mocked(validateFilePath).mockImplementation((path) =>
       Promise.resolve(path),
@@ -378,11 +377,13 @@ describe("indexFiles", () => {
 
   test("handles security errors for individual files", async () => {
     const mockFiles = ["/test/file1.md", "/test/file2.md"];
-    vi.mocked(glob).mockImplementation(async function* () {
-      for (const file of mockFiles) {
-        yield file;
-      }
-    } as unknown);
+    vi.mocked(glob).mockImplementation(
+      async function* (): AsyncIterator<string> {
+        for (const file of mockFiles) {
+          yield file;
+        }
+      } as unknown as typeof glob,
+    );
 
     vi.mocked(validateFilePath)
       .mockResolvedValueOnce("/test/file1.md")
@@ -405,9 +406,11 @@ describe("indexFiles", () => {
   });
 
   test("handles no matching files", async () => {
-    vi.mocked(glob).mockImplementation(async function* () {
-      // Return empty iterator
-    } as unknown);
+    vi.mocked(glob).mockImplementation(
+      async function* (): AsyncIterator<string> {
+        // Return empty iterator
+      } as unknown as typeof glob,
+    );
 
     const result = await indexFiles(["*.nonexistent"], {}, {}, mockService);
 
@@ -419,9 +422,19 @@ describe("indexFiles", () => {
   });
 
   test("handles glob pattern errors", async () => {
-    // biome-ignore lint/correctness/useYield: Mock that immediately throws error
-    vi.mocked(glob).mockImplementation(async function* () {
-      throw new Error("Invalid pattern");
+    vi.mocked(glob).mockImplementation(() => {
+      const iterator = {
+        async next() {
+          throw new Error("Invalid pattern");
+        },
+        [Symbol.asyncIterator]() {
+          return this;
+        },
+        async [Symbol.asyncDispose]() {
+          // Cleanup
+        },
+      };
+      return iterator;
     });
 
     const result = await indexFiles(["[invalid"], {}, {}, mockService);
@@ -433,11 +446,13 @@ describe("indexFiles", () => {
 
   test("reports progress correctly", async () => {
     const mockFiles = ["/test/file1.md", "/test/file2.md"];
-    vi.mocked(glob).mockImplementation(async function* () {
-      for (const file of mockFiles) {
-        yield file;
-      }
-    } as unknown);
+    vi.mocked(glob).mockImplementation(
+      async function* (): AsyncIterator<string> {
+        for (const file of mockFiles) {
+          yield file;
+        }
+      } as unknown as typeof glob,
+    );
 
     vi.mocked(validateFilePath).mockImplementation((path) =>
       Promise.resolve(path),

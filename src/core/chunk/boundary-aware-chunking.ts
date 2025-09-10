@@ -127,8 +127,8 @@ function parseMarkdownSections(markdown: string): Array<{
     } else if (currentSection && currentSection.type === "heading") {
       // We're in a heading section - add all content to it
       currentSection.lines.push(line);
-    } else if (line.match(/^[-*+]\s+/) || line.match(/^\d+\.\s+/)) {
-      // List item outside of heading section
+    } else if (line.match(/^\s*[-*+]\s+/) || line.match(/^\s*\d+\.\s+/)) {
+      // List item outside of heading section (including nested items with indentation)
       if (currentSection?.type !== "list") {
         if (currentSection) {
           sections.push({

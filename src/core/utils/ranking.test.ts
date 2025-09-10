@@ -13,10 +13,10 @@ describe("Ranking Utilities", () => {
 
       const sorted = sortByScore(items);
 
-      expect(sorted[0].score).toBe(0.9);
-      expect(sorted[1].score).toBe(0.7);
-      expect(sorted[2].score).toBe(0.5);
-      expect(sorted[3].score).toBe(0.1);
+      expect(sorted[0]?.score).toBe(0.9);
+      expect(sorted[1]?.score).toBe(0.7);
+      expect(sorted[2]?.score).toBe(0.5);
+      expect(sorted[3]?.score).toBe(0.1);
     });
 
     it("should handle empty arrays", () => {
@@ -40,9 +40,9 @@ describe("Ranking Utilities", () => {
 
       const sorted = sortByScore(items, (item) => item.relevance);
 
-      expect(sorted[0].relevance).toBe(0.9);
-      expect(sorted[1].relevance).toBe(0.5);
-      expect(sorted[2].relevance).toBe(0.1);
+      expect(sorted[0]?.relevance).toBe(0.9);
+      expect(sorted[1]?.relevance).toBe(0.5);
+      expect(sorted[2]?.relevance).toBe(0.1);
     });
   });
 

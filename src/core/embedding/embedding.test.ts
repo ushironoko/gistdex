@@ -42,8 +42,12 @@ describe("generateEmbedding", () => {
     const normalizedEmbedding = normalizeEmbedding(mockEmbedding);
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
-    vi.mocked(embed).mockResolvedValue({ embedding: mockEmbedding } as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
+    vi.mocked(embed).mockResolvedValue({
+      embedding: mockEmbedding,
+    } as unknown as Awaited<ReturnType<typeof embed>>);
 
     const result = await generateEmbedding("test text");
 
@@ -66,8 +70,12 @@ describe("generateEmbedding", () => {
     const normalizedEmbedding = normalizeEmbedding(mockEmbedding);
     const mockModel = { model: "custom-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
-    vi.mocked(embed).mockResolvedValue({ embedding: mockEmbedding } as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
+    vi.mocked(embed).mockResolvedValue({
+      embedding: mockEmbedding,
+    } as unknown as Awaited<ReturnType<typeof embed>>);
 
     const result = await generateEmbedding("test text", {
       model: "custom-model",
@@ -82,7 +90,9 @@ describe("generateEmbedding", () => {
     const mockModel = { model: "test-model" };
     const apiError = new Error("API Error");
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embed).mockRejectedValue(apiError);
 
     await expect(generateEmbedding("test text")).rejects.toThrow(
@@ -102,8 +112,12 @@ describe("generateEmbedding", () => {
     // Zero vector remains zero after normalization
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
-    vi.mocked(embed).mockResolvedValue({ embedding: mockEmbedding } as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
+    vi.mocked(embed).mockResolvedValue({
+      embedding: mockEmbedding,
+    } as unknown as Awaited<ReturnType<typeof embed>>);
 
     const result = await generateEmbedding("");
 
@@ -123,10 +137,12 @@ describe("generateEmbedding", () => {
     const mockEmbedding = [3, 4]; // Will be normalized to [0.6, 0.8]
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embed).mockResolvedValue({
       embedding: mockEmbedding,
-    } as unknown);
+    } as unknown as Awaited<ReturnType<typeof embed>>);
 
     const result = await generateEmbedding("test text");
 
@@ -155,10 +171,12 @@ describe("generateEmbeddings", () => {
     );
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embedMany).mockResolvedValue({
       embeddings: mockEmbeddings,
-    } as unknown);
+    } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
     const texts = ["text1", "text2", "text3"];
     const result = await generateEmbeddings(texts);
@@ -191,10 +209,12 @@ describe("generateEmbeddings", () => {
     );
     const mockModel = { model: "custom-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embedMany).mockResolvedValue({
       embeddings: mockEmbeddings,
-    } as unknown);
+    } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
     const result = await generateEmbeddings(["text1"], {
       model: "custom-model",
@@ -208,7 +228,9 @@ describe("generateEmbeddings", () => {
     const mockModel = { model: "test-model" };
     const apiError = new Error("API Error");
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embedMany).mockRejectedValue(apiError);
 
     await expect(generateEmbeddings(["text1", "text2"])).rejects.toThrow(
@@ -239,10 +261,12 @@ describe("generateEmbeddingsBatch", () => {
     );
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embedMany).mockResolvedValue({
       embeddings: mockEmbeddings,
-    } as unknown);
+    } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
     const texts = ["text1", "text2"];
     const result = await generateEmbeddingsBatch(texts, { batchSize: 10 });
@@ -273,11 +297,25 @@ describe("generateEmbeddingsBatch", () => {
     );
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embedMany)
-      .mockResolvedValueOnce({ embeddings: mockEmbeddings1 } as unknown)
-      .mockResolvedValueOnce({ embeddings: mockEmbeddings2 } as unknown)
-      .mockResolvedValueOnce({ embeddings: mockEmbeddings3 } as unknown);
+      .mockResolvedValueOnce({
+        embeddings: mockEmbeddings1,
+        values: mockEmbeddings1,
+        usage: { tokens: 0 },
+      })
+      .mockResolvedValueOnce({
+        embeddings: mockEmbeddings2,
+        values: mockEmbeddings2,
+        usage: { tokens: 0 },
+      })
+      .mockResolvedValueOnce({
+        embeddings: mockEmbeddings3,
+        values: mockEmbeddings3,
+        usage: { tokens: 0 },
+      });
 
     const texts = ["text1", "text2", "text3", "text4", "text5"];
     const result = await generateEmbeddingsBatch(texts, { batchSize: 2 });
@@ -329,10 +367,20 @@ describe("generateEmbeddingsBatch", () => {
     const mockModel = { model: "test-model" };
     const onProgress = vi.fn();
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embedMany)
-      .mockResolvedValueOnce({ embeddings: mockEmbeddings1 } as unknown)
-      .mockResolvedValueOnce({ embeddings: mockEmbeddings2 } as unknown);
+      .mockResolvedValueOnce({
+        embeddings: mockEmbeddings1,
+        values: mockEmbeddings1,
+        usage: { tokens: 0 },
+      })
+      .mockResolvedValueOnce({
+        embeddings: mockEmbeddings2,
+        values: mockEmbeddings2,
+        usage: { tokens: 0 },
+      });
 
     const texts = ["text1", "text2", "text3"];
     await generateEmbeddingsBatch(texts, { batchSize: 2, onProgress });
@@ -353,10 +401,12 @@ describe("generateEmbeddingsBatch", () => {
     const mockEmbeddings = [[0.1, 0.2]];
     const mockModel = { model: "custom-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embedMany).mockResolvedValue({
       embeddings: mockEmbeddings,
-    } as unknown);
+    } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
     await generateEmbeddingsBatch(["text1"], {
       model: "custom-model",
@@ -371,9 +421,15 @@ describe("generateEmbeddingsBatch", () => {
     const mockModel = { model: "test-model" };
     const apiError = new Error("API Error");
 
-    vi.mocked(google.textEmbedding).mockReturnValue(mockModel as unknown);
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
+    );
     vi.mocked(embedMany)
-      .mockResolvedValueOnce({ embeddings: mockEmbeddings1 } as unknown)
+      .mockResolvedValueOnce({
+        embeddings: mockEmbeddings1,
+        values: mockEmbeddings1,
+        usage: { tokens: 0 },
+      })
       .mockRejectedValueOnce(apiError);
 
     await expect(

@@ -248,7 +248,7 @@ describe("query-tool", () => {
       const result = queryToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain(
+        expect(result.error.issues[0]?.message).toContain(
           "String must contain at least 1 character(s)",
         );
       }
@@ -263,7 +263,7 @@ describe("query-tool", () => {
       const result = queryToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain(
+        expect(result.error.issues[0]?.message).toContain(
           "Number must be greater than 0",
         );
       }
@@ -278,7 +278,7 @@ describe("query-tool", () => {
       const result = queryToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain(
+        expect(result.error.issues[0]?.message).toContain(
           "Number must be greater than 0",
         );
       }
@@ -293,7 +293,7 @@ describe("query-tool", () => {
       const result = queryToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain("Invalid enum value");
+        expect(result.error.issues[0]?.message).toContain("Invalid enum value");
       }
     });
 
@@ -306,7 +306,7 @@ describe("query-tool", () => {
       const result = queryToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain("Expected integer");
+        expect(result.error.issues[0]?.message).toContain("Expected integer");
       }
     });
   });
@@ -696,7 +696,9 @@ describe("query-tool", () => {
 
       expect(result.success).toBe(true);
       expect(result.results).toHaveLength(4);
-      const sourceTypes = result.results.map((r) => r.metadata.sourceType);
+      const sourceTypes = result.results.map(
+        (r: { metadata: { sourceType: string } }) => r.metadata.sourceType,
+      );
       expect(sourceTypes).toContain("gist");
       expect(sourceTypes).toContain("github");
       expect(sourceTypes).toContain("file");

@@ -1,4 +1,4 @@
-import type { SpyInstance } from "vitest";
+import type { MockInstance } from "vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { showVersion } from "./version.js";
 
@@ -10,7 +10,7 @@ vi.mock("../../../package.json", () => ({
 }));
 
 describe("showVersion", () => {
-  let consoleLogSpy: SpyInstance;
+  let consoleLogSpy: MockInstance;
 
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});

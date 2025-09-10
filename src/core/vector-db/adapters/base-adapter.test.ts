@@ -101,7 +101,6 @@ describe("createBaseAdapter", () => {
         {
           id: "1",
           content: "result",
-          embedding: [0.1, 0.2, 0.3],
           score: 0.9,
         },
       ];

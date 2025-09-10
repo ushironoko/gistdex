@@ -1,6 +1,8 @@
-import type { CommandContext } from "gunshi";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleQuery } from "./query.js";
+
+// Test context type that matches what handleQuery expects
+type TestQueryContext = Parameters<typeof handleQuery>[0];
 
 // Mock node:sqlite to avoid import errors
 vi.mock("node:sqlite", () => ({
@@ -34,7 +36,7 @@ vi.mock("../../core/search/search.js", () => ({
       metadata: {
         title: "Test Result",
         url: "https://example.com",
-        sourceType: "text",
+        sourceType: "text" as const,
       },
     },
   ]),
@@ -44,7 +46,7 @@ vi.mock("../../core/search/search.js", () => ({
       score: 0.98,
       metadata: {
         title: "Hybrid Result",
-        sourceType: "file",
+        sourceType: "file" as const,
       },
     },
   ]),
@@ -82,7 +84,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: {},
       positionals: ["test", "query"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     const { semanticSearch } = await import("../../core/search/search.js");
     // TODO: The third parameter uses expect.any(Object) which doesn't verify
@@ -102,7 +104,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { hybrid: true },
       positionals: ["test", "query"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     const { hybridSearch } = await import("../../core/search/search.js");
     // TODO: The third parameter uses expect.any(Object) which doesn't verify
@@ -120,7 +122,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: {},
       positionals: [],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     expect(console.error).toHaveBeenCalledWith("Error: No query specified");
     expect(process.exit).toHaveBeenCalledWith(1);
@@ -133,7 +135,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: {},
       positionals: ["test"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     expect(console.log).toHaveBeenCalledWith("No results found");
   });
@@ -146,7 +148,7 @@ describe("handleQuery", () => {
       metadata: {
         title: "Test Result",
         url: "https://example.com",
-        sourceType: "text",
+        sourceType: "text" as const,
         sourceId: "source-123",
         chunkIndex: 1,
         totalChunks: 3,
@@ -164,7 +166,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { full: true, "top-k": "1" },
       positionals: ["test", "query"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     expect(console.log).toHaveBeenCalledWith('Searching for: "test query"\n');
     expect(getOriginalContent).toHaveBeenCalledWith(
@@ -184,7 +186,7 @@ describe("handleQuery", () => {
       score: 0.95,
       metadata: {
         title: "Long Content Test",
-        sourceType: "text",
+        sourceType: "text" as const,
         sourceId: "source-456",
       },
     };
@@ -200,7 +202,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { full: true },
       positionals: ["test", "query"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     expect(console.log).toHaveBeenCalledWith('Searching for: "test query"\n');
     expect(console.log).toHaveBeenCalledWith("Found 1 results\n");
@@ -218,7 +220,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { type: "file" },
       positionals: ["test", "query"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     const { semanticSearch } = await import("../../core/search/search.js");
     expect(semanticSearch).toHaveBeenCalledWith(
@@ -232,7 +234,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { hybrid: true },
       positionals: ["test", "query"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     const { hybridSearch } = await import("../../core/search/search.js");
     expect(hybridSearch).toHaveBeenCalledWith(
@@ -246,7 +248,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { "no-rerank": true },
       positionals: ["test", "query"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     const { semanticSearch } = await import("../../core/search/search.js");
     expect(semanticSearch).toHaveBeenCalledWith(
@@ -258,11 +260,12 @@ describe("handleQuery", () => {
 
   it("displays section content with --section option", async () => {
     const mockResult = {
+      id: "test-section-id",
       content: "Section chunk content",
       score: 0.95,
       metadata: {
         title: "Test Document",
-        sourceType: "file",
+        sourceType: "file" as const,
         filePath: "test.md",
         boundary: {
           type: "heading",
@@ -283,7 +286,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { section: true },
       positionals: ["test", "query"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     expect(getSectionContent).toHaveBeenCalledWith(
       mockResult,
@@ -307,8 +310,8 @@ describe("handleQuery", () => {
       await handleQuery({
         values: { full: true, section: true },
         positionals: ["test", "query"],
-      } as CommandContext);
-    } catch (error) {
+      } as const satisfies TestQueryContext);
+    } catch (_error) {
       // Expected to throw
     }
 
@@ -321,11 +324,12 @@ describe("handleQuery", () => {
 
   it("works with -s shorthand for section", async () => {
     const mockResult = {
+      id: "test-section-shorthand-id",
       content: "Section content",
       score: 0.95,
       metadata: {
         title: "Test",
-        sourceType: "file",
+        sourceType: "file" as const,
         boundary: {
           type: "heading",
           level: 1,
@@ -342,7 +346,7 @@ describe("handleQuery", () => {
     await handleQuery({
       values: { section: true },
       positionals: ["test"],
-    } as CommandContext);
+    } as const satisfies TestQueryContext);
 
     expect(getSectionContent).toHaveBeenCalled();
   });

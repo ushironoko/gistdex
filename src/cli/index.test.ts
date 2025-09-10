@@ -1,4 +1,4 @@
-import type { SpyInstance } from "vitest";
+import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { main } from "./index.js";
 
@@ -39,19 +39,14 @@ vi.mock("gunshi", () => ({
 
 describe("CLI main entry point", () => {
   let originalArgv: string[];
-  let mockExit: SpyInstance;
-  let mockConsoleError: SpyInstance;
+  let mockExit: MockInstance;
+  let mockConsoleError: MockInstance;
 
   beforeEach(() => {
     originalArgv = process.argv;
-    mockExit = vi
-      .spyOn(process, "exit")
-      .mockImplementation((code?: string | number | null | undefined) => {
-        // Don't throw error for code 0 (normal exit)
-        if (code !== 0) {
-          throw new Error(`Process exited with code ${code}`);
-        }
-      });
+    mockExit = vi.spyOn(process, "exit").mockImplementation(() => {
+      throw new Error(`Process exited`);
+    });
     mockConsoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.clearAllMocks();
   });
@@ -84,7 +79,7 @@ describe("CLI main entry point", () => {
     const { showVersion } = await import("./commands/version.js");
     process.argv = ["node", "cli.js", "--version"];
 
-    await main();
+    await expect(main()).rejects.toThrow("Process exited");
     expect(showVersion).toHaveBeenCalled();
     expect(mockExit).toHaveBeenCalledWith(0);
   });
@@ -93,7 +88,7 @@ describe("CLI main entry point", () => {
     const { showVersion } = await import("./commands/version.js");
     process.argv = ["node", "cli.js", "-v"];
 
-    await main();
+    await expect(main()).rejects.toThrow("Process exited");
     expect(showVersion).toHaveBeenCalled();
     expect(mockExit).toHaveBeenCalledWith(0);
   });

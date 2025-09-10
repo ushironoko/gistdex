@@ -46,7 +46,7 @@ describe("handleInfo", () => {
   });
 
   it("displays adapter information", async () => {
-    await handleInfo([]);
+    await handleInfo({ values: {} });
 
     expect(console.log).toHaveBeenCalledWith("Database Adapter Information:");
     expect(console.log).toHaveBeenCalledWith("  Provider: sqlite");
@@ -72,7 +72,7 @@ describe("handleInfo", () => {
       getStats: vi.fn(),
     }));
 
-    await handleInfo([]);
+    await handleInfo({ values: {} });
 
     expect(console.log).toHaveBeenCalledWith(
       "No adapter information available",

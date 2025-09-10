@@ -81,8 +81,8 @@ describe("createMemoryAdapter", () => {
       const results = await adapter.search([1, 0, 0], { k: 2 });
 
       expect(results).toHaveLength(2);
-      expect(results[0].id).toBe("doc1");
-      expect(results[0].score).toBeCloseTo(1.0, 5);
+      expect(results[0]?.id).toBe("doc1");
+      expect(results[0]?.score).toBeCloseTo(1.0, 5);
     });
 
     it("should apply metadata filter", async () => {
@@ -199,7 +199,7 @@ describe("createMemoryAdapter", () => {
     it("should list with filter", async () => {
       const docs = await adapter.list({ filter: { type: "b" } });
       expect(docs).toHaveLength(1);
-      expect(docs[0].metadata?.type).toBe("b");
+      expect(docs[0]?.metadata?.type).toBe("b");
     });
   });
 

@@ -81,7 +81,7 @@ describe.skipIf(!isBunRuntime)("createBunSQLiteAdapter", () => {
 
     const results = await adapter.search([0.9, 0.1, 0.0], { k: 2 });
     expect(results).toHaveLength(2);
-    expect(results[0].content).toBe("First document");
+    expect(results[0]?.content).toBe("First document");
   });
 
   it("should handle batch operations", async () => {

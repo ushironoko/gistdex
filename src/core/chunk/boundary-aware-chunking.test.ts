@@ -107,10 +107,20 @@ Another section here.`;
         overlap: 30,
       });
 
-      const listChunk = chunks.find((c) => c.boundary.type === "list");
-      expect(listChunk).toBeDefined();
-      expect(listChunk?.content).toContain("Item 1");
-      expect(listChunk?.content).toContain("Nested item 1.1");
+      // Lists and all content should be included in the heading chunk
+      const headingChunk = chunks.find((c) => c.boundary.type === "heading");
+      expect(headingChunk).toBeDefined();
+      expect(headingChunk?.content).toContain("# Lists");
+      expect(headingChunk?.content).toContain("Item 1");
+      expect(headingChunk?.content).toContain("Nested item 1.1");
+      expect(headingChunk?.content).toContain("Nested item 1.2");
+      expect(headingChunk?.content).toContain("Item 2");
+      expect(headingChunk?.content).toContain("Nested item 2.1");
+      // "Another section here." should also be in the heading chunk
+      expect(headingChunk?.content).toContain("Another section here.");
+
+      // There should be only one chunk for this simple markdown
+      expect(chunks.length).toBe(1);
     });
 
     it("should respect maxChunkSize while maintaining boundaries", () => {
@@ -315,6 +325,8 @@ Second paragraph of section 2.`;
         if (currentChunk && nextChunk) {
           const _currentEnd = currentChunk.content.slice(-30);
           const _nextStart = nextChunk.content.slice(0, 30);
+          void _currentEnd;
+          void _nextStart;
 
           // There should be some overlap in content (not exact due to boundary preservation)
           expect(currentChunk.endOffset).toBeLessThanOrEqual(

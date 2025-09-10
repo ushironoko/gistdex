@@ -193,8 +193,8 @@ function second() {}`;
       );
 
       expect(chunks).toHaveLength(2);
-      expect(chunks[0].boundary.name).toBe("first");
-      expect(chunks[1].boundary.name).toBe("second");
+      expect(chunks[0]?.boundary.name).toBe("first");
+      expect(chunks[1]?.boundary.name).toBe("second");
     });
 
     it("should fall back gracefully for unsupported files", async () => {
@@ -222,7 +222,7 @@ function second() {}`;
       );
 
       expect(fallbackCalled).toBe(true);
-      expect(chunks[0].boundary.type).toBe("fallback");
+      expect(chunks[0]?.boundary.type).toBe("fallback");
     });
   });
 });
