@@ -862,12 +862,13 @@ describe("list-tool", () => {
           expect(error.message).toContain("Invalid input");
           expect(error.data).toHaveProperty("errors");
           const errors = (error.data as { errors: string[] }).errors;
-          expect(errors).toHaveLength(3);
+          // With the new union schema for boolean fields, string values are transformed
+          // so "not_boolean" gets converted to false instead of causing an error
+          expect(errors).toHaveLength(2);
           expect(errors).toContain("Expected number, received string");
           expect(errors).toContain(
             "Invalid enum value. Expected 'gist' | 'github' | 'file' | 'text', received 'invalid_type'",
           );
-          expect(errors).toContain("Expected boolean, received string");
         }
       }
     });
