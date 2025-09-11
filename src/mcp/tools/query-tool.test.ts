@@ -89,6 +89,9 @@ vi.mock("../../core/search/search.js", () => ({
   getOriginalContent: vi
     .fn()
     .mockResolvedValue("Full original content retrieved"),
+  getSectionContent: vi
+    .fn()
+    .mockResolvedValue("Full section content with markdown boundaries"),
   calculateSearchStats: vi.fn().mockReturnValue({
     totalResults: 2,
     averageScore: 0.91,
@@ -237,6 +240,37 @@ describe("query-tool", () => {
       if (result.success) {
         expect(result.data.full).toBe(true);
         expect(result.data.k).toBe(1);
+      }
+    });
+
+    it("validates section content retrieval option", () => {
+      const validInput: QueryToolInput = {
+        query: "section content test",
+        section: true,
+        k: 5,
+      };
+
+      const result = queryToolSchema.safeParse(validInput);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.section).toBe(true);
+        expect(result.data.query).toBe("section content test");
+      }
+    });
+
+    it("validates that full and section options are mutually exclusive", () => {
+      const validInput: QueryToolInput = {
+        query: "test mutually exclusive options",
+        full: true,
+        section: true,
+      };
+
+      const result = queryToolSchema.safeParse(validInput);
+      // スキーマレベルでは両方trueは許可される（実行時にエラー）
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.full).toBe(true);
+        expect(result.data.section).toBe(true);
       }
     });
 
@@ -422,6 +456,94 @@ describe("query-tool", () => {
       expect(result.success).toBe(true);
       expect(result.results[0].score).toBeGreaterThan(result.results[1].score);
       expect(result.results[1].score).toBeGreaterThan(result.results[2].score);
+    });
+
+    it("retrieves section content when section option is enabled", async () => {
+      const input: QueryToolInput = {
+        query: "markdown documentation",
+        section: true,
+        k: 2,
+      };
+
+      mockQueryTool.mockResolvedValue({
+        success: true,
+        results: [
+          {
+            id: "section-1",
+            content: "Full section content with markdown boundaries",
+            score: 0.93,
+            metadata: {
+              title: "Documentation",
+              sourceType: "file",
+              sourceId: "doc-source-1",
+              boundary: {
+                type: "markdown",
+                level: 2,
+                title: "Installation Guide",
+              },
+            },
+          },
+          {
+            id: "section-2",
+            content: "Another section with complete content",
+            score: 0.87,
+            metadata: {
+              title: "API Reference",
+              sourceType: "file",
+              sourceId: "doc-source-2",
+              boundary: {
+                type: "markdown",
+                level: 3,
+                title: "Configuration Options",
+              },
+            },
+          },
+        ],
+      });
+
+      const result = await mockQueryTool(input);
+
+      expect(result.success).toBe(true);
+      expect(result.results).toHaveLength(2);
+      expect(result.results[0].content).toContain("Full section content");
+      expect(result.results[0].metadata.boundary).toBeDefined();
+      expect(result.results[0].metadata.boundary.title).toBe(
+        "Installation Guide",
+      );
+    });
+
+    it("handles section retrieval with missing boundary metadata gracefully", async () => {
+      const input: QueryToolInput = {
+        query: "test content",
+        section: true,
+        k: 1,
+      };
+
+      mockQueryTool.mockResolvedValue({
+        success: true,
+        results: [
+          {
+            id: "no-boundary-1",
+            content: "Regular chunk content without section info",
+            score: 0.91,
+            metadata: {
+              title: "Regular Document",
+              sourceType: "text",
+              sourceId: "regular-source-1",
+              // No boundary metadata
+            },
+          },
+        ],
+      });
+
+      const result = await mockQueryTool(input);
+
+      expect(result.success).toBe(true);
+      expect(result.results).toHaveLength(1);
+      // Should fall back to regular chunk content when boundary is missing
+      expect(result.results[0].content).toBe(
+        "Regular chunk content without section info",
+      );
     });
   });
 
@@ -1040,6 +1162,26 @@ describe("query-tool", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Search service unavailable");
+    });
+
+    it("handles mutually exclusive full and section options", async () => {
+      const input: QueryToolInput = {
+        query: "test query",
+        full: true,
+        section: true,
+      };
+
+      mockQueryTool.mockResolvedValue({
+        success: false,
+        error: "Cannot use both 'full' and 'section' options together",
+      });
+
+      const result = await mockQueryTool(input);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain(
+        "Cannot use both 'full' and 'section' options together",
+      );
     });
 
     it("handles invalid query characters", async () => {

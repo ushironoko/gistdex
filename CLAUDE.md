@@ -86,8 +86,31 @@ npx gistdex -m
 MCP tools available:
 
 - `gistdex_index` - Index content from various sources
-- `gistdex_query` - Search indexed content
+- `gistdex_query` - Search indexed content (supports `section` option for markdown)
 - `gistdex_list` - List indexed items with statistics
+
+**重要な開発上の注意事項:**
+MCPツールに新しいオプションを追加する際は、以下の3箇所すべての実装が必要：
+
+1. **`src/mcp/server.ts`** - ツール定義のinputSchemaにオプションを追加（ここが最重要！）
+2. **`src/mcp/schemas/validation.ts`** - Zodスキーマにオプションを追加
+3. **`src/mcp/tools/*-tool.ts`** - 実際の処理ロジックの実装
+
+**調査の優先順位:**
+MCPツールの問題を調査する際は、必ず以下の順序で確認すること：
+1. まず`src/mcp/server.ts`のツール定義を確認（ここでMCPクライアントに公開される）
+2. 次に`validation.ts`のスキーマ定義を確認
+3. 最後に実際のツール実装を確認
+
+**型変換の注意:**
+MCPプロトコル経由で渡される値は文字列として渡される可能性があるため、
+boolean型フィールドにはZodのunion型で適切な変換を実装している：
+```typescript
+z.union([
+  z.boolean(),
+  z.string().transform((val) => val === "true" || val === "1"),
+  z.number().transform((val) => val !== 0),
+])
 
 Configuration for Claude Desktop (Windows) - add to `claude_desktop_config.json`:
 

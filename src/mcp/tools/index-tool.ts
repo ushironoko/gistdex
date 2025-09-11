@@ -36,7 +36,7 @@ export async function handleIndexOperation(
     const indexOptions = {
       chunkSize: data.chunkSize ?? 1000,
       chunkOverlap: data.chunkOverlap ?? 200,
-      preserveBoundaries: data.preserveBoundaries ?? false,
+      preserveBoundaries: Boolean(data.preserveBoundaries ?? false),
     };
 
     switch (data.type) {

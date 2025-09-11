@@ -80,6 +80,42 @@ describe("MCP Schema Validation", () => {
       expect(result.k).toBe(5); // default value
       expect(result.hybrid).toBe(false); // default value
     });
+
+    it("should coerce string boolean values to boolean", () => {
+      const input = {
+        query: "test coercion",
+        hybrid: "true" as unknown as boolean,
+        rerank: "false" as unknown as boolean,
+        full: "1" as unknown as boolean,
+        section: "0" as unknown as boolean,
+      };
+
+      const result = queryToolSchema.parse(input);
+      expect(result.hybrid).toBe(true);
+      expect(result.rerank).toBe(false);
+      expect(result.full).toBe(true);
+      expect(result.section).toBe(false);
+    });
+
+    it("should handle section option correctly", () => {
+      const input = {
+        query: "markdown search",
+        section: true,
+      } as const satisfies Record<string, unknown>;
+
+      const result = queryToolSchema.parse(input);
+      expect(result.section).toBe(true);
+    });
+
+    it("should handle string 'true' for section option", () => {
+      const input = {
+        query: "markdown search",
+        section: "true" as unknown as boolean,
+      };
+
+      const result = queryToolSchema.parse(input);
+      expect(result.section).toBe(true);
+    });
   });
 
   describe("listToolSchema", () => {

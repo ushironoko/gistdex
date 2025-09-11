@@ -161,6 +161,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: "Return full original content",
             default: false,
           },
+          section: {
+            type: "boolean",
+            description: "Return full section content for markdown files",
+            default: false,
+          },
           provider: {
             type: "string",
             description: "Vector database provider (e.g., 'sqlite', 'memory')",
