@@ -62,7 +62,11 @@ export const indexToolSchema = z.object({
     .default(200)
     .describe("Overlap between chunks"),
   preserveBoundaries: z
-    .boolean()
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
     .optional()
     .default(false)
     .describe("Preserve semantic boundaries when chunking"),
@@ -88,22 +92,38 @@ export const queryToolSchema = z.object({
     .optional()
     .describe("Filter results by source type"),
   hybrid: z
-    .boolean()
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
     .optional()
     .default(false)
     .describe("Enable hybrid search (semantic + keyword)"),
   rerank: z
-    .boolean()
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
     .optional()
     .default(true)
     .describe("Enable result re-ranking"),
   full: z
-    .boolean()
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
     .optional()
     .default(false)
     .describe("Return full original content"),
   section: z
-    .boolean()
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
     .optional()
     .default(false)
     .describe("Return full section content for markdown files"),
@@ -128,7 +148,11 @@ export const listToolSchema = z.object({
     .optional()
     .describe("Filter items by source type"),
   stats: z
-    .boolean()
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
     .optional()
     .default(false)
     .describe("Return statistics only"),
