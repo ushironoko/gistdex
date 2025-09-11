@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.5] - 2025-09-11
+
+- Merge pull request #93 from ushironoko/feature/mcp-improvements
+- fix type error
+- docs: add MCP tool development best practices
+- test: add comprehensive tests for section option and type coercion
+- enhance(mcp): improve error handling in query tool
+- improve(mcp): enhance boolean type coercion in validation schemas
+- fix(mcp): add missing section option to query tool definition
+
+
 ## [1.2.4] - 2025-09-10
 
 - fix
