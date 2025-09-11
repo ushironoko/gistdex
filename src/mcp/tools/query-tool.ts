@@ -87,8 +87,12 @@ async function handleQueryOperation(
             if (sectionContent) {
               content = sectionContent;
             }
-          } catch {
+          } catch (error) {
             // Fall back to chunk content if section content retrieval fails
+            console.warn(
+              `Failed to retrieve section content for result ${result.id}:`,
+              error,
+            );
           }
         } else if (data.full && result.metadata?.sourceId) {
           try {
@@ -96,8 +100,12 @@ async function handleQueryOperation(
             if (fullContent) {
               content = fullContent;
             }
-          } catch {
+          } catch (error) {
             // Fall back to chunk content if full content retrieval fails
+            console.warn(
+              `Failed to retrieve full content for result ${result.id}:`,
+              error,
+            );
           }
         }
 
