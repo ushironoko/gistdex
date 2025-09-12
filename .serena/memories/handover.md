@@ -1,162 +1,147 @@
-# Session Handover - Gistdex MCP キャッシュ機能実装完了
-
-**読み取り日時**: 2025-09-12 (現在のセッション)
+# Session Handover - Gistdex MCP高優先度機能実装完了
 
 ## セッション概要
 **日時**: 2025-09-12  
-**タスク**: Gistdex MCPツールのキャッシュ機能実装（構造化情報保存・クエリチェーン機能）  
-**開発手法**: t_wadaのTDDサイクルに厳密準拠（Red→Green→Refactor）
+**タスク**: Gistdex MCPツールの残存高優先度機能実装  
+**成果**: query-toolへの新オプション追加とMCPサーバー更新
 
 ## 完了した実装
 
-### 1. 構造化情報保存機能 (`src/mcp/utils/structured-knowledge.ts`)
-✅ **完全実装・テスト完了**
-- 構造化知識の保存・更新・読み込み機能
-- メタデータの賢いマージ機能（配列統合、数値加算、タイムスタンプ更新）
-- Markdownフォーマットでの永続化（`.gistdex/cache/`配下）
-- 単一要素配列のパース問題を解決（複数形キー検出ロジック）
+### 1. query-toolへの新オプション追加
+✅ **saveStructuredオプション**
+- 検索結果を構造化知識として`.gistdex/cache/`に保存
+- 通常検索とクエリチェーン両方で利用可能
+- メタデータ（検索戦略、結果数、平均スコア）を自動付与
 
-**主要API**:
+✅ **useChainオプション**
+- 3段階の戦略的検索を自動実行
+  - Stage 1: セマンティック検索（k=3）
+  - Stage 2: ハイブリッド検索（k=2）
+  - Stage 3: 関連概念の拡張検索（k=2）
+- 結果を統合して包括的な情報を提供
+
+### 2. MCPサーバーの機能拡張
+✅ **ツール定義の更新**
+- `src/mcp/server.ts`にsaveStructured/useChainオプションを追加
+- inputSchemaにboolean型変換ロジックを実装
+- 詳細なdescriptionでベストプラクティスを記載
+
+✅ **Zodスキーマの拡張**
+- `src/mcp/schemas/validation.ts`に新オプションを追加
+- 文字列・数値からbooleanへの自動変換をサポート
+
+### 3. 包括的なテストカバレッジ
+✅ **query-tool.test.ts作成**
+- 11個のテストケースを実装
+- saveStructured単独使用のテスト
+- useChain単独使用のテスト
+- 両オプション併用のテスト
+- エラーハンドリングのテスト
+- 統合シナリオのテスト
+
+## 技術的な実装詳細
+
+### 型安全性の確保
 ```typescript
-// 構造化情報の保存
-await saveStructuredKnowledge(dbService, {
-  title: "タイトル",
-  concepts: ["概念1", "概念2"],
-  metadata: { author: "user", timestamp: "2025-09-12" }
-});
-
-// 既存情報の読み込み・更新
-const existing = await loadStructuredKnowledge(dbService, "title");
-await updateStructuredKnowledge(dbService, "title", newData);
+// StructuredKnowledgeの正しい型定義を使用
+const knowledge = {
+  topic: data.query,  // titleではなくtopic
+  content: results.map(r => r.content).join("\n\n"),
+  metadata: { /* ... */ }
+};
+await saveStructuredKnowledge(knowledge);  // serviceは不要
 ```
 
-### 2. クエリチェーン機能 (`src/mcp/utils/query-chain.ts`)
-✅ **完全実装・テスト完了**
-- 段階的クエリ実行（Stage 1→2→3の戦略的検索）
-- hybridSearch（キーワード+セマンティック）とsemanticSearchの統合
-- 結果の構造化と統合処理
-- チェーン結果の自動保存機能
-
-**段階的検索戦略**:
-- **Stage 1**: 基本的なセマンティック検索（k=3）
-- **Stage 2**: ハイブリッド検索で補完（k=2） 
-- **Stage 3**: 関連キーワード展開検索（k=2）
-
-### 3. 品質保証・テスト
-✅ **全項目クリア**
-- **テスト**: 14/14 パス（100% グリーン）
-- **型安全性**: as any禁止、as unknown as T のみ使用
-- **コード品質**: lint/format/typecheck すべてクリア
-- **アーキテクチャ**: class構文禁止、関数合成ベース
-- **TDDサイクル**: Red→Green→Refactor厳守
-
-## 重要な技術的解決
-
-### 配列パース問題の解決
-**問題**: 単一要素配列がYAMLパース時に文字列になる  
-**解決**: 複数形キー検出ロジックの実装
+### クエリチェーンの実装
 ```typescript
-// concepts, tags, keywords等の複数形キーを自動検出
-const isLikelyArray = key.endsWith('s') || ARRAY_KEYS.includes(key);
-if (isLikelyArray && typeof value === 'string') {
-  return [value]; // 配列として扱う
+function createQueryChainFromInput(query: string, options: QueryToolInput): QueryChain {
+  return {
+    topic: query,
+    stages: [
+      { query, options: { hybrid: false, k: 3 } },
+      { query, options: { hybrid: true, k: 2 } },
+      { query: `${query} related concepts`, options: { hybrid: false, k: 2 } }
+    ]
+  };
 }
 ```
 
-### モックとテストの型安全な実装
-```typescript
-// DatabaseService のモック
-const mockDbService = {
-  query: vi.fn(),
-  index: vi.fn()
-} as unknown as DatabaseService;
+## 品質保証結果
 
-// テスト内でのアサーション
-const result = { id: 'test' } as const satisfies SearchResult;
-```
+### テスト実行結果
+- **個別テスト**: 11/11 パス（100%）
+- **全体テスト**: 510テストパス、14スキップ
+- **回帰テスト**: 既存機能への影響なし
 
-## 実装ベストプラクティス
+### コード品質チェック
+- ✅ **Formatter**: Biome format完了
+- ✅ **Linter**: Biome lint完了（2ファイル自動修正）
+- ✅ **Type Check**: tsc完了（型エラーなし）
 
-### ディレクトリ構造
-```
-.gistdex/
-├── cache/
-│   ├── structured/     # 構造化情報
-│   │   ├── title1.md
-│   │   └── title2.md
-│   └── queries.md      # クエリ履歴
-```
+## コミット履歴
 
-### 関数設計原則
-- **Pure Functions**: 副作用の分離
-- **Composition**: 小さな関数の組み合わせ
-- **Type Safety**: 型による制約の活用
-- **Error Handling**: Result型パターンの採用
+適切に機能単位で5つのコミットに分割：
 
-## 残存タスク（次回セッション用）
+1. `5dd9288` - feat(mcp): 構造化知識保存機能を追加
+2. `db34918` - feat(mcp): クエリチェーン機能を追加
+3. `f5ee7b0` - feat(mcp): query-toolに構造化保存とチェーン機能を統合
+4. `82ce04b` - docs(mcp): MCPサーバーのツール説明を更新
+5. `f5b613e` - chore: Serenaメモリファイルを更新
 
-### 高優先度
-1. **query-toolの拡張**
-   - 構造化情報保存オプション（`--save-structured`）の追加
-   - クエリチェーン機能の統合（`--use-chain`）
+## 使用方法
 
-2. **MCPサーバーdescription更新**
-   - クエリチェーンワークフローの説明追加
-   - キャッシュ利用ベストプラクティスの記載
-
-### 中優先度  
-3. **統合テスト**
-   - エンドツーエンドシナリオテスト
-   - キャッシュディレクトリ自動作成の確認
-
-4. **パフォーマンス最適化**
-   - 大量データでのクエリチェーン性能測定
-   - キャッシュ効率の評価
-
-## 開発環境・設定
-
-### 必須ツールバージョン
-- Node.js: 24.2.0+（`.node-version`）
-- pnpm: 10.0.0+
-- TypeScript: ESM only
-
-### コマンド
+### CLIからの使用（将来実装予定）
 ```bash
-# 開発サイクル
-pnpm run format && pnpm run lint && pnpm run tsc && pnpm test
+# 構造化保存
+npx gistdex query "search term" --save-structured
 
-# 特定機能テスト
-pnpm test structured-knowledge
-pnpm test query-chain
+# クエリチェーン
+npx gistdex query "search term" --use-chain
+
+# 両方同時
+npx gistdex query "search term" --use-chain --save-structured
 ```
 
-## 前回セッション（2025-01-08）からの継続
+### MCPツールとしての使用
+```typescript
+// LLMから呼び出し
+await gistdex_query({
+  query: "search term",
+  saveStructured: true,
+  useChain: true
+});
+```
 
-### 完了済み基盤
-- MCPツール定義の改善（`section`オプション追加）
-- 型変換機能の強化（boolean値の自動変換）
-- 開発ガイドライン整備（`CLAUDE.md`）
+## 残存タスク（中優先度）
 
-### 今回の追加価値
-- キャッシュ機能でLLMユーザー体験が大幅向上
-- 構造化情報により知識の蓄積・再利用が可能
-- クエリチェーンで複雑な検索要求に対応
+### 統合テスト
+- エンドツーエンドシナリオテスト
+- キャッシュディレクトリ自動作成の確認
 
-## 重要な学び・ベストプラクティス
+### パフォーマンス最適化
+- 大量データでのクエリチェーン性能測定
+- キャッシュ効率の評価
 
-1. **TDDの価値**: Red→Green→Refactorの厳守が品質向上に直結
-2. **型安全性**: `as any`を避けた設計が保守性を向上
-3. **関数合成**: クラス禁止による設計が再利用性を高める
-4. **段階的実装**: 小さな機能の積み重ねが安定性を確保
+### CLIコマンド拡張
+- `src/cli/commands/query.ts`への新オプション追加
+- コマンドラインヘルプの更新
 
-## 次回セッション推奨アクション
+## 重要な学び
 
-1. この引き継ぎ情報の確認
-2. 残存タスクの優先順位付け
-3. query-tool拡張の実装開始
-4. 統合テストの実行
+1. **型定義の正確性**: StructuredKnowledgeの`topic`フィールド（`title`ではない）
+2. **関数シグネチャ**: saveStructuredKnowledgeは単一引数（serviceは不要）
+3. **テスト駆動開発**: 新機能に対する包括的なテストが品質を保証
+4. **コミット分割**: 機能単位での論理的な分割がレビューを容易にする
+
+## 次回セッション推奨
+
+1. CLIコマンドへの新オプション実装
+2. 統合テストの追加
+3. パフォーマンスベンチマークの実施
+4. ドキュメンテーションの更新
 
 ---
 **セッション完了時刻**: 2025-09-12  
 **品質状態**: 全テストグリーン、型エラーなし、Lint/Formatクリア  
-**コード品質**: プロダクション準備完了
+**ブランチ**: feature/mcp-tool-enhancements（プッシュ済み）  
+**次回アクション**: CLIコマンド拡張または統合テスト実装
