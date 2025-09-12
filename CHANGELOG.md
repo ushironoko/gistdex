@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.7] - 2025-09-12
+
+- fix
+
+
 ## [1.2.6] - 2025-09-12
 
 - fix(test): Skip query-chain tests when API key is not available
