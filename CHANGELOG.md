@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.6] - 2025-09-12
+
+- fix(test): Skip query-chain tests when API key is not available
+- Merge pull request #94 from ushironoko/feature/mcp-tool-enhancements
+- fix
+- add new handover
+- chore: Serenaメモリファイルを更新
+- docs(mcp): MCPサーバーのツール説明を更新
+- feat(mcp): query-toolに構造化保存とチェーン機能を統合
+- feat(mcp): クエリチェーン機能を追加
+- feat(mcp): 構造化知識保存機能を追加
+- fix
+- test: update tests to reflect preserveBoundaries default change
+- docs: add comprehensive MCP tool development best practices
+- enhance: improve MCP tool descriptions and add initialization prompts
+- feat: add query caching system for MCP tools
+- feat: change preserveBoundaries default from false to true
+
+
 ## [1.2.5] - 2025-09-11
 
 - Merge pull request #93 from ushironoko/feature/mcp-improvements
