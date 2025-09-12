@@ -35,7 +35,7 @@ describe("MCP Schema Validation", () => {
       const result = indexToolSchema.parse(input);
       expect(result.provider).toBeUndefined();
       expect(result.db).toBeUndefined();
-      expect(result.preserveBoundaries).toBe(false); // default value
+      expect(result.preserveBoundaries).toBe(true); // default value
     });
 
     it("should accept preserveBoundaries option", () => {

@@ -289,7 +289,7 @@ describe("handleIndex", () => {
       );
     });
 
-    it("defaults preserveBoundaries to false when not specified", async () => {
+    it("defaults preserveBoundaries to true when not specified", async () => {
       await handleIndex({
         values: {
           text: "Hello world",
@@ -301,7 +301,7 @@ describe("handleIndex", () => {
         "Hello world",
         expect.any(Object),
         expect.objectContaining({
-          preserveBoundaries: false,
+          preserveBoundaries: true,
           chunkSize: 1000,
           chunkOverlap: 200,
         }),
