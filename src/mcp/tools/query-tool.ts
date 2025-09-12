@@ -9,6 +9,8 @@ import {
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
 import { type QueryToolInput, queryToolSchema } from "../schemas/validation.js";
 import { findSimilarQuery, saveSuccessfulQuery } from "../utils/query-cache.js";
+import { executeQueryChain, type QueryChain } from "../utils/query-chain.js";
+import { saveStructuredKnowledge } from "../utils/structured-knowledge.js";
 import {
   type BaseToolOptions,
   type BaseToolResult,
@@ -31,6 +33,50 @@ export interface QueryToolResult extends BaseToolResult {
 }
 
 /**
+ * Create a query chain for strategic multi-stage search
+ */
+function createQueryChainFromInput(
+  query: string,
+  options: QueryToolInput,
+): QueryChain {
+  return {
+    topic: query,
+    stages: [
+      {
+        query,
+        options: {
+          hybrid: false,
+          k: 3,
+          rerank: options.rerank !== false,
+          type: options.type,
+        },
+        description: "Initial semantic search",
+      },
+      {
+        query,
+        options: {
+          hybrid: true,
+          k: 2,
+          rerank: options.rerank !== false,
+          type: options.type,
+        },
+        description: "Hybrid search for additional context",
+      },
+      {
+        query: `${query} related concepts implementation details`,
+        options: {
+          hybrid: false,
+          k: 2,
+          rerank: options.rerank !== false,
+          type: options.type,
+        },
+        description: "Extended search for related concepts",
+      },
+    ],
+  };
+}
+
+/**
  * Internal handler for query tool operations
  */
 async function handleQueryOperation(
@@ -40,6 +86,37 @@ async function handleQueryOperation(
   const { service } = options;
 
   try {
+    // Use query chain if requested
+    if (data.useChain) {
+      const queryChain = createQueryChainFromInput(data.query, data);
+      const chainResult = await executeQueryChain(queryChain, service);
+
+      // Save structured knowledge if requested
+      if (data.saveStructured && chainResult.combinedResults.length > 0) {
+        const knowledge = {
+          topic: data.query,
+          content: chainResult.combinedResults
+            .map((r) => r.content)
+            .join("\n\n"),
+          metadata: {
+            timestamp: new Date().toISOString(),
+            searchStrategy: "query-chain",
+            stageCount: chainResult.stages.length,
+            resultCount: chainResult.combinedResults.length,
+          },
+        };
+        await saveStructuredKnowledge(knowledge);
+      }
+
+      return createSuccessResponse("Query chain executed successfully", {
+        results: chainResult.combinedResults.map((r) => ({
+          id: `chain-${Math.random().toString(36).substring(7)}`,
+          content: r.content,
+          score: r.score || 0,
+          metadata: r.metadata,
+        })),
+      });
+    }
     // Check for similar cached query
     const cachedQuery = findSimilarQuery(
       data.query,
@@ -137,6 +214,23 @@ async function handleQueryOperation(
           typeof data.section === "boolean" ? data.section : undefined,
         useFull: typeof data.full === "boolean" ? data.full : undefined,
       });
+
+      // Save structured knowledge if requested
+      if (data.saveStructured) {
+        const knowledge = {
+          topic: data.query,
+          content: finalResults.map((r) => r.content).join("\n\n"),
+          metadata: {
+            timestamp: new Date().toISOString(),
+            searchStrategy: data.hybrid ? "hybrid" : "semantic",
+            resultCount: finalResults.length,
+            avgScore:
+              finalResults.reduce((sum, r) => sum + r.score, 0) /
+              finalResults.length,
+          },
+        };
+        await saveStructuredKnowledge(knowledge);
+      }
     }
 
     return createSuccessResponse("Search completed successfully", {

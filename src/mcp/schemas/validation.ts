@@ -127,6 +127,24 @@ export const queryToolSchema = z.object({
     .optional()
     .default(false)
     .describe("Return full section content for markdown files"),
+  saveStructured: z
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
+    .optional()
+    .default(false)
+    .describe("Save results as structured knowledge for future use"),
+  useChain: z
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
+    .optional()
+    .default(false)
+    .describe("Use query chain for multi-stage strategic search"),
   provider: z
     .string()
     .optional()
