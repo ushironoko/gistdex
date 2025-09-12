@@ -44,7 +44,7 @@ export const handleIndex = createWriteCommandHandler<IndexContext>(
     const options = {
       chunkSize: parseCliInteger(values["chunk-size"], 1000) ?? 1000,
       chunkOverlap: parseCliInteger(values["chunk-overlap"], 200) ?? 200,
-      preserveBoundaries: values["preserve-boundaries"] ?? false,
+      preserveBoundaries: values["preserve-boundaries"] ?? true,
       onProgress: createProgressReporter("Indexing", (message, progress) => {
         if (progress !== undefined) {
           const percentage = Math.round(progress * 100);

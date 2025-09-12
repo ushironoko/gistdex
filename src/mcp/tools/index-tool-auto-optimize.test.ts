@@ -52,7 +52,7 @@ describe("index-tool with preserve boundaries", () => {
     );
   });
 
-  it("should default to false when preserveBoundaries is not specified", async () => {
+  it("should default to true when preserveBoundaries is not specified", async () => {
     const { indexFile } = await import("../../core/indexer/indexer.js");
     const mockedIndexFile = vi.mocked(indexFile);
 
@@ -72,7 +72,7 @@ describe("index-tool with preserve boundaries", () => {
       {
         chunkSize: 1000,
         chunkOverlap: 200,
-        preserveBoundaries: false,
+        preserveBoundaries: true,
       },
       mockService,
     );

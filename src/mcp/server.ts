@@ -27,6 +27,7 @@ import type { DatabaseService } from "../core/database/database-service.js";
 import { handleIndexTool } from "./tools/index-tool.js";
 import { handleListTool } from "./tools/list-tool.js";
 import { handleQueryTool } from "./tools/query-tool.js";
+import { ensureCacheDirectories } from "./utils/query-cache.js";
 
 // Database service will be initialized per request
 let service: DatabaseService | null = null;
@@ -51,7 +52,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "gistdex_index",
       description:
-        "Index content from various sources (text, file, gist, github)",
+        "Index content from various sources with intelligent chunking. " +
+        "BEST PRACTICES: " +
+        "1) ALWAYS use preserveBoundaries=true for semantic structure preservation. " +
+        "2) Use larger chunks (2000-3000) for documentation, smaller (500-1000) for code. " +
+        "3) For markdown: preserveBoundaries maintains heading hierarchy. " +
+        "4) For code: preserveBoundaries respects function/class boundaries. " +
+        "5) Index incrementally - don't re-index already indexed content unless updated.",
       inputSchema: {
         type: "object",
         properties: {
@@ -111,8 +118,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           preserveBoundaries: {
             type: "boolean",
-            description: "Preserve semantic boundaries when chunking",
-            default: false,
+            description:
+              "Preserve semantic boundaries when chunking (recommended: true)",
+            default: true,
           },
           provider: {
             type: "string",
@@ -128,7 +136,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "gistdex_query",
-      description: "Search indexed content using semantic or hybrid search",
+      description:
+        "Search indexed content using multi-stage query strategy. " +
+        "BEST PRACTICES: " +
+        "1) Stage 1: Use hybrid=true for broad keyword discovery to find relevant domains. " +
+        "2) Stage 2: Use semantic search (hybrid=false) on specific topics from Stage 1. " +
+        "3) Stage 3+: For markdown content, use section=true to get complete sections (mutually exclusive with full=true). " +
+        "4) The 'section' option retrieves the full semantic section (e.g., entire markdown heading section). " +
+        "5) Build structured knowledge incrementally by combining results from multiple queries. " +
+        "6) Use higher k values (10-20) for comprehensive coverage, lower (3-5) for focused results. " +
+        "NEW FEATURES: " +
+        "- Use 'useChain=true' to automatically execute a 3-stage query chain for comprehensive results. " +
+        "- Use 'saveStructured=true' to save search results as structured knowledge for future reference. " +
+        "- Query chains perform: semantic search → hybrid search → extended concept search. " +
+        "- Structured knowledge is cached in .gistdex/cache/ for improved LLM context reuse.",
       inputSchema: {
         type: "object",
         properties: {
@@ -166,6 +187,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: "Return full section content for markdown files",
             default: false,
           },
+          saveStructured: {
+            type: "boolean",
+            description: "Save results as structured knowledge for future use",
+            default: false,
+          },
+          useChain: {
+            type: "boolean",
+            description: "Use query chain for multi-stage strategic search",
+            default: false,
+          },
           provider: {
             type: "string",
             description: "Vector database provider (e.g., 'sqlite', 'memory')",
@@ -180,7 +211,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: "gistdex_list",
-      description: "List indexed items with optional filtering",
+      description:
+        "List indexed items with optional filtering. " +
+        "Use stats=true to get overview before querying. " +
+        "Check what content is already indexed to avoid redundant indexing.",
       inputSchema: {
         type: "object",
         properties: {
@@ -371,6 +405,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Start MCP server - this should only be called from the CLI
 export async function startMCPServer() {
   try {
+    // Ensure cache directories exist
+    await ensureCacheDirectories();
+
+    // Print initialization message with best practices
+    console.error("🚀 Gistdex MCP Server initialized");
+    console.error("📚 Best Practices:");
+    console.error(
+      "  1. Index with preserveBoundaries=true for semantic structure",
+    );
+    console.error("  2. Use multi-stage queries: hybrid → semantic → section");
+    console.error("  3. Query cache enabled at .gistdex/cache/");
+    console.error("");
+
     // Create and connect transport
     const transport = new StdioServerTransport();
     // Connect to transport and keep the process alive
