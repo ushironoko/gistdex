@@ -144,7 +144,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "3) Stage 3+: For markdown content, use section=true to get complete sections (mutually exclusive with full=true). " +
         "4) The 'section' option retrieves the full semantic section (e.g., entire markdown heading section). " +
         "5) Build structured knowledge incrementally by combining results from multiple queries. " +
-        "6) Use higher k values (10-20) for comprehensive coverage, lower (3-5) for focused results.",
+        "6) Use higher k values (10-20) for comprehensive coverage, lower (3-5) for focused results. " +
+        "NEW FEATURES: " +
+        "- Use 'useChain=true' to automatically execute a 3-stage query chain for comprehensive results. " +
+        "- Use 'saveStructured=true' to save search results as structured knowledge for future reference. " +
+        "- Query chains perform: semantic search → hybrid search → extended concept search. " +
+        "- Structured knowledge is cached in .gistdex/cache/ for improved LLM context reuse.",
       inputSchema: {
         type: "object",
         properties: {
@@ -180,6 +185,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           section: {
             type: "boolean",
             description: "Return full section content for markdown files",
+            default: false,
+          },
+          saveStructured: {
+            type: "boolean",
+            description: "Save results as structured knowledge for future use",
+            default: false,
+          },
+          useChain: {
+            type: "boolean",
+            description: "Use query chain for multi-stage strategic search",
             default: false,
           },
           provider: {
