@@ -37,7 +37,8 @@ describe("structured-knowledge", () => {
 
       await saveStructuredKnowledge(knowledge, testDir);
 
-      const filePath = join(testDir, `${testTopic}.md`);
+      const sanitizedTopic = testTopic.replace(/\s+/g, "_");
+      const filePath = join(testDir, `${sanitizedTopic}.md`);
       const savedContent = await readFile(filePath, "utf-8");
 
       expect(savedContent).toContain("# Test Topic");
@@ -63,7 +64,8 @@ describe("structured-knowledge", () => {
       await saveStructuredKnowledge(knowledge1, testDir);
       await saveStructuredKnowledge(knowledge2, testDir);
 
-      const filePath = join(testDir, `${testTopic}.md`);
+      const sanitizedTopic = testTopic.replace(/\s+/g, "_");
+      const filePath = join(testDir, `${sanitizedTopic}.md`);
       const savedContent = await readFile(filePath, "utf-8");
 
       expect(savedContent).toContain("Second content");
@@ -92,6 +94,7 @@ describe("structured-knowledge", () => {
       expect(updated).not.toBeNull();
       expect(updated?.content).toContain("## Section 1");
       expect(updated?.content).toContain("## Section 2");
+      expect(updated?.content).toContain("Update:");
       expect(updated?.metadata.queries).toEqual(["query1", "query2"]);
     });
 
@@ -168,7 +171,10 @@ describe("structured-knowledge", () => {
       };
 
       const merged = mergeKnowledge(existing, update);
-      expect(merged.content).toBe("Existing New");
+      // smartMergeContent adds separator between content
+      expect(merged.content).toContain("Existing");
+      expect(merged.content).toContain("New");
+      expect(merged.content).toContain("Update:");
       expect(merged.metadata.key).toBe("value");
     });
   });

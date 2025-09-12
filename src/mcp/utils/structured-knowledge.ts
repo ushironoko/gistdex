@@ -90,6 +90,27 @@ export async function loadStructuredKnowledge(
 }
 
 /**
+ * Smart merge content to avoid duplicates and maintain structure
+ */
+function smartMergeContent(existing: string, update: string): string {
+  // Add section separator with timestamp
+  const separator = `\n\n---\n\n## Update: ${new Date().toISOString()}\n\n`;
+
+  // Simple duplicate check (first 100 chars, trimmed)
+  const updatePreview = update.trim().substring(0, 100);
+  if (updatePreview.length > 10 && existing.includes(updatePreview)) {
+    return existing; // Skip if likely duplicate
+  }
+
+  // Check if existing content is empty or minimal
+  if (existing.trim().length === 0) {
+    return update;
+  }
+
+  return existing + separator + update;
+}
+
+/**
  * Merge existing knowledge with update
  */
 export function mergeKnowledge(
@@ -101,10 +122,26 @@ export function mergeKnowledge(
     update.metadata || {},
   );
 
+  // Add update history
+  const updateHistory = [
+    ...(Array.isArray(existing.metadata.updateHistory)
+      ? existing.metadata.updateHistory
+      : []),
+    {
+      timestamp: new Date().toISOString(),
+      query: update.metadata?.queryExecuted || "unknown",
+      resultsAdded: update.metadata?.resultCount || 0,
+    },
+  ];
+
   return {
     topic: existing.topic,
-    content: existing.content + update.content,
-    metadata: mergedMetadata,
+    content: smartMergeContent(existing.content, update.content),
+    metadata: {
+      ...mergedMetadata,
+      updateHistory,
+      totalQueries: ((existing.metadata.totalQueries as number) || 0) + 1,
+    },
   };
 }
 
@@ -171,10 +208,21 @@ function parseMarkdownToKnowledge(
   const metadata: Record<string, unknown> = {};
 
   if (metadataIndex !== -1) {
-    // Extract main content (before metadata)
-    const separatorIndex = lines.indexOf("---");
-    if (separatorIndex !== -1 && separatorIndex < metadataIndex) {
-      mainContent = lines.slice(0, separatorIndex).join("\n").trim();
+    // Extract main content (everything before the metadata section separator)
+    // Look for the last "---" before "## Metadata" to handle multiple separators
+    let lastSeparatorBeforeMetadata = -1;
+    for (let i = metadataIndex - 1; i >= 0; i--) {
+      if (lines[i]?.trim() === "---") {
+        lastSeparatorBeforeMetadata = i;
+        break;
+      }
+    }
+
+    if (lastSeparatorBeforeMetadata !== -1) {
+      mainContent = lines
+        .slice(0, lastSeparatorBeforeMetadata)
+        .join("\n")
+        .trim();
     }
 
     // Parse metadata

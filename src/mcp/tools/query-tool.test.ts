@@ -86,11 +86,11 @@ describe("query-tool", () => {
 
       expect(result.success).toBe(true);
       expect(
-        structuredKnowledgeModule.saveStructuredKnowledge,
+        structuredKnowledgeModule.updateStructuredKnowledge,
       ).toHaveBeenCalledWith(
+        "test query",
         expect.objectContaining({
-          topic: "test query",
-          content: "Test content 1\n\nTest content 2",
+          content: expect.stringContaining("Test content 1"),
           metadata: expect.objectContaining({
             searchStrategy: "semantic",
             resultCount: 2,
@@ -107,7 +107,7 @@ describe("query-tool", () => {
 
       expect(result.success).toBe(true);
       expect(
-        structuredKnowledgeModule.saveStructuredKnowledge,
+        structuredKnowledgeModule.updateStructuredKnowledge,
       ).not.toHaveBeenCalled();
     });
   });
@@ -204,14 +204,16 @@ describe("query-tool", () => {
 
       expect(result.success).toBe(true);
       expect(
-        structuredKnowledgeModule.saveStructuredKnowledge,
+        structuredKnowledgeModule.updateStructuredKnowledge,
       ).toHaveBeenCalledWith(
+        "test query",
         expect.objectContaining({
-          topic: "test query",
           content: expect.stringContaining("Query Chain Results"),
           metadata: expect.objectContaining({
             queryCount: 3,
             resultCount: 2,
+            queryExecuted: "test query",
+            isChainResult: true,
           }),
         }),
       );
@@ -295,8 +297,9 @@ describe("query-tool", () => {
         mockService,
       );
       expect(
-        structuredKnowledgeModule.saveStructuredKnowledge,
+        structuredKnowledgeModule.updateStructuredKnowledge,
       ).toHaveBeenCalledWith(
+        "test query",
         expect.objectContaining({
           metadata: expect.objectContaining({
             searchStrategy: "hybrid",
