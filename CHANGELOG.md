@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.9] - 2025-09-12
+
+- Merge pull request #95 from ushironoko/feature/incremental-cache-improvement
+- fix test
+- test: update tests for smart content merging functionality
+- feat: implement incremental caching with updateStructuredKnowledge
+- feat: implement smart content merging and update history tracking
+
+
 ## [1.2.8] - 2025-09-12
 
 - fix
