@@ -10,7 +10,7 @@ import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js"
 import { type QueryToolInput, queryToolSchema } from "../schemas/validation.js";
 import { findSimilarQuery, saveSuccessfulQuery } from "../utils/query-cache.js";
 import { executeQueryChain, type QueryChain } from "../utils/query-chain.js";
-import { saveStructuredKnowledge } from "../utils/structured-knowledge.js";
+import { updateStructuredKnowledge } from "../utils/structured-knowledge.js";
 import {
   type BaseToolOptions,
   type BaseToolResult,
@@ -104,11 +104,19 @@ async function handleQueryOperation(
         // Build properly structured knowledge
         const structuredKnowledge = buildStructuredResult(chainResult);
 
-        // Save with proper structure
-        await saveStructuredKnowledge(structuredKnowledge);
+        // Use update instead of save for incremental caching
+        const update = {
+          content: structuredKnowledge.content,
+          metadata: {
+            ...structuredKnowledge.metadata,
+            queryExecuted: data.query,
+            isChainResult: true,
+          },
+        };
+        await updateStructuredKnowledge(data.query, update);
 
         console.log(
-          `Saved structured knowledge for "${data.query}" with ${chainResult.combinedResults.length} unique results`,
+          `Updated structured knowledge for "${data.query}" with ${chainResult.combinedResults.length} unique results`,
         );
       }
 
@@ -221,9 +229,15 @@ async function handleQueryOperation(
 
       // Save structured knowledge if requested
       if (data.saveStructured) {
-        const knowledge = {
-          topic: data.query,
-          content: finalResults.map((r) => r.content).join("\n\n"),
+        const formattedContent = finalResults
+          .map(
+            (r, i) =>
+              `### Result ${i + 1} (Score: ${r.score.toFixed(3)})\n\n${r.content}`,
+          )
+          .join("\n\n");
+
+        const update = {
+          content: formattedContent,
           metadata: {
             timestamp: new Date().toISOString(),
             searchStrategy: data.hybrid ? "hybrid" : "semantic",
@@ -231,9 +245,10 @@ async function handleQueryOperation(
             avgScore:
               finalResults.reduce((sum, r) => sum + r.score, 0) /
               finalResults.length,
+            queryExecuted: data.query,
           },
         };
-        await saveStructuredKnowledge(knowledge);
+        await updateStructuredKnowledge(data.query, update);
       }
     }
 
