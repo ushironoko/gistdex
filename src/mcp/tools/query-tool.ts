@@ -8,6 +8,7 @@ import {
 } from "../../core/search/search.js";
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
 import { type QueryToolInput, queryToolSchema } from "../schemas/validation.js";
+import { findSimilarQuery, saveSuccessfulQuery } from "../utils/query-cache.js";
 import {
   type BaseToolOptions,
   type BaseToolResult,
@@ -39,6 +40,16 @@ async function handleQueryOperation(
   const { service } = options;
 
   try {
+    // Check for similar cached query
+    const cachedQuery = findSimilarQuery(
+      data.query,
+      data.hybrid ? "hybrid" : "semantic",
+    );
+
+    if (cachedQuery) {
+      console.log(`Found similar cached query: "${cachedQuery.query}"`);
+    }
+
     // Perform search
     let results: VectorSearchResult[];
     if (data.hybrid) {
@@ -117,6 +128,16 @@ async function handleQueryOperation(
         };
       }),
     );
+
+    // Save successful query to cache if results were found
+    if (results.length > 0) {
+      await saveSuccessfulQuery(data.query, results, {
+        strategy: data.hybrid ? "hybrid" : "semantic",
+        useSection:
+          typeof data.section === "boolean" ? data.section : undefined,
+        useFull: typeof data.full === "boolean" ? data.full : undefined,
+      });
+    }
 
     return createSuccessResponse("Search completed successfully", {
       results: finalResults,
