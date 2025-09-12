@@ -30,7 +30,8 @@ export async function saveStructuredKnowledge(
   };
 
   const content = formatKnowledgeAsMarkdown(fullKnowledge);
-  const filePath = join(dir, `${knowledge.topic}.md`);
+  const sanitizedTopic = knowledge.topic.replace(/\s+/g, "_");
+  const filePath = join(dir, `${sanitizedTopic}.md`);
   await writeFile(filePath, content, "utf-8");
 }
 
@@ -73,7 +74,8 @@ export async function loadStructuredKnowledge(
   cacheDir?: string,
 ): Promise<StructuredKnowledge | null> {
   const dir = cacheDir || getCacheDir();
-  const filePath = join(dir, `${topic}.md`);
+  const sanitizedTopic = topic.replace(/\s+/g, "_");
+  const filePath = join(dir, `${sanitizedTopic}.md`);
 
   if (!existsSync(filePath)) {
     return null;

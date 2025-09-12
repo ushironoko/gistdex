@@ -1,98 +1,104 @@
-# 🚀 GistDex Session Handover
+# 🚀 Gistdex MCP機能改善セッション
 
-## 📊 Current Session Summary
+## 📊 セッション概要
 
 ### 🔧 プロジェクト状態
-- **リポジトリ**: gistdex (feature/mcp-tool-enhancements ブランチ)
-- **ステータス**: MCPツール機能拡張の実装完了
-- **テスト結果**: 510テスト成功、14スキップ
-- **品質チェック**: lint、format、typecheck すべて通過
-- **リリース準備**: 完了済み
+- **リポジトリ**: gistdex (mainブランチ)
+- **ステータス**: useChain/saveStructured機能改善完了
+- **品質チェック**: すべてクリア（pnpm prepare成功）
+- **リリース準備**: ✅ 完了
 
-### 🎯 実装完了した機能
+### 🎯 実装した改善内容
 
-#### MCPツール新機能
-1. **saveStructured オプション**: 検索結果を `.gistdex/cache/` に構造化ナレッジとして保存
-2. **useChain オプション**: 3段階クエリチェーン実行 (semantic → hybrid → extended search)
+#### 1. useChain機能の修正
+- **重複排除機能追加**: `deduplicateResults`関数実装
+- **クエリパターン多様化**: 3段階で異なる検索戦略
+  - Stage 1: 精密セマンティック検索（k=5）
+  - Stage 2: 実装・アーキテクチャ詳細（k=5）
+  - Stage 3: 関連概念・代替アプローチ（k=3）
 
-## 💻 実装済みファイル (すべて完了)
+#### 2. saveStructured機能の改善
+- **buildStructuredResult使用**: 適切な構造化形式
+- **メタデータ充実**: ユニークソース、スコア範囲表示
+- **有用なキャッシュ生成**: 再利用可能な知識として保存
 
-### 🔌 MCP Server層
-- `src/mcp/server.ts` ✅
-  - ツール定義のinputSchemaに新オプション追加
-  - MCPクライアントに公開されるスキーマ
-- `src/mcp/schemas/validation.ts` ✅
-  - ZodスキーマにsaveStructured、useChain追加
-  - boolean型の適切な変換処理
-- `src/mcp/tools/query-tool.ts` ✅
-  - 核となる処理ロジック実装
-  - 条件分岐によるチェーン実行制御
+#### 3. query-cache修正
+- **resultSummaryのunknown問題**: メタデータフィールド修正
+- **ファイル名表示**: title/filePathから適切に抽出
 
-### 🛠️ ユーティリティ層
-- `src/mcp/utils/structured-knowledge.ts` ✅
-  - ナレッジ永続化機能
-  - JSON形式でのメタデータ保存
+## 💻 修正ファイル一覧
+
+### 🔌 コア実装
 - `src/mcp/utils/query-chain.ts` ✅
-  - チェーン実行ロジック
-  - 3段階検索の統合結果処理
+  - deduplicateResults関数追加
+  - buildStructuredResult改善
+  - lint警告修正（非nullアサーション）
 
-## ⚡ 重要な設計判断
+- `src/mcp/tools/query-tool.ts` ✅
+  - createQueryChainFromInput改善
+  - buildStructuredResult使用
+  - k値の調整
 
-### CLI実装を行わない決定
-- **理由**: これらの機能はLLMエージェント専用
-- **対象**: MCPツールのみで提供（正しい設計選択）
-- **根拠**: 人間の直接CLI使用には複雑すぎる
+- `src/mcp/utils/query-cache.ts` ✅
+  - メタデータ参照修正（source → title/filePath）
 
-## 🧪 テスト結果
+### 🧪 テスト
+- `src/mcp/tools/query-tool.test.ts` ✅
+  - 新しいクエリパターンに対応
+  - モック修正
+  - 全11テスト成功
 
-### 機能テスト
-- README.mdのインデックス: 成功（14チャンク）
-- useChain=true テスト: 正常動作
-- saveStructured=true テスト: 正常動作
+## 📊 品質チェック結果
 
-### 発見した課題
-- **キャッシュディレクトリ**: `.gistdex/cache/` の手動作成が必要
-- **回避策**: `mkdir -p .gistdx/cache` で対処
-- **改善の余地**: 自動作成機能の追加検討
+```bash
+pnpm prepare # すべて成功
+├── format    ✅ エラーなし
+├── lint      ✅ エラー・警告なし
+├── tsc       ✅ 型チェック成功
+├── test      ✅ 510テスト合格（14スキップ）
+├── build     ✅ ビルド成功
+└── docs:build ✅ ドキュメント生成成功
+```
 
-### ユニットテスト
-- 510テスト成功、14スキップ
-- 包括的カバレッジ達成
+## 🐛 発見された問題と対応
 
-## 🚦 Next Steps
+### 問題1: クエリチェーンの重複
+- **原因**: 重複排除なし、同じREADME複数回インデックス
+- **対応**: deduplicateResults実装、sourceId+chunkIndexでユニーク判定
 
-### 1. リリース準備 🎯
-- **アクション**: mainブランチにマージしてnpmパッケージ公開
-- **ステータス**: 準備完了
-- **必要作業**: PRの作成とマージのみ
+### 問題2: 無意味なキャッシュファイル
+- **原因**: 単純な文字列結合、構造化なし
+- **対応**: buildStructuredResult使用、段階ごとの詳細保存
 
-### 2. MCPテスト 🔍
-- **タイミング**: npm公開後
-- **コマンド**: `npx @ushironoko/gistdex@latest --mcp`
-- **目的**: 実際のMCPサーバーでの動作確認
+### 問題3: resultSummaryが"unknown"
+- **原因**: 存在しないmetadata.sourceフィールド参照
+- **対応**: title/filePathフィールドを正しく参照
 
-### 3. 検証作業 ✅
-- **対象**: 新機能の実運用テスト
-- **環境**: Claude Desktop等のMCPクライアント
-- **期待値**: saveStructured、useChain機能の正常動作
+## 🎯 Next Steps
 
-## 🔧 技術ノート
+### 即時対応可能
+1. **リリース作成**: v1.2.7のリリース準備完了
+2. **npm公開**: 改善版のパッケージ公開
+3. **動作確認**: MCPサーバーでの実機テスト
 
-### 既知の課題
-- キャッシュディレクトリ自動作成の改善が必要
-- 現在の回避策は手動作成
+### 将来の改善案
+1. **データベース再構築**: 重複エントリの削除
+2. **キャッシュディレクトリ自動作成**: エラーハンドリング改善
+3. **クエリチェーンのさらなる最適化**: 動的なステージ生成
+
+## 🔧 技術的詳細
 
 ### アーキテクチャのポイント
-- MCPツール実装の3層構造を完全に遵守
-- 型安全性を重視したZodスキーマ設計
-- 関数合成パターンによる実装
+- 関数合成パターンの徹底
+- 型安全性の確保（TypeScript strict）
+- 重複排除アルゴリズムの効率化
 
-### 品質保証
-- すべての品質チェック（lint、format、typecheck）を通過
-- 包括的なテストカバレッジ
-- TypeScript厳格設定での型安全性確保
+### パフォーマンス改善
+- 重複結果の削減によるメモリ効率化
+- スコアベースのソート実装
+- キャッシュ活用による応答速度向上
 
 ---
-**🏁 セッション完了時刻**: 2025-09-12  
-**📝 ハンドオーバー作成者**: Claude Code  
-**🎯 次回優先事項**: mainブランチへのマージとnpmパッケージ公開
+**🏁 セッション完了時刻**: 2025-09-12 21:46 JST
+**📝 実装者**: Claude Code
+**✅ ステータス**: リリース準備完了、全品質チェッククリア
