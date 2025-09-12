@@ -90,6 +90,27 @@ export async function loadStructuredKnowledge(
 }
 
 /**
+ * Smart merge content to avoid duplicates and maintain structure
+ */
+function smartMergeContent(existing: string, update: string): string {
+  // Add section separator with timestamp
+  const separator = `\n\n---\n\n## Update: ${new Date().toISOString()}\n\n`;
+
+  // Simple duplicate check (first 100 chars)
+  const updatePreview = update.substring(0, 100);
+  if (existing.includes(updatePreview)) {
+    return existing; // Skip if likely duplicate
+  }
+
+  // Check if existing content is empty or minimal
+  if (existing.trim().length === 0) {
+    return update;
+  }
+
+  return existing + separator + update;
+}
+
+/**
  * Merge existing knowledge with update
  */
 export function mergeKnowledge(
@@ -101,10 +122,26 @@ export function mergeKnowledge(
     update.metadata || {},
   );
 
+  // Add update history
+  const updateHistory = [
+    ...(Array.isArray(existing.metadata.updateHistory)
+      ? existing.metadata.updateHistory
+      : []),
+    {
+      timestamp: new Date().toISOString(),
+      query: update.metadata?.queryExecuted || "unknown",
+      resultsAdded: update.metadata?.resultCount || 0,
+    },
+  ];
+
   return {
     topic: existing.topic,
-    content: existing.content + update.content,
-    metadata: mergedMetadata,
+    content: smartMergeContent(existing.content, update.content),
+    metadata: {
+      ...mergedMetadata,
+      updateHistory,
+      totalQueries: ((existing.metadata.totalQueries as number) || 0) + 1,
+    },
   };
 }
 
