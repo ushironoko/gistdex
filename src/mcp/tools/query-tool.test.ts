@@ -151,14 +151,21 @@ describe("query-tool", () => {
               query: "test query",
               options: expect.objectContaining({
                 hybrid: false,
-                k: 3,
+                k: 5, // Updated from 3
               }),
             }),
             expect.objectContaining({
-              query: "test query",
+              query: expect.stringContaining("implementation"), // Updated query pattern
               options: expect.objectContaining({
                 hybrid: true,
-                k: 2,
+                k: 5, // Updated from 2
+              }),
+            }),
+            expect.objectContaining({
+              query: expect.stringContaining("related to"), // New stage 3
+              options: expect.objectContaining({
+                hybrid: true,
+                k: 3,
               }),
             }),
           ]),
@@ -168,6 +175,28 @@ describe("query-tool", () => {
     });
 
     it("should save structured knowledge from chain results when both options are enabled", async () => {
+      // Mock buildStructuredResult
+      const mockBuildStructuredResult = vi.fn().mockReturnValue({
+        topic: "test query",
+        content:
+          "# Test Query\n\n## Query Chain Results\n\nTest structured content",
+        metadata: {
+          queryCount: 3,
+          resultCount: 2,
+          timestamp: expect.any(String),
+          queries: [
+            "test query",
+            "test query implementation",
+            'related to "test query"',
+          ],
+        },
+      });
+
+      // Mock the dynamic import
+      vi.doMock("../utils/query-chain.js", () => ({
+        buildStructuredResult: mockBuildStructuredResult,
+      }));
+
       const result = await handleQueryTool(
         { query: "test query", useChain: true, saveStructured: true },
         { service: mockService },
@@ -179,10 +208,9 @@ describe("query-tool", () => {
       ).toHaveBeenCalledWith(
         expect.objectContaining({
           topic: "test query",
-          content: "Test content 1\n\nTest content 2",
+          content: expect.stringContaining("Query Chain Results"),
           metadata: expect.objectContaining({
-            searchStrategy: "query-chain",
-            stageCount: 1,
+            queryCount: 3,
             resultCount: 2,
           }),
         }),

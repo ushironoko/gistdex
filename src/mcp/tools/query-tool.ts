@@ -43,34 +43,37 @@ function createQueryChainFromInput(
     topic: query,
     stages: [
       {
+        // Stage 1: Precise semantic search for exact matches
         query,
         options: {
           hybrid: false,
-          k: 3,
+          k: 5, // Increased from 3 for better coverage
           rerank: options.rerank !== false,
           type: options.type,
         },
-        description: "Initial semantic search",
+        description: "Initial precise semantic search",
       },
       {
-        query,
+        // Stage 2: Broader search with implementation focus
+        query: `${query} implementation architecture design pattern structure`,
         options: {
           hybrid: true,
-          k: 2,
+          k: 5, // Increased from 2 for more diverse results
           rerank: options.rerank !== false,
           type: options.type,
         },
-        description: "Hybrid search for additional context",
+        description: "Broader implementation and architecture details",
       },
       {
-        query: `${query} related concepts implementation details`,
+        // Stage 3: Related concepts and alternatives
+        query: `related to "${query}" OR similar OR alternative approaches`,
         options: {
-          hybrid: false,
-          k: 2,
+          hybrid: true,
+          k: 3, // Keep smaller for focused related content
           rerank: options.rerank !== false,
           type: options.type,
         },
-        description: "Extended search for related concepts",
+        description: "Related concepts and alternative approaches",
       },
     ],
   };
@@ -93,19 +96,20 @@ async function handleQueryOperation(
 
       // Save structured knowledge if requested
       if (data.saveStructured && chainResult.combinedResults.length > 0) {
-        const knowledge = {
-          topic: data.query,
-          content: chainResult.combinedResults
-            .map((r) => r.content)
-            .join("\n\n"),
-          metadata: {
-            timestamp: new Date().toISOString(),
-            searchStrategy: "query-chain",
-            stageCount: chainResult.stages.length,
-            resultCount: chainResult.combinedResults.length,
-          },
-        };
-        await saveStructuredKnowledge(knowledge);
+        // Import buildStructuredResult from query-chain module
+        const { buildStructuredResult } = await import(
+          "../utils/query-chain.js"
+        );
+
+        // Build properly structured knowledge
+        const structuredKnowledge = buildStructuredResult(chainResult);
+
+        // Save with proper structure
+        await saveStructuredKnowledge(structuredKnowledge);
+
+        console.log(
+          `Saved structured knowledge for "${data.query}" with ${chainResult.combinedResults.length} unique results`,
+        );
       }
 
       return createSuccessResponse("Query chain executed successfully", {

@@ -106,7 +106,18 @@ export async function saveSuccessfulQuery(
   const resultSummary = results
     .slice(0, 3)
     .map((r) => {
-      const source = r.metadata?.source || "unknown";
+      // Extract filename from title or filePath, or use sourceType
+      let source = "unknown";
+      if (r.metadata?.title) {
+        // If title is a path, extract just the filename
+        source = r.metadata.title.includes("/")
+          ? r.metadata.title.split("/").pop() || r.metadata.title
+          : r.metadata.title;
+      } else if (r.metadata?.filePath) {
+        source = r.metadata.filePath.split("/").pop() || r.metadata.filePath;
+      } else if (r.metadata?.sourceType) {
+        source = r.metadata.sourceType;
+      }
       const score = r.score.toFixed(3);
       return `${source} (${score})`;
     })

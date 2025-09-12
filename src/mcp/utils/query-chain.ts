@@ -45,6 +45,35 @@ export type ChainResult = {
 };
 
 /**
+ * Deduplicate search results based on sourceId and chunkIndex
+ * Keeps the result with the highest score for duplicates
+ */
+function deduplicateResults(results: SearchResult[]): SearchResult[] {
+  const seen = new Map<string, SearchResult>();
+
+  for (const result of results) {
+    // Create unique key from sourceId and chunkIndex
+    const sourceId = result.metadata?.sourceId as string | undefined;
+    const chunkIndex = result.metadata?.chunkIndex as number | undefined;
+    const key =
+      sourceId && chunkIndex !== undefined
+        ? `${sourceId}-${chunkIndex}`
+        : `${Math.random()}`; // Fallback for results without proper metadata
+
+    // Keep the result with higher score if duplicate found
+    const existing = seen.get(key);
+    if (!existing || (existing.score || 0) < (result.score || 0)) {
+      seen.set(key, result);
+    }
+  }
+
+  // Sort by score descending
+  return Array.from(seen.values()).sort(
+    (a, b) => (b.score || 0) - (a.score || 0),
+  );
+}
+
+/**
  * Execute a chain of queries sequentially
  */
 export async function executeQueryChain(
@@ -78,10 +107,13 @@ export async function executeQueryChain(
     allResults.push(...processedResults);
   }
 
+  // Deduplicate combined results
+  const uniqueResults = deduplicateResults(allResults);
+
   return {
     topic: chain.topic,
     stages,
-    combinedResults: allResults,
+    combinedResults: uniqueResults,
     timestamp: new Date().toISOString(),
   };
 }
@@ -196,8 +228,35 @@ export function buildStructuredResult(
     // Add combined summary
     lines.push("## Combined Summary");
     lines.push("");
-    lines.push(`Total unique results: ${combinedResults.length}`);
-    lines.push(`Query stages executed: ${stages.length}`);
+    lines.push(`**Total unique results**: ${combinedResults.length}`);
+    lines.push(`**Query stages executed**: ${stages.length}`);
+
+    // Add unique file sources
+    const uniqueFiles = new Set<string>();
+    combinedResults.forEach((r) => {
+      const filePath = r.metadata?.filePath || r.metadata?.title;
+      if (filePath && typeof filePath === "string") {
+        uniqueFiles.add(filePath.split("/").pop() || filePath);
+      }
+    });
+
+    if (uniqueFiles.size > 0) {
+      lines.push(
+        `**Unique sources**: ${Array.from(uniqueFiles).slice(0, 5).join(", ")}${uniqueFiles.size > 5 ? "..." : ""}`,
+      );
+    }
+
+    // Add score range
+    const scores = combinedResults
+      .map((r) => r.score || 0)
+      .filter((s) => s > 0);
+    if (scores.length > 0) {
+      const maxScore = Math.max(...scores);
+      const minScore = Math.min(...scores);
+      lines.push(
+        `**Score range**: ${minScore.toFixed(3)} - ${maxScore.toFixed(3)}`,
+      );
+    }
   }
 
   // Build metadata
