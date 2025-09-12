@@ -92,6 +92,7 @@ describe("structured-knowledge", () => {
       expect(updated).not.toBeNull();
       expect(updated?.content).toContain("## Section 1");
       expect(updated?.content).toContain("## Section 2");
+      expect(updated?.content).toContain("Update:");
       expect(updated?.metadata.queries).toEqual(["query1", "query2"]);
     });
 
@@ -168,7 +169,10 @@ describe("structured-knowledge", () => {
       };
 
       const merged = mergeKnowledge(existing, update);
-      expect(merged.content).toBe("Existing New");
+      // smartMergeContent adds separator between content
+      expect(merged.content).toContain("Existing");
+      expect(merged.content).toContain("New");
+      expect(merged.content).toContain("Update:");
       expect(merged.metadata.key).toBe("value");
     });
   });
