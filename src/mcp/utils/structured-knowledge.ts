@@ -96,9 +96,9 @@ function smartMergeContent(existing: string, update: string): string {
   // Add section separator with timestamp
   const separator = `\n\n---\n\n## Update: ${new Date().toISOString()}\n\n`;
 
-  // Simple duplicate check (first 100 chars)
-  const updatePreview = update.substring(0, 100);
-  if (existing.includes(updatePreview)) {
+  // Simple duplicate check (first 100 chars, trimmed)
+  const updatePreview = update.trim().substring(0, 100);
+  if (updatePreview.length > 10 && existing.includes(updatePreview)) {
     return existing; // Skip if likely duplicate
   }
 
@@ -208,10 +208,21 @@ function parseMarkdownToKnowledge(
   const metadata: Record<string, unknown> = {};
 
   if (metadataIndex !== -1) {
-    // Extract main content (before metadata)
-    const separatorIndex = lines.indexOf("---");
-    if (separatorIndex !== -1 && separatorIndex < metadataIndex) {
-      mainContent = lines.slice(0, separatorIndex).join("\n").trim();
+    // Extract main content (everything before the metadata section separator)
+    // Look for the last "---" before "## Metadata" to handle multiple separators
+    let lastSeparatorBeforeMetadata = -1;
+    for (let i = metadataIndex - 1; i >= 0; i--) {
+      if (lines[i]?.trim() === "---") {
+        lastSeparatorBeforeMetadata = i;
+        break;
+      }
+    }
+
+    if (lastSeparatorBeforeMetadata !== -1) {
+      mainContent = lines
+        .slice(0, lastSeparatorBeforeMetadata)
+        .join("\n")
+        .trim();
     }
 
     // Parse metadata

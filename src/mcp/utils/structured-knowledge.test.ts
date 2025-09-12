@@ -37,7 +37,8 @@ describe("structured-knowledge", () => {
 
       await saveStructuredKnowledge(knowledge, testDir);
 
-      const filePath = join(testDir, `${testTopic}.md`);
+      const sanitizedTopic = testTopic.replace(/\s+/g, "_");
+      const filePath = join(testDir, `${sanitizedTopic}.md`);
       const savedContent = await readFile(filePath, "utf-8");
 
       expect(savedContent).toContain("# Test Topic");
@@ -63,7 +64,8 @@ describe("structured-knowledge", () => {
       await saveStructuredKnowledge(knowledge1, testDir);
       await saveStructuredKnowledge(knowledge2, testDir);
 
-      const filePath = join(testDir, `${testTopic}.md`);
+      const sanitizedTopic = testTopic.replace(/\s+/g, "_");
+      const filePath = join(testDir, `${sanitizedTopic}.md`);
       const savedContent = await readFile(filePath, "utf-8");
 
       expect(savedContent).toContain("Second content");
