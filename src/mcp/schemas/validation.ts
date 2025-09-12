@@ -68,7 +68,7 @@ export const indexToolSchema = z.object({
       z.number().transform((val) => val !== 0),
     ])
     .optional()
-    .default(false)
+    .default(true)
     .describe("Preserve semantic boundaries when chunking"),
   provider: z
     .string()
