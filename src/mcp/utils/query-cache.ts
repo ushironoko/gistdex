@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
 
@@ -26,12 +25,14 @@ const CACHE_VERSION = "1.0.0";
 export function getCacheDir(): string {
   // Check for .gistdex/cache in current directory first
   const localCache = join(process.cwd(), ".gistdex", "cache");
-  if (existsSync(dirname(localCache))) {
-    return localCache;
+  const gistdexDir = dirname(localCache);
+
+  // Create .gistdex directory if it doesn't exist
+  if (!existsSync(gistdexDir)) {
+    mkdirSync(gistdexDir, { recursive: true });
   }
 
-  // Fall back to home directory
-  return join(homedir(), ".gistdex", "cache");
+  return localCache;
 }
 
 /**

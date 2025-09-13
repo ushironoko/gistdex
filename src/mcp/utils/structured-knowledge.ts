@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
@@ -150,12 +150,14 @@ export function mergeKnowledge(
  */
 function getCacheDir(): string {
   const localCache = join(process.cwd(), ".gistdex", "cache");
-  if (existsSync(dirname(localCache))) {
-    return localCache;
+  const gistdexDir = dirname(localCache);
+
+  // Create .gistdex directory if it doesn't exist
+  if (!existsSync(gistdexDir)) {
+    mkdirSync(gistdexDir, { recursive: true });
   }
-  // Fallback to home directory
-  const { homedir } = require("node:os");
-  return join(homedir(), ".gistdex", "cache");
+
+  return localCache;
 }
 
 /**

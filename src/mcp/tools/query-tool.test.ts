@@ -35,12 +35,15 @@ describe("query-tool", () => {
       query: vi.fn(),
       index: vi.fn(),
       close: vi.fn(),
+      listItems: vi.fn(),
     } as unknown as DatabaseService;
 
     // Setup default mocks
     vi.mocked(searchModule.semanticSearch).mockResolvedValue(mockResults);
     vi.mocked(searchModule.hybridSearch).mockResolvedValue(mockResults);
     vi.mocked(searchModule.rerankResults).mockReturnValue(mockResults);
+    vi.mocked(searchModule.getSectionContent).mockResolvedValue(null);
+    vi.mocked(searchModule.getOriginalContent).mockResolvedValue(null);
     vi.mocked(queryCacheModule.findSimilarQuery).mockReturnValue(null);
     vi.mocked(queryCacheModule.saveSuccessfulQuery).mockResolvedValue(
       undefined,
@@ -258,6 +261,150 @@ describe("query-tool", () => {
 
       expect(result.success).toBe(false);
       expect(result.errors?.[0]).toContain("Chain execution failed");
+    });
+  });
+
+  describe("markdown file section auto-retrieval", () => {
+    it("should automatically use section retrieval for markdown files", async () => {
+      const markdownResults: VectorSearchResult[] = [
+        {
+          id: "md1",
+          content: "## Section chunk",
+          score: 0.9,
+          metadata: {
+            sourceId: "source1",
+            sourceType: "file",
+            filePath: "README.md",
+            boundary: { type: "heading", level: 2, title: "Introduction" },
+          },
+        },
+        {
+          id: "md2",
+          content: "Another section chunk",
+          score: 0.85,
+          metadata: {
+            sourceId: "source2",
+            sourceType: "file",
+            filePath: "docs/guide.mdx",
+            boundary: { type: "heading", level: 1, title: "Guide" },
+          },
+        },
+      ];
+
+      // Clear and override the mock for this specific test
+      vi.mocked(searchModule.semanticSearch).mockClear();
+      vi.mocked(searchModule.semanticSearch).mockResolvedValue(markdownResults);
+      vi.mocked(searchModule.getSectionContent).mockResolvedValue(
+        "Full section content with multiple paragraphs",
+      );
+
+      const result = await handleQueryTool(
+        { query: "markdown test" },
+        { service: mockService },
+      );
+
+      expect(result.success).toBe(true);
+      // Should call getSectionContent for markdown files even without section flag
+      expect(searchModule.getSectionContent).toHaveBeenCalledTimes(2);
+      expect(searchModule.getSectionContent).toHaveBeenCalledWith(
+        markdownResults[0],
+        mockService,
+      );
+    });
+
+    it("should not use section retrieval for non-markdown files", async () => {
+      const nonMarkdownResults: VectorSearchResult[] = [
+        {
+          id: "js1",
+          content: "JavaScript code",
+          score: 0.9,
+          metadata: {
+            sourceId: "source1",
+            sourceType: "file",
+            filePath: "index.js",
+            boundary: { type: "function", name: "main" },
+          },
+        },
+      ];
+
+      vi.mocked(searchModule.semanticSearch).mockResolvedValue(
+        nonMarkdownResults,
+      );
+
+      const result = await handleQueryTool(
+        { query: "js test" },
+        { service: mockService },
+      );
+
+      expect(result.success).toBe(true);
+      // Should not call getSectionContent for non-markdown files
+      expect(searchModule.getSectionContent).not.toHaveBeenCalled();
+    });
+
+    it("should respect explicit section=false for markdown files", async () => {
+      const markdownResults: VectorSearchResult[] = [
+        {
+          id: "md1",
+          content: "Markdown content",
+          score: 0.9,
+          metadata: {
+            sourceId: "source1",
+            sourceType: "file",
+            filePath: "README.md",
+            boundary: { type: "heading", level: 1, title: "Title" },
+          },
+        },
+      ];
+
+      vi.mocked(searchModule.semanticSearch).mockResolvedValue(markdownResults);
+
+      // Note: section=false is not actually possible with current schema (it's optional boolean)
+      // This test documents the current behavior where undefined section allows auto-detection
+      const result = await handleQueryTool(
+        { query: "test", section: false },
+        { service: mockService },
+      );
+
+      expect(result.success).toBe(true);
+      // With explicit section=false, should not use section retrieval
+      expect(searchModule.getSectionContent).not.toHaveBeenCalled();
+    });
+
+    it("should save cache with auto-applied section flag for markdown", async () => {
+      const markdownResults: VectorSearchResult[] = [
+        {
+          id: "md1",
+          content: "Markdown chunk",
+          score: 0.9,
+          metadata: {
+            sourceId: "source1",
+            sourceType: "file",
+            filePath: "README.md",
+            boundary: { type: "heading", level: 1, title: "Title" },
+          },
+        },
+      ];
+
+      // Clear and override the mock for this specific test
+      vi.mocked(searchModule.semanticSearch).mockClear();
+      vi.mocked(searchModule.semanticSearch).mockResolvedValue(markdownResults);
+      vi.mocked(searchModule.getSectionContent).mockResolvedValue(
+        "Full markdown section content",
+      );
+
+      await handleQueryTool(
+        { query: "test markdown" },
+        { service: mockService },
+      );
+
+      // Should save with useSection: true when markdown files are detected
+      expect(queryCacheModule.saveSuccessfulQuery).toHaveBeenCalledWith(
+        "test markdown",
+        markdownResults,
+        expect.objectContaining({
+          useSection: true,
+        }),
+      );
     });
   });
 

@@ -174,6 +174,11 @@ async function handleQueryOperation(
       results.map(async (result) => {
         let content = result.content;
 
+        // Check if this is a markdown file
+        const isMarkdownFile =
+          result.metadata?.filePath?.endsWith(".md") ||
+          result.metadata?.filePath?.endsWith(".mdx");
+
         // Check for mutually exclusive options
         if (data.full && data.section) {
           throw new Error(
@@ -181,11 +186,21 @@ async function handleQueryOperation(
           );
         }
 
-        if (data.section && result.metadata?.boundary) {
+        // Automatically use section retrieval for markdown files with boundary info
+        const shouldUseSection =
+          (data.section || isMarkdownFile) && result.metadata?.boundary;
+
+        if (shouldUseSection) {
           try {
             const sectionContent = await getSectionContent(result, service);
             if (sectionContent) {
               content = sectionContent;
+              // Log when we auto-apply section retrieval for markdown
+              if (!data.section && isMarkdownFile) {
+                console.log(
+                  `Auto-applied section retrieval for markdown file: ${result.metadata?.filePath || "unknown"}`,
+                );
+              }
             }
           } catch (error) {
             // Fall back to chunk content if section content retrieval fails
@@ -220,10 +235,21 @@ async function handleQueryOperation(
 
     // Save successful query to cache if results were found
     if (results.length > 0) {
+      // Check if any results are markdown files (for cache metadata)
+      const hasMarkdownResults = results.some(
+        (r) =>
+          r.metadata?.filePath?.endsWith(".md") ||
+          r.metadata?.filePath?.endsWith(".mdx"),
+      );
+
       await saveSuccessfulQuery(data.query, results, {
         strategy: data.hybrid ? "hybrid" : "semantic",
         useSection:
-          typeof data.section === "boolean" ? data.section : undefined,
+          typeof data.section === "boolean"
+            ? data.section
+            : hasMarkdownResults
+              ? true
+              : undefined,
         useFull: typeof data.full === "boolean" ? data.full : undefined,
       });
 
