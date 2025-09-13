@@ -1,0 +1,12 @@
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "gistdex_query_plan",
+    "arguments": {
+      "goal": "Find gistdex installation",
+      "maxIterations": 1
+    }
+  },
+  "id": 1
+}

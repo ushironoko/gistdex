@@ -1,0 +1,19 @@
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "gistdex_query_plan",
+    "arguments": {
+      "goal": "Understanding how to install and use gistdex",
+      "expectedResults": {
+        "keywords": ["install", "npm", "gistdex", "usage"],
+        "minMatches": 3,
+        "confidence": 0.7
+      },
+      "maxIterations": 3,
+      "evaluationMode": "semantic",
+      "saveIntermediateResults": true
+    }
+  },
+  "id": 1
+}

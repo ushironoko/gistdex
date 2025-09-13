@@ -1,0 +1,11 @@
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "gistdex_query_plan",
+    "arguments": {
+      "goal": "test query"
+    }
+  },
+  "id": 1
+}
