@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "gistdex-local": {
+      "command": "node",
+      "args": ["dist/cli/index.js", "--mcp"],
+      "env": {
+        "NODE_NO_WARNINGS": "1"
+      }
+    }
+  }
+}
