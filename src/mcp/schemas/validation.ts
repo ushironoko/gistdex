@@ -125,7 +125,6 @@ export const queryToolSchema = z.object({
       z.number().transform((val) => val !== 0),
     ])
     .optional()
-    .default(false)
     .describe("Return full section content for markdown files"),
   saveStructured: z
     .union([

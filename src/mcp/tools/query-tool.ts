@@ -234,7 +234,7 @@ async function handleQueryOperation(
     );
 
     // Save successful query to cache if results were found
-    if (results.length > 0) {
+    if (finalResults.length > 0) {
       // Check if any results are markdown files (for cache metadata)
       const hasMarkdownResults = results.some(
         (r) =>
@@ -242,15 +242,17 @@ async function handleQueryOperation(
           r.metadata?.filePath?.endsWith(".mdx"),
       );
 
-      await saveSuccessfulQuery(data.query, results, {
+      // Determine if section was actually used (either explicitly or automatically for markdown)
+      const sectionUsed =
+        data.section === true ||
+        (data.section !== false &&
+          hasMarkdownResults &&
+          results.some((r) => r.metadata?.boundary));
+
+      await saveSuccessfulQuery(data.query, finalResults, {
         strategy: data.hybrid ? "hybrid" : "semantic",
-        useSection:
-          typeof data.section === "boolean"
-            ? data.section
-            : hasMarkdownResults
-              ? true
-              : undefined,
-        useFull: typeof data.full === "boolean" ? data.full : undefined,
+        useSection: sectionUsed,
+        useFull: data.full === true,
       });
 
       // Save structured knowledge if requested

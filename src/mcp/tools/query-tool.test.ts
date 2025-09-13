@@ -291,11 +291,20 @@ describe("query-tool", () => {
         },
       ];
 
-      // Clear and override the mock for this specific test
-      vi.mocked(searchModule.semanticSearch).mockClear();
+      // Reset specific mocks for this test case
+      vi.mocked(searchModule.semanticSearch).mockReset();
+      vi.mocked(searchModule.getSectionContent).mockReset();
+      vi.mocked(searchModule.rerankResults).mockReset();
+      vi.mocked(queryCacheModule.saveSuccessfulQuery).mockReset();
+
+      // Set up test-specific mock implementations
       vi.mocked(searchModule.semanticSearch).mockResolvedValue(markdownResults);
       vi.mocked(searchModule.getSectionContent).mockResolvedValue(
         "Full section content with multiple paragraphs",
+      );
+      vi.mocked(searchModule.rerankResults).mockReturnValue(markdownResults);
+      vi.mocked(queryCacheModule.saveSuccessfulQuery).mockResolvedValue(
+        undefined,
       );
 
       const result = await handleQueryTool(
@@ -385,11 +394,20 @@ describe("query-tool", () => {
         },
       ];
 
-      // Clear and override the mock for this specific test
-      vi.mocked(searchModule.semanticSearch).mockClear();
+      // Reset specific mocks for this test case
+      vi.mocked(searchModule.semanticSearch).mockReset();
+      vi.mocked(searchModule.getSectionContent).mockReset();
+      vi.mocked(searchModule.rerankResults).mockReset();
+      vi.mocked(queryCacheModule.saveSuccessfulQuery).mockReset();
+
+      // Set up test-specific mock implementations
       vi.mocked(searchModule.semanticSearch).mockResolvedValue(markdownResults);
       vi.mocked(searchModule.getSectionContent).mockResolvedValue(
         "Full markdown section content",
+      );
+      vi.mocked(searchModule.rerankResults).mockReturnValue(markdownResults);
+      vi.mocked(queryCacheModule.saveSuccessfulQuery).mockResolvedValue(
+        undefined,
       );
 
       await handleQueryTool(
@@ -398,9 +416,21 @@ describe("query-tool", () => {
       );
 
       // Should save with useSection: true when markdown files are detected
+      // The results should have been modified with section content
       expect(queryCacheModule.saveSuccessfulQuery).toHaveBeenCalledWith(
         "test markdown",
-        markdownResults,
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "md1",
+            content: "Full markdown section content", // Content replaced with section content
+            score: 0.9,
+            metadata: expect.objectContaining({
+              sourceId: "source1",
+              sourceType: "file",
+              filePath: "README.md",
+            }),
+          }),
+        ]),
         expect.objectContaining({
           useSection: true,
         }),
