@@ -183,8 +183,104 @@ export const listToolSchema = z.object({
 // Info tool schemas
 export const infoToolSchema = z.object({});
 
+// Query Plan tool schemas
+export const queryPlanToolSchema = z.object({
+  goal: z
+    .string()
+    .min(1)
+    .describe(
+      "The user's final goal (e.g., 'Understanding VitePress configuration')",
+    ),
+  initialQueries: z
+    .array(z.string())
+    .optional()
+    .describe("Initial query candidates to try"),
+  maxIterations: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .default(5)
+    .describe("Maximum number of iterations to try"),
+  evaluationMode: z
+    .enum(["strict", "fuzzy", "semantic"])
+    .optional()
+    .default("semantic")
+    .describe("Mode for evaluating results"),
+  saveIntermediateResults: z
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
+    .optional()
+    .default(true)
+    .describe("Whether to save intermediate results"),
+  expectedResults: z
+    .object({
+      keywords: z
+        .array(z.string())
+        .optional()
+        .describe("Required keywords in results"),
+      minMatches: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Minimum number of matching results"),
+      contentPatterns: z
+        .array(z.string())
+        .optional()
+        .describe("Expected content patterns (regex strings)"),
+      confidence: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .describe("Confidence threshold (0-1)"),
+    })
+    .optional()
+    .describe("Expected results criteria"),
+  strategy: z
+    .object({
+      initialMode: z
+        .enum(["broad", "specific"])
+        .optional()
+        .default("broad")
+        .describe("Initial query strategy"),
+      refinementMethod: z
+        .enum(["keywords", "semantic", "hybrid"])
+        .optional()
+        .default("hybrid")
+        .describe("Query refinement method"),
+      expansionRules: z
+        .array(z.string())
+        .optional()
+        .describe("Query expansion rules"),
+    })
+    .optional()
+    .describe("Search strategy configuration"),
+  provider: z
+    .string()
+    .optional()
+    .describe("Vector database provider (e.g., 'sqlite', 'memory')"),
+  db: z.string().optional().describe("Database file path"),
+  timeoutSeconds: z
+    .number()
+    .int()
+    .positive()
+    .min(10)
+    .max(300)
+    .optional()
+    .default(120)
+    .describe(
+      "Timeout in seconds for the entire plan execution (default: 120, min: 10, max: 300)",
+    ),
+});
+
 // Type exports
 export type IndexToolInput = z.input<typeof indexToolSchema>;
 export type QueryToolInput = z.input<typeof queryToolSchema>;
 export type ListToolInput = z.input<typeof listToolSchema>;
 export type InfoToolInput = z.infer<typeof infoToolSchema>;
+export type QueryPlanToolInput = z.input<typeof queryPlanToolSchema>;
