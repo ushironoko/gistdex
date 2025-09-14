@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.2] - 2025-09-14
+
+- fix agent_query
+
+
 ## [1.3.1] - 2025-09-14
 
 - Merge pull request #97 from ushironoko:feat/agent-in-the-loop-improvements
