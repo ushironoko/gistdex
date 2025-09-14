@@ -61,6 +61,7 @@ export interface ExecutionOptions {
   queryExecutor: (query: string) => Promise<SearchResult[]>;
   maxIterations?: number;
   saveIntermediateResults?: boolean;
+  timeout?: number; // Timeout in milliseconds
 }
 
 export interface QueryPlanResult {
@@ -92,6 +93,7 @@ export interface QueryPlanResult {
 
 function extractKeywordsFromGoal(goal: string): string[] {
   const stopWords = new Set([
+    // Japanese stop words
     "の",
     "を",
     "に",
@@ -100,7 +102,32 @@ function extractKeywordsFromGoal(goal: string): string[] {
     "は",
     "で",
     "する",
+    "いる",
+    "ある",
+    "こと",
+    "もの",
+    "これ",
+    "それ",
+    "あれ",
+    "どう",
+    "どの",
+    "この",
+    "その",
+    "あの",
+    "から",
+    "まで",
+    "より",
+    "ため",
+    "なる",
+    "れる",
+    "られる",
+    "せる",
+    "させる",
+    "できる",
     "理解",
+    "知る",
+    "分かる",
+    // English stop words
     "the",
     "a",
     "an",
@@ -121,26 +148,87 @@ function extractKeywordsFromGoal(goal: string): string[] {
     "into",
     "through",
     "during",
+    "before",
+    "after",
+    "above",
+    "below",
+    "between",
+    "under",
+    "again",
+    "further",
+    "then",
+    "once",
+    "is",
+    "am",
+    "are",
+    "was",
+    "were",
+    "be",
+    "have",
+    "has",
+    "had",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "could",
+    "should",
+    "may",
+    "might",
+    "must",
+    "can",
+    "shall",
+    "need",
+    "dare",
+    "ought",
   ]);
 
-  // 日本語と英語を分離して処理
-  const japanesePattern = /[ぁ-んァ-ヶー一-龯]+/g;
-  const englishPattern = /[a-zA-Z]+/g;
+  // Improved pattern matching for Japanese and English
+  const japanesePattern = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+/g;
+  const englishPattern = /[a-zA-Z][a-zA-Z0-9]*/g;
+  const camelCasePattern = /[A-Z][a-z]+|[a-z]+/g;
 
+  // Extract Japanese words
   const japaneseWords = (goal.match(japanesePattern) || []).filter(
     (word) => word.length > 1 && !stopWords.has(word),
   );
 
-  const englishWords = (goal.toLowerCase().match(englishPattern) || []).filter(
-    (word) => word.length > 2 && !stopWords.has(word),
-  );
+  // Extract English words (including camelCase splitting)
+  let englishWords: string[] = [];
+  const englishMatches = goal.match(englishPattern) || [];
 
+  for (const match of englishMatches) {
+    // Split camelCase words
+    const subWords = match.match(camelCasePattern) || [match];
+    englishWords.push(...subWords);
+  }
+
+  englishWords = englishWords
+    .map((word) => word.toLowerCase())
+    .filter((word) => word.length > 2 && !stopWords.has(word));
+
+  // Combine all extracted keywords
   const allWords = [...japaneseWords, ...englishWords];
 
-  // VitePressの設定方法を理解する -> vitepress, 設定, 方法
+  // If no keywords found, try to extract meaningful parts
   if (allWords.length === 0) {
-    // フォールバック: 全体を1つのキーワードとして扱う
-    return [goal.toLowerCase().replace(/[^\w\sぁ-んァ-ヶー一-龯]/g, "")];
+    // Remove particles and extract remaining content
+    const cleanedGoal = goal
+      .replace(/[のをにがとはで]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (cleanedGoal.length > 0) {
+      return [cleanedGoal];
+    }
+
+    // Ultimate fallback
+    return [
+      goal
+        .toLowerCase()
+        .replace(/[^\w\s\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, ""),
+    ];
   }
 
   return [...new Set(allWords)];
@@ -338,88 +426,88 @@ export function createQueryPlanner() {
       return refinedQuery;
     },
 
-    async executePlan(
+    /**
+     * Execute a single stage of the plan (for agent-driven execution)
+     * This is the main method for Agent in the Loop architecture
+     */
+    async executeSingleStage(
       plan: QueryPlan,
-      options: ExecutionOptions,
-    ): Promise<QueryPlanResult> {
-      const maxIterations = options.maxIterations || 5;
-      const iterations: QueryPlanResult["iterations"] = [];
-      let bestResults: SearchResult[] = [];
-      let bestScore = 0;
-
-      plan.status = "executing";
-
-      for (let i = 0; i < maxIterations; i++) {
-        const currentStage = plan.stages[plan.stages.length - 1];
-        if (!currentStage) {
-          break;
-        }
-
-        let results: SearchResult[] = [];
-        try {
-          results = await options.queryExecutor(currentStage.query);
-        } catch (error) {
-          console.error(`Query execution failed for iteration ${i}:`, error);
-          // Continue with empty results on error
-          results = [];
-        }
-
-        const evaluation = this.evaluateStage(currentStage, results);
-        currentStage.actualResults = results;
-        currentStage.evaluation = evaluation;
-
-        iterations.push({
-          iterationNumber: i,
-          query: currentStage.query,
-          expectedKeywords: currentStage.expectedResults.keywords,
-          actualResults: results,
-          evaluationScore: evaluation.score,
-          feedback: evaluation.feedback,
-          refinements: evaluation.suggestions,
-        });
-
-        if (evaluation.score > bestScore) {
-          bestScore = evaluation.score;
-          bestResults = results;
-        }
-
-        if (evaluation.isSuccessful) {
-          plan.status = "completed";
-          break;
-        }
-
-        if (i < maxIterations - 1) {
-          const refinedQuery = this.refineQuery(
-            currentStage.query,
-            evaluation,
-            "hybrid",
-          );
-
-          plan.stages.push({
-            stageNumber: i + 1,
-            description: `Refined search iteration ${i + 1}`,
-            query: refinedQuery,
-            expectedResults: currentStage.expectedResults,
-          });
-        }
+      stageIndex: number,
+      queryExecutor: (query: string) => Promise<SearchResult[]>,
+      options?: { timeout?: number },
+    ): Promise<{
+      stage: PlanStage;
+      results: SearchResult[];
+      evaluation: StageEvaluation;
+      shouldContinue: boolean;
+      nextQuery?: string;
+      timedOut?: boolean;
+    }> {
+      const stage = plan.stages[stageIndex];
+      if (!stage) {
+        throw new Error(`Stage ${stageIndex} not found in plan`);
       }
 
-      const finalStatus =
-        bestScore >= plan.evaluationCriteria.minScore
-          ? "success"
-          : bestScore > 0.3
-            ? "partial"
-            : "failed";
+      // Execute query with timeout
+      let results: SearchResult[] = [];
+      let timedOut = false;
+
+      try {
+        if (options?.timeout) {
+          // Create a timeout promise
+          const timeoutPromise = new Promise<SearchResult[]>((_, reject) => {
+            setTimeout(
+              () => reject(new Error("Query execution timed out")),
+              options.timeout,
+            );
+          });
+
+          // Race between query execution and timeout
+          results = await Promise.race([
+            queryExecutor(stage.query),
+            timeoutPromise,
+          ]);
+        } else {
+          results = await queryExecutor(stage.query);
+        }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "Query execution timed out"
+        ) {
+          console.warn(`Query execution timed out for stage ${stageIndex}`);
+          timedOut = true;
+        } else {
+          console.error(
+            `Query execution failed for stage ${stageIndex}:`,
+            error,
+          );
+        }
+        results = [];
+      }
+
+      // Evaluate results
+      const evaluation = this.evaluateStage(stage, results);
+      stage.actualResults = results;
+      stage.evaluation = evaluation;
+
+      // Determine if we should continue
+      const shouldContinue =
+        !evaluation.isSuccessful && stageIndex < plan.stages.length - 1;
+
+      // Generate next query if needed
+      let nextQuery: string | undefined;
+      if (shouldContinue && !evaluation.isSuccessful) {
+        nextQuery = this.refineQuery(stage.query, evaluation, "hybrid");
+      }
 
       return {
-        planId: plan.id,
-        goal: plan.goal,
-        status: finalStatus,
-        iterations,
-        finalResults: {
-          data: bestResults,
-          confidence: bestScore,
-        },
+        stage,
+        results,
+        evaluation,
+        shouldContinue,
+        nextQuery,
+        timedOut,
       };
     },
   };

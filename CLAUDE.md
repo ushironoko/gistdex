@@ -88,6 +88,26 @@ MCP tools available:
 - `gistdex_index` - Index content from various sources
 - `gistdex_query` - Search indexed content (supports `section` option for markdown)
 - `gistdex_list` - List indexed items with statistics
+- `gistdex_query_plan` - Execute a query plan with automatic evaluation and refinement
+- `gistdex_evaluate` - Evaluate search results against a goal (Agent in the Loop)
+- `gistdex_refine_query` - Refine search query based on evaluation feedback (Agent in the Loop)
+- `gistdex_plan_execute_stage` - Execute a single stage of a query plan with agent control (Agent in the Loop)
+
+#### Agent in the Loop Architecture
+
+The project implements an Agent in the Loop architecture for advanced query planning and execution:
+
+1. **Query Planning**: Use `gistdex_query_plan` to create a structured plan for complex searches
+2. **Stage Execution**: Use `gistdex_plan_execute_stage` to execute individual stages with agent control
+3. **Result Evaluation**: Use `gistdex_evaluate` to assess if results meet the goal
+4. **Query Refinement**: Use `gistdex_refine_query` to improve queries based on feedback
+5. **Agent Cache**: Results are cached in `.gistdex/cache/agent/` for analysis and reuse
+
+This architecture allows LLM agents to:
+- Execute queries step-by-step with evaluation at each stage
+- Refine queries based on intermediate results
+- Build structured knowledge incrementally
+- Maintain full control over the search process
 
 **重要な開発上の注意事項:**
 MCPツールに新しいオプションを追加する際は、以下の3箇所すべての実装が必要：

@@ -1,5 +1,4 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import { hybridSearch, semanticSearch } from "../../core/search/search.js";
@@ -48,8 +47,8 @@ async function executeQuery(
         },
         dbService,
       );
-      console.log(`Hybrid search returned ${results.length} results`);
-      return results;
+      console.log(`Hybrid search returned ${results?.length ?? 0} results`);
+      return results ?? [];
     } else {
       // Use semantic search for strict evaluation mode
       const results = await semanticSearch(
@@ -61,8 +60,8 @@ async function executeQuery(
         },
         dbService,
       );
-      console.log(`Semantic search returned ${results.length} results`);
-      return results;
+      console.log(`Semantic search returned ${results?.length ?? 0} results`);
+      return results ?? [];
     }
   } catch (error) {
     // Log error but return empty results to allow the planner to continue
@@ -179,56 +178,103 @@ export const handleQueryPlanTool = createToolHandler(
         });
       };
 
-      // Execute plan with timeout
-      let planResult: QueryPlanResult;
+      // Note: This tool uses the old automatic execution approach.
+      // For Agent in the Loop, use gistdex_plan_execute_stage instead.
+
+      // Execute plan stages manually with timeout support
+      let bestResults: VectorSearchResult[] = [];
+      let bestScore = 0;
+      const iterations: QueryPlanResult["iterations"] = [];
       let isTimeout = false;
 
-      // Store intermediate results that can be accessed if timeout occurs
-      let intermediateResults: QueryPlanResult | null = null;
+      const startTime = Date.now();
+      const timeoutMs = timeoutSeconds * 1000;
 
-      const executionPromise = planner
-        .executePlan(plan, {
-          queryExecutor,
-          maxIterations,
-          saveIntermediateResults: saveIntermediateResults === true,
-        })
-        .then((result) => {
-          intermediateResults = result;
-          return result;
+      for (let i = 0; i < maxIterations; i++) {
+        // Check timeout
+        if (Date.now() - startTime > timeoutMs) {
+          isTimeout = true;
+          console.log(`Query plan timed out after ${timeoutSeconds} seconds`);
+          break;
+        }
+
+        const currentStage = plan.stages[plan.stages.length - 1];
+        if (!currentStage) break;
+
+        // Execute query
+        let results: VectorSearchResult[] = [];
+        try {
+          results = await queryExecutor(currentStage.query);
+        } catch (error) {
+          console.error(`Query execution failed for iteration ${i}:`, error);
+        }
+
+        // Evaluate results
+        const evaluation = planner.evaluateStage(currentStage, results);
+        currentStage.actualResults = results;
+        currentStage.evaluation = evaluation;
+
+        iterations.push({
+          iterationNumber: i,
+          query: currentStage.query,
+          expectedKeywords: currentStage.expectedResults.keywords,
+          actualResults: results,
+          evaluationScore: evaluation.score,
+          feedback: evaluation.feedback,
+          refinements: evaluation.suggestions,
         });
 
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<QueryPlanResult>((resolve) => {
-        setTimeout(() => {
-          isTimeout = true;
-          // Return partial results on timeout
-          const partialResult: QueryPlanResult = intermediateResults || {
-            planId: plan.id,
-            goal,
-            status: "partial",
-            iterations: [],
-            finalResults: {
-              data: [],
-              confidence: 0,
-              unmatchedExpectations: ["Query timed out before completion"],
-            },
-            metadata: {
-              totalIterations: 0,
-              totalTime: timeoutSeconds * 1000,
-            },
-          };
-          resolve(partialResult);
-        }, timeoutSeconds * 1000); // Convert seconds to milliseconds
-      });
+        if (evaluation.score > bestScore) {
+          bestScore = evaluation.score;
+          bestResults = results;
+        }
 
-      planResult = await Promise.race([executionPromise, timeoutPromise]);
+        if (evaluation.isSuccessful) {
+          plan.status = "completed";
+          break;
+        }
 
-      // Log if timeout occurred
-      if (isTimeout) {
-        console.log(
-          `Query plan timed out after ${timeoutSeconds} seconds, returning partial results`,
-        );
+        // Refine query for next iteration
+        if (i < maxIterations - 1) {
+          const refinedQuery = planner.refineQuery(
+            currentStage.query,
+            evaluation,
+            "hybrid",
+          );
+
+          plan.stages.push({
+            stageNumber: i + 1,
+            description: `Refined search iteration ${i + 1}`,
+            query: refinedQuery,
+            expectedResults: currentStage.expectedResults,
+          });
+        }
       }
+
+      const finalStatus =
+        bestScore >= plan.evaluationCriteria.minScore
+          ? "success"
+          : bestScore > 0.3
+            ? "partial"
+            : "failed";
+
+      const planResult: QueryPlanResult = {
+        planId: plan.id,
+        goal,
+        status: finalStatus,
+        iterations,
+        finalResults: {
+          data: bestResults,
+          confidence: bestScore,
+          unmatchedExpectations: isTimeout
+            ? ["Query timed out before completion"]
+            : undefined,
+        },
+        metadata: {
+          totalIterations: iterations.length,
+          totalTime: Date.now() - startTime,
+        },
+      };
 
       // Save results if successful
       let savedPlanPath: string | undefined;
