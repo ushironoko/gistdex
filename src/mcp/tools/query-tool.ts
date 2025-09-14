@@ -8,6 +8,14 @@ import {
 } from "../../core/search/search.js";
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
 import { type QueryToolInput, queryToolSchema } from "../schemas/validation.js";
+import {
+  type AnalysisMetadata,
+  createExecutionContext,
+  type ExecutionContext,
+  generateAnalysisMetadata,
+  generateStrategicHints,
+  type StrategicHints,
+} from "../utils/metadata-generator.js";
 import { findSimilarQuery, saveSuccessfulQuery } from "../utils/query-cache.js";
 import { executeQueryChain, type QueryChain } from "../utils/query-chain.js";
 import { updateStructuredKnowledge } from "../utils/structured-knowledge.js";
@@ -30,6 +38,10 @@ export interface QueryToolResult extends BaseToolResult {
     score: number;
     metadata?: Record<string, unknown>;
   }>;
+  // NEW: エージェント支援メタデータ（オプショナル、後方互換性のため）
+  analysisMetadata?: AnalysisMetadata;
+  strategicHints?: StrategicHints;
+  executionContext?: ExecutionContext;
 }
 
 /**
@@ -87,6 +99,8 @@ async function handleQueryOperation(
   options: QueryToolOptions,
 ): Promise<QueryToolResult> {
   const { service } = options;
+  const startTime = Date.now();
+  const context = createExecutionContext(data.query);
 
   try {
     // Use query chain if requested
@@ -289,9 +303,42 @@ async function handleQueryOperation(
       }
     }
 
-    return createSuccessResponse("Search completed successfully", {
+    // Generate metadata if includeMetadata is enabled (or by default for better agent support)
+    // This is opt-out rather than opt-in to provide better default experience
+    const includeMetadata = data.includeMetadata !== false;
+    let analysisMetadata: AnalysisMetadata | undefined;
+    let strategicHints: StrategicHints | undefined;
+
+    if (includeMetadata && finalResults.length > 0) {
+      // Generate metadata and hints
+      analysisMetadata = await generateAnalysisMetadata(data.query, results);
+      strategicHints = generateStrategicHints(
+        data.query,
+        results,
+        analysisMetadata,
+      );
+    }
+
+    // Update execution context
+    context.executionTime = Date.now() - startTime;
+
+    // Build response with optional metadata
+    const responseData: Omit<QueryToolResult, "success" | "message"> = {
       results: finalResults,
-    });
+    };
+
+    // Add metadata only if generated
+    if (analysisMetadata) {
+      responseData.analysisMetadata = analysisMetadata;
+    }
+    if (strategicHints) {
+      responseData.strategicHints = strategicHints;
+    }
+    if (includeMetadata) {
+      responseData.executionContext = context;
+    }
+
+    return createSuccessResponse("Search completed successfully", responseData);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return createErrorResponse(`Search failed: ${errorMessage}`, [

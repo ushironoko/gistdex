@@ -144,6 +144,17 @@ export const queryToolSchema = z.object({
     .optional()
     .default(false)
     .describe("Use query chain for multi-stage strategic search"),
+  includeMetadata: z
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
+    .optional()
+    .default(true)
+    .describe(
+      "Include analysis metadata and strategic hints for agent support",
+    ),
   provider: z
     .string()
     .optional()
@@ -278,9 +289,80 @@ export const queryPlanToolSchema = z.object({
     ),
 });
 
+// Agent Query tool schemas
+export const agentQueryToolSchema = z.object({
+  query: z.string().min(1).describe("Search query text"),
+  goal: z
+    .string()
+    .optional()
+    .describe("The agent's final goal for this search session"),
+  context: z
+    .object({
+      previousQueries: z
+        .array(z.string())
+        .optional()
+        .describe("Previous queries in this session"),
+      excludeResults: z
+        .array(z.string())
+        .optional()
+        .describe("IDs of results to exclude (already seen)"),
+      focusAreas: z
+        .array(z.string())
+        .optional()
+        .describe("Specific areas to focus on"),
+    })
+    .optional()
+    .describe("Context from previous iterations"),
+  options: z
+    .object({
+      k: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .default(10)
+        .describe("Number of results to return"),
+      hybrid: z
+        .union([
+          z.boolean(),
+          z.string().transform((val) => val === "true" || val === "1"),
+          z.number().transform((val) => val !== 0),
+        ])
+        .optional()
+        .default(false)
+        .describe("Enable hybrid search"),
+      rerank: z
+        .union([
+          z.boolean(),
+          z.string().transform((val) => val === "true" || val === "1"),
+          z.number().transform((val) => val !== 0),
+        ])
+        .optional()
+        .default(true)
+        .describe("Enable result reranking"),
+      includeDebug: z
+        .union([
+          z.boolean(),
+          z.string().transform((val) => val === "true" || val === "1"),
+          z.number().transform((val) => val !== 0),
+        ])
+        .optional()
+        .default(false)
+        .describe("Include debug information"),
+    })
+    .optional()
+    .describe("Search options"),
+  provider: z
+    .string()
+    .optional()
+    .describe("Vector database provider (e.g., 'sqlite', 'memory')"),
+  db: z.string().optional().describe("Database file path"),
+});
+
 // Type exports
 export type IndexToolInput = z.input<typeof indexToolSchema>;
 export type QueryToolInput = z.input<typeof queryToolSchema>;
 export type ListToolInput = z.input<typeof listToolSchema>;
 export type InfoToolInput = z.infer<typeof infoToolSchema>;
 export type QueryPlanToolInput = z.input<typeof queryPlanToolSchema>;
+export type AgentQueryToolInput = z.input<typeof agentQueryToolSchema>;
