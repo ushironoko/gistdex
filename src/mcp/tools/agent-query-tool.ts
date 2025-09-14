@@ -599,7 +599,7 @@ async function handleAgentQueryOperation(
       results = await hybridSearch(
         data.query,
         {
-          k: data.options?.k ?? 10,
+          k: data.options?.k ?? 5,
           keywordWeight: 0.3,
         },
         service,
@@ -608,7 +608,7 @@ async function handleAgentQueryOperation(
       results = await semanticSearch(
         data.query,
         {
-          k: data.options?.k ?? 10,
+          k: data.options?.k ?? 5,
         },
         service,
       );

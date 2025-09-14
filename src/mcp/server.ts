@@ -458,8 +458,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           k: {
             type: "number",
-            description: "Number of results per query",
-            default: 10,
+            description:
+              "Number of results per query (max 5 for MCP token limits)",
+            default: 5,
+            maximum: 5,
           },
           provider: {
             type: "string",

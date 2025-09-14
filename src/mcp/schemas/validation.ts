@@ -319,9 +319,10 @@ export const agentQueryToolSchema = z.object({
         .number()
         .int()
         .positive()
+        .max(5) // MCPトークン制限対策：最大5件に制限
         .optional()
-        .default(10)
-        .describe("Number of results to return"),
+        .default(5) // デフォルトも5に変更
+        .describe("Number of results to return (max 5 for MCP token limits)"),
       hybrid: z
         .union([
           z.boolean(),
