@@ -72,7 +72,7 @@ async function executeQuery(
 }
 
 function getCacheDirectory(): string {
-  const baseDir = process.env.GISTDEX_CACHE_DIR || join(homedir(), ".gistdex");
+  const baseDir = process.env.GISTDEX_CACHE_DIR || ".gistdex";
   return join(baseDir, "cache", "plans");
 }
 
