@@ -24,6 +24,7 @@ import {
 import { createConfigOperations } from "../core/config/config-operations.js";
 import { createDatabaseOperations } from "../core/database/database-operations.js";
 import type { DatabaseService } from "../core/database/database-service.js";
+import { handleAgentQueryTool } from "./tools/agent-query-tool.js";
 import { handleIndexTool } from "./tools/index-tool.js";
 import { handleListTool } from "./tools/list-tool.js";
 import { handleQueryTool } from "./tools/query-tool.js";
@@ -428,6 +429,46 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["planId", "stageIndex", "plan"],
       },
     },
+    {
+      name: "gistdex_agent_query",
+      description:
+        "Autonomous agent-based search with strategic planning and execution. " +
+        "This tool enables LLM agents to plan and execute complex search strategies. " +
+        "The agent automatically: " +
+        "1) Creates a multi-stage query plan based on your goal " +
+        "2) Executes queries strategically with progress tracking " +
+        "3) Evaluates results and decides next actions " +
+        "4) Provides comprehensive analysis and recommendations " +
+        "Use this for complex research tasks that require multiple search iterations.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            description: "The research goal or question to answer",
+          },
+          maxIterations: {
+            type: "number",
+            description: "Maximum number of search iterations",
+            default: 5,
+          },
+          k: {
+            type: "number",
+            description: "Number of results per query",
+            default: 10,
+          },
+          provider: {
+            type: "string",
+            description: "Vector database provider (e.g., 'sqlite', 'memory')",
+          },
+          db: {
+            type: "string",
+            description: "Database file path",
+          },
+        },
+        required: ["goal"],
+      },
+    },
   ],
 }));
 
@@ -593,6 +634,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             "./tools/plan-execute-stage-tool.js"
           );
           const result = await handlePlanExecuteStage(args, { service });
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        }
+
+        case "gistdex_agent_query": {
+          const result = await handleAgentQueryTool(args, { service });
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
