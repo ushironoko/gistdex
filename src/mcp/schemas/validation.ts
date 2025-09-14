@@ -294,7 +294,7 @@ export const agentQueryToolSchema = z.object({
   query: z.string().min(1).describe("Search query text"),
   goal: z
     .string()
-    .optional()
+    .min(1)
     .describe("The agent's final goal for this search session"),
   context: z
     .object({

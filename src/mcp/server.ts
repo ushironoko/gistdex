@@ -447,6 +447,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "string",
             description: "The research goal or question to answer",
           },
+          query: {
+            type: "string",
+            description: "Initial search query text",
+          },
           maxIterations: {
             type: "number",
             description: "Maximum number of search iterations",
@@ -466,7 +470,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: "Database file path",
           },
         },
-        required: ["goal"],
+        required: ["goal", "query"],
       },
     },
   ],
