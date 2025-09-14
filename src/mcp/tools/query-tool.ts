@@ -186,9 +186,18 @@ async function handleQueryOperation(
           );
         }
 
-        // Automatically use section retrieval for markdown files with boundary info
+        // Determine if section retrieval should be used
+        // 1. If section is explicitly true, use it (if boundary exists)
+        // 2. If section is explicitly false, don't use it
+        // 3. If section is undefined, auto-apply for markdown files (if boundary exists)
         const shouldUseSection =
-          (data.section || isMarkdownFile) && result.metadata?.boundary;
+          data.section === true
+            ? Boolean(result.metadata?.boundary)
+            : data.section === false
+              ? false
+              : data.section === undefined &&
+                isMarkdownFile &&
+                Boolean(result.metadata?.boundary);
 
         if (shouldUseSection) {
           try {

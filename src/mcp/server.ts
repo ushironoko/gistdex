@@ -244,6 +244,190 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         },
       },
     },
+    {
+      name: "gistdex_evaluate",
+      description:
+        "Evaluate search results against a goal. " +
+        "Returns structured feedback to help agents decide next actions. " +
+        "Use this after gistdex_query to assess if results meet the goal. " +
+        "The tool provides: confidence score, missing aspects, and recommendations " +
+        "for whether to continue searching or use current results.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            description: "The ultimate goal to achieve",
+          },
+          query: {
+            type: "string",
+            description: "The query that was used",
+          },
+          results: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                content: { type: "string" },
+                score: { type: "number" },
+                metadata: { type: "object" },
+              },
+              required: ["content", "score"],
+            },
+            description: "Search results to evaluate",
+          },
+          iteration: {
+            type: "number",
+            description: "Current iteration number",
+            default: 1,
+          },
+          previousScore: {
+            type: "number",
+            description: "Score from previous iteration",
+          },
+        },
+        required: ["goal", "query", "results"],
+      },
+    },
+    {
+      name: "gistdex_refine_query",
+      description:
+        "Refine search query based on evaluation feedback. " +
+        "Generates improved queries using different strategies (broaden/narrow/pivot/combine). " +
+        "Use this after gistdex_evaluate when results need improvement. " +
+        "Returns refined query suggestions with reasoning and alternatives.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          currentQuery: {
+            type: "string",
+            description: "The current query that needs refinement",
+          },
+          goal: {
+            type: "string",
+            description: "The ultimate goal to achieve",
+          },
+          missingAspects: {
+            type: "array",
+            items: { type: "string" },
+            description: "Aspects that are missing from current results",
+            default: [],
+          },
+          foundAspects: {
+            type: "array",
+            items: { type: "string" },
+            description: "Aspects that have been found",
+            default: [],
+          },
+          strategy: {
+            type: "string",
+            enum: ["broaden", "narrow", "pivot", "combine"],
+            description: "Refinement strategy to use",
+            default: "combine",
+          },
+          iteration: {
+            type: "number",
+            description: "Current iteration number",
+            default: 1,
+          },
+        },
+        required: ["currentQuery", "goal"],
+      },
+    },
+    {
+      name: "gistdex_plan_execute_stage",
+      description:
+        "Execute a single stage of a query plan with agent control. " +
+        "This tool allows agents to execute plans step-by-step, " +
+        "evaluating results at each stage and deciding whether to continue. " +
+        "Use this for fine-grained control over the search process.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          planId: {
+            type: "string",
+            description: "The ID of the plan to execute",
+          },
+          stageIndex: {
+            type: "number",
+            description: "The index of the stage to execute (0-based)",
+          },
+          plan: {
+            type: "object",
+            description: "The complete plan object",
+            properties: {
+              id: { type: "string" },
+              goal: { type: "string" },
+              status: { type: "string" },
+              evaluationCriteria: {
+                type: "object",
+                properties: {
+                  minScore: { type: "number" },
+                  minMatches: { type: "number" },
+                  acceptableConfidence: { type: "number" },
+                },
+                required: ["minScore", "minMatches", "acceptableConfidence"],
+              },
+              stages: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    stageNumber: { type: "number" },
+                    description: { type: "string" },
+                    query: { type: "string" },
+                    expectedResults: {
+                      type: "object",
+                      properties: {
+                        keywords: { type: "array", items: { type: "string" } },
+                        patterns: { type: "array" },
+                        minConfidence: { type: "number" },
+                        minMatches: { type: "number" },
+                      },
+                      required: [
+                        "keywords",
+                        "patterns",
+                        "minConfidence",
+                        "minMatches",
+                      ],
+                    },
+                  },
+                  required: [
+                    "stageNumber",
+                    "description",
+                    "query",
+                    "expectedResults",
+                  ],
+                },
+              },
+            },
+            required: ["id", "goal", "status", "evaluationCriteria", "stages"],
+          },
+          queryOptions: {
+            type: "object",
+            properties: {
+              k: {
+                type: "number",
+                description: "Number of results",
+                default: 5,
+              },
+              hybrid: {
+                type: "boolean",
+                description: "Use hybrid search",
+                default: false,
+              },
+              rerank: {
+                type: "boolean",
+                description: "Enable reranking",
+                default: true,
+              },
+            },
+            description: "Options for query execution",
+          },
+        },
+        required: ["planId", "stageIndex", "plan"],
+      },
+    },
   ],
 }));
 
@@ -381,6 +565,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 text: `📚 Indexed items:\n${formattedItems}${statsText}`,
               },
             ],
+          };
+        }
+
+        case "gistdex_evaluate": {
+          const { handleEvaluateTool } = await import(
+            "./tools/evaluate-tool.js"
+          );
+          const result = await handleEvaluateTool(args, { service });
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        }
+
+        case "gistdex_refine_query": {
+          const { handleRefineQueryTool } = await import(
+            "./tools/refine-query-tool.js"
+          );
+          const result = await handleRefineQueryTool(args, { service });
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        }
+
+        case "gistdex_plan_execute_stage": {
+          const { handlePlanExecuteStage } = await import(
+            "./tools/plan-execute-stage-tool.js"
+          );
+          const result = await handlePlanExecuteStage(args, { service });
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         }
 
