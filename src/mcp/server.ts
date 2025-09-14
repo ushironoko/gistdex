@@ -26,7 +26,6 @@ import { createDatabaseOperations } from "../core/database/database-operations.j
 import type { DatabaseService } from "../core/database/database-service.js";
 import { handleIndexTool } from "./tools/index-tool.js";
 import { handleListTool } from "./tools/list-tool.js";
-import { handleQueryPlanTool } from "./tools/query-plan-tool.js";
 import { handleQueryTool } from "./tools/query-tool.js";
 import { ensureCacheDirectories } from "./utils/query-cache.js";
 
@@ -243,106 +242,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: "Database file path",
           },
         },
-      },
-    },
-    {
-      name: "gistdex_query_plan",
-      description:
-        "Execute a query plan with automatic evaluation and refinement. " +
-        "This tool enforces a structured workflow for LLM agents: " +
-        "1) Plan queries to achieve a specific goal " +
-        "2) Define expected results beforehand " +
-        "3) Execute queries iteratively " +
-        "4) Evaluate results against expectations " +
-        "5) Refine queries until satisfactory results are achieved " +
-        "6) Save structured knowledge to cache. " +
-        "Use this for complex information gathering tasks that require multiple iterations and quality assurance.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          goal: {
-            type: "string",
-            description:
-              "The user's final goal (e.g., 'Understanding VitePress configuration')",
-          },
-          initialQueries: {
-            type: "array",
-            items: { type: "string" },
-            description: "Initial query candidates to try",
-          },
-          maxIterations: {
-            type: "number",
-            description: "Maximum number of iterations to try",
-            default: 5,
-          },
-          evaluationMode: {
-            type: "string",
-            enum: ["strict", "fuzzy", "semantic"],
-            description: "Mode for evaluating results",
-            default: "semantic",
-          },
-          saveIntermediateResults: {
-            type: "boolean",
-            description: "Whether to save intermediate results",
-            default: true,
-          },
-          expectedResults: {
-            type: "object",
-            properties: {
-              keywords: {
-                type: "array",
-                items: { type: "string" },
-                description: "Required keywords in results",
-              },
-              minMatches: {
-                type: "number",
-                description: "Minimum number of matching results",
-              },
-              contentPatterns: {
-                type: "array",
-                items: { type: "string" },
-                description: "Expected content patterns (regex strings)",
-              },
-              confidence: {
-                type: "number",
-                description: "Confidence threshold (0-1)",
-              },
-            },
-            description: "Expected results criteria",
-          },
-          strategy: {
-            type: "object",
-            properties: {
-              initialMode: {
-                type: "string",
-                enum: ["broad", "specific"],
-                description: "Initial query strategy",
-                default: "broad",
-              },
-              refinementMethod: {
-                type: "string",
-                enum: ["keywords", "semantic", "hybrid"],
-                description: "Query refinement method",
-                default: "hybrid",
-              },
-              expansionRules: {
-                type: "array",
-                items: { type: "string" },
-                description: "Query expansion rules",
-              },
-            },
-            description: "Search strategy configuration",
-          },
-          provider: {
-            type: "string",
-            description: "Vector database provider (e.g., 'sqlite', 'memory')",
-          },
-          db: {
-            type: "string",
-            description: "Database file path",
-          },
-        },
-        required: ["goal"],
       },
     },
     {
@@ -664,51 +563,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               {
                 type: "text",
                 text: `📚 Indexed items:\n${formattedItems}${statsText}`,
-              },
-            ],
-          };
-        }
-
-        case "gistdex_query_plan": {
-          const result = await handleQueryPlanTool(args, { service });
-          if (!("success" in result) || !result.success) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `❌ Query plan failed${
-                    "message" in result ? `: ${result.message}` : ""
-                  }`,
-                },
-              ],
-            };
-          }
-
-          const planResult = result.result;
-          const summary = planResult.summary || "Query plan completed";
-          const details = [
-            summary,
-            "",
-            `Status: ${planResult.status}`,
-            `Iterations: ${planResult.iterations.length}`,
-            `Final confidence: ${planResult.finalResults.confidence.toFixed(2)}`,
-            `Results found: ${planResult.finalResults.data.length}`,
-          ];
-
-          if (planResult.savedAt) {
-            details.push(`Plan saved: ${planResult.savedAt}`);
-          }
-          if (planResult.structuredKnowledgePath) {
-            details.push(
-              `Knowledge saved: ${planResult.structuredKnowledgePath}`,
-            );
-          }
-
-          return {
-            content: [
-              {
-                type: "text",
-                text: details.join("\n"),
               },
             ],
           };

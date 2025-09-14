@@ -156,7 +156,7 @@ export const handlePlanExecuteStage = createToolHandler(
                 return new RegExp(patternObj.source, patternObj.flags || "");
               }
               // Default to empty pattern
-              return new RegExp("");
+              return /(?:)/;
             }),
           },
           // Safely convert actualResults - they should be VectorSearchResult[] or undefined
