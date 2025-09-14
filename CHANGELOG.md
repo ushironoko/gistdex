@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.1] - 2025-09-14
+
+- Merge pull request #97 from ushironoko:feat/agent-in-the-loop-improvements
+- fix server
+- add handover
+- fix
+- feat: add gistdex_agent_query tool for autonomous agent search
+- feat: extend gistdex_query with analysis metadata (backward compatible)
+- feat: add metadata generation utilities with Japanese support
+
+
 ## [1.3.0] - 2025-09-14
 
 - Merge pull request #96 from ushironoko/feat/query-plan-phase2-timeout
