@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.3.0] - 2025-09-14
+
+- Merge pull request #96 from ushironoko/feat/query-plan-phase2-timeout
+- add readme
+- remove test data
+- refactor: remove legacy gistdex_query_plan tool
+- feat: implement Agent in the Loop architecture for MCP tools
+- fix .gistdex dir
+- fix serena
+- test: add MCP query plan test JSON files
+- docs: update handover documentation with Phase 2 completion details
+- feat: integrate gistdex_query_plan tool into MCP server
+- feat: add queryPlanToolSchema with timeoutSeconds parameter
+- feat: add comprehensive test coverage for query plan functionality
+- feat: implement gistdex_query_plan MCP tool with timeout and DatabaseService integration
+- add local mcp
+- fix
+- WIP
+- fix
+
+
 ## [1.2.9] - 2025-09-12
 
 - Merge pull request #95 from ushironoko/feature/incremental-cache-improvement
