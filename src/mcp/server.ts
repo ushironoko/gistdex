@@ -28,7 +28,6 @@ import { handleAgentQueryTool } from "./tools/agent-query-tool.js";
 import { handleIndexTool } from "./tools/index-tool.js";
 import { handleListTool } from "./tools/list-tool.js";
 import { handleQueryTool } from "./tools/query-tool.js";
-import { ensureCacheDirectories } from "./utils/query-cache.js";
 
 // Database service will be initialized per request
 let service: DatabaseService | null = null;
@@ -444,7 +443,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "- summary: Quick overview (~5K tokens, default) " +
         "- detailed: Results with analysis (~15K tokens) " +
         "- full: Complete information (may exceed token limits) " +
-        "Supports pagination via cursor-based approach following MCP standard.",
+        "Supports pagination via cursor-based approach following MCP standard. " +
+        "Use saveStructured=true to save results to .gistdex/cache/ for future reference.",
       inputSchema: {
         type: "object",
         properties: {
@@ -483,6 +483,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
                 description: "Page size for pagination (max 10)",
                 default: 5,
                 maximum: 10,
+              },
+              saveStructured: {
+                type: "boolean",
+                description:
+                  "Save results as structured knowledge in .gistdex/cache/",
+                default: false,
               },
             },
           },
@@ -701,9 +707,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Start MCP server - this should only be called from the CLI
 export async function startMCPServer() {
   try {
-    // Ensure cache directories exist
-    await ensureCacheDirectories();
-
     // Print initialization message with best practices
     console.error("🚀 Gistdex MCP Server initialized");
     console.error("📚 Best Practices:");
