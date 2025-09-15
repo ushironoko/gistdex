@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.4] - 2025-09-15
+
+- add pagination and summary for agent query
+- fix handover
+
+
 ## [1.3.3] - 2025-09-14
 
 - fix
