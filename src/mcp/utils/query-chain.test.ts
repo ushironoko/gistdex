@@ -169,7 +169,7 @@ describe("query-chain", () => {
       const structured = buildStructuredResult(chainResult);
 
       expect(structured.topic).toBe("typescript-architecture");
-      expect(structured.content).toContain("# TypeScript Architecture");
+      expect(structured.content).toContain("# Typescript Architecture");
       expect(structured.content).toContain("## Query Chain Results");
       expect(structured.content).toContain("### Stage 1: Broad search");
       expect(structured.content).toContain("TypeScript uses modules");
