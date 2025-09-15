@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getCacheDir } from "./query-cache.js";
+import { getCacheDir } from "./cache-utils.js";
 
 export interface AgentEvaluationCache {
   goal: string;
@@ -216,42 +216,59 @@ export async function saveEvaluationToCache(
 }
 
 /**
- * Save refinement result to cache
+ * Generic cache item saver
  */
-export async function saveRefinementToCache(
-  refinement: Omit<AgentRefinementCache, "timestamp">,
+async function saveCacheItem<T extends { timestamp: string }>(
+  item: Omit<T, "timestamp">,
+  options: {
+    arrayKey: "refinements" | "stages";
+    subdirectory: string;
+    filename: (item: T) => string;
+  },
 ): Promise<string> {
   await ensureAgentCacheDirectories();
 
   const cache = loadAgentCache();
-  const refinementData: AgentRefinementCache = {
-    ...refinement,
+  const itemData: T = {
+    ...item,
     timestamp: new Date().toISOString(),
-  };
+  } as T;
 
-  cache.refinements.push(refinementData);
+  (cache[options.arrayKey] as unknown as T[]).push(itemData);
 
-  // Keep only last 100 refinements
-  if (cache.refinements.length > 100) {
-    cache.refinements = cache.refinements.slice(-100);
+  // Keep only last 100 items
+  if ((cache[options.arrayKey] as unknown as T[]).length > 100) {
+    (cache[options.arrayKey] as unknown as T[]) = (
+      cache[options.arrayKey] as unknown as T[]
+    ).slice(-100);
   }
 
   // Save main cache
   const cacheFile = join(getAgentCacheDir(), "agent-cache.json");
   writeFileSync(cacheFile, JSON.stringify(cache, null, 2));
 
-  // Save individual refinement
-  const refineDir = join(getAgentCacheDir(), "refinements");
-  const refineFile = join(
-    refineDir,
-    `refine-${Date.now()}-${refinement.iteration}.json`,
-  );
-  writeFileSync(refineFile, JSON.stringify(refinementData, null, 2));
+  // Save individual item
+  const itemDir = join(getAgentCacheDir(), options.subdirectory);
+  const itemFile = join(itemDir, options.filename(itemData));
+  writeFileSync(itemFile, JSON.stringify(itemData, null, 2));
 
   // Update markdown summary
   await saveAgentCacheAsMarkdown(cache);
 
-  return refineFile;
+  return itemFile;
+}
+
+/**
+ * Save refinement result to cache
+ */
+export async function saveRefinementToCache(
+  refinement: Omit<AgentRefinementCache, "timestamp">,
+): Promise<string> {
+  return saveCacheItem<AgentRefinementCache>(refinement, {
+    arrayKey: "refinements",
+    subdirectory: "refinements",
+    filename: (item) => `refine-${Date.now()}-${item.iteration}.json`,
+  });
 }
 
 /**
@@ -260,37 +277,12 @@ export async function saveRefinementToCache(
 export async function saveStageToCache(
   stage: Omit<AgentStageCache, "timestamp">,
 ): Promise<string> {
-  await ensureAgentCacheDirectories();
-
-  const cache = loadAgentCache();
-  const stageData: AgentStageCache = {
-    ...stage,
-    timestamp: new Date().toISOString(),
-  };
-
-  cache.stages.push(stageData);
-
-  // Keep only last 100 stages
-  if (cache.stages.length > 100) {
-    cache.stages = cache.stages.slice(-100);
-  }
-
-  // Save main cache
-  const cacheFile = join(getAgentCacheDir(), "agent-cache.json");
-  writeFileSync(cacheFile, JSON.stringify(cache, null, 2));
-
-  // Save individual stage
-  const stageDir = join(getAgentCacheDir(), "stages");
-  const stageFile = join(
-    stageDir,
-    `stage-${Date.now()}-${stage.planId}-${stage.stageIndex}.json`,
-  );
-  writeFileSync(stageFile, JSON.stringify(stageData, null, 2));
-
-  // Update markdown summary
-  await saveAgentCacheAsMarkdown(cache);
-
-  return stageFile;
+  return saveCacheItem<AgentStageCache>(stage, {
+    arrayKey: "stages",
+    subdirectory: "stages",
+    filename: (item) =>
+      `stage-${Date.now()}-${item.planId}-${item.stageIndex}.json`,
+  });
 }
 
 /**
