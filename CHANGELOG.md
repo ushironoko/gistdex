@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.5] - 2025-09-15
+
+- Merge pull request #103 from ushironoko:feature/save-structured-knowledge
+- update serena
+- test(mcp): add comprehensive tests for saveStructured feature
+- feat(mcp): implement saveStructured functionality in agent query tool
+- feat(mcp): organize structured knowledge into subdirectories
+- refactor(mcp): remove unused cache directory initialization
+- feat(mcp): add saveStructured option to agent query tool
+
+
 ## [1.3.4] - 2025-09-15
 
 - add pagination and summary for agent query
