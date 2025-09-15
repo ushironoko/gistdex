@@ -32,6 +32,10 @@ vi.mock("../utils/metadata-generator.js", () => ({
   })),
 }));
 
+vi.mock("../utils/structured-knowledge.js", () => ({
+  updateStructuredKnowledge: vi.fn(),
+}));
+
 describe("agent-query-tool", () => {
   let mockService: DatabaseService;
   let options: AgentQueryOptions;
@@ -231,6 +235,44 @@ describe("agent-query-tool", () => {
       expect(result.hints).toBeDefined();
       expect(result.estimatedTokens).toBeLessThan(15000);
     });
+
+    it("should exclude embedding arrays from results in detailed mode", async () => {
+      const { semanticSearch } = await import("../../core/search/search.js");
+
+      // Create mock results with embedding arrays
+      const mockResultsWithEmbedding = mockSearchResults.map((result) => ({
+        ...result,
+        embedding: new Array(768).fill(0.1),
+      })) as Array<VectorSearchResult & { embedding: number[] }>;
+
+      vi.mocked(semanticSearch).mockResolvedValue(mockResultsWithEmbedding);
+
+      const input = {
+        query: "TypeScript",
+        goal: "Analyze TypeScript usage",
+        options: {
+          mode: "detailed" as const,
+        },
+      };
+
+      const result = await handleAgentQuery(input, options);
+
+      expect(result.success).toBe(true);
+      expect(result.results).toBeDefined();
+
+      // Verify that embeddings are excluded from all results
+      result.results?.forEach((res) => {
+        expect(res).not.toHaveProperty("embedding");
+        // Verify other properties are still present
+        expect(res).toHaveProperty("id");
+        expect(res).toHaveProperty("content");
+        expect(res).toHaveProperty("score");
+        expect(res).toHaveProperty("metadata");
+      });
+
+      // Token count should be significantly lower without embeddings
+      expect(result.estimatedTokens).toBeLessThan(15000);
+    });
   });
 
   describe("Full Mode", () => {
@@ -255,6 +297,46 @@ describe("agent-query-tool", () => {
       expect(result.progress).toBeDefined();
       // Full mode may exceed token limits
       expect(result.estimatedTokens).toBeGreaterThan(0);
+    });
+
+    it("should exclude embedding arrays from results in full mode", async () => {
+      const { semanticSearch } = await import("../../core/search/search.js");
+
+      // Create mock results with embedding arrays
+      const mockResultsWithEmbedding = mockSearchResults.map((result) => ({
+        ...result,
+        embedding: new Array(768).fill(0.1),
+      })) as Array<VectorSearchResult & { embedding: number[] }>;
+
+      vi.mocked(semanticSearch).mockResolvedValue(mockResultsWithEmbedding);
+
+      const input = {
+        query: "TypeScript",
+        goal: "Complete analysis",
+        options: {
+          mode: "full" as const,
+        },
+      };
+
+      const result = await handleAgentQuery(input, options);
+
+      expect(result.success).toBe(true);
+      expect(result.results).toBeDefined();
+
+      // Verify that embeddings are excluded from all results
+      result.results?.forEach((res) => {
+        expect(res).not.toHaveProperty("embedding");
+        // Verify other properties are still present
+        expect(res).toHaveProperty("id");
+        expect(res).toHaveProperty("content");
+        expect(res).toHaveProperty("score");
+        expect(res).toHaveProperty("metadata");
+      });
+
+      // Token count should be reasonable without embeddings
+      expect(result.estimatedTokens).toBeGreaterThan(0);
+      // Should be much less than with embeddings (768 * 3 results * ~4 chars per float = ~9000 tokens just for embeddings)
+      expect(result.estimatedTokens).toBeLessThan(50000);
     });
   });
 
@@ -425,6 +507,101 @@ describe("agent-query-tool", () => {
       if (result.success) {
         expect(result.data.cursor).toBe("valid-cursor-string");
       }
+    });
+  });
+
+  describe("SaveStructured Option", () => {
+    it("should save structured knowledge when saveStructured is true in summary mode", async () => {
+      const { semanticSearch } = await import("../../core/search/search.js");
+      const { updateStructuredKnowledge } = await import(
+        "../utils/structured-knowledge.js"
+      );
+
+      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
+
+      const input = {
+        query: "TypeScript",
+        goal: "Learn TypeScript",
+        options: {
+          mode: "summary" as const,
+          saveStructured: true,
+        },
+      };
+
+      const result = await handleAgentQuery(input, options);
+
+      expect(result.success).toBe(true);
+      expect(vi.mocked(updateStructuredKnowledge)).toHaveBeenCalledWith(
+        "Learn TypeScript",
+        expect.objectContaining({
+          content: expect.stringContaining("Learn TypeScript"),
+          metadata: expect.objectContaining({
+            timestamp: expect.any(String),
+            mode: "summary",
+            queryExecuted: "TypeScript",
+            goal: "Learn TypeScript",
+          }),
+        }),
+        expect.stringContaining("/agents"),
+      );
+    });
+
+    it("should save structured knowledge when saveStructured is true in detailed mode", async () => {
+      const { semanticSearch } = await import("../../core/search/search.js");
+      const { updateStructuredKnowledge } = await import(
+        "../utils/structured-knowledge.js"
+      );
+
+      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
+
+      const input = {
+        query: "TypeScript",
+        goal: "Analyze TypeScript",
+        options: {
+          mode: "detailed" as const,
+          saveStructured: true,
+        },
+      };
+
+      const result = await handleAgentQuery(input, options);
+
+      expect(result.success).toBe(true);
+      expect(vi.mocked(updateStructuredKnowledge)).toHaveBeenCalledWith(
+        "Analyze TypeScript",
+        expect.objectContaining({
+          content: expect.any(String),
+          metadata: expect.objectContaining({
+            mode: "detailed",
+            queryExecuted: "TypeScript",
+            goal: "Analyze TypeScript",
+          }),
+        }),
+        expect.stringContaining("/agents"),
+      );
+    });
+
+    it("should not save structured knowledge when saveStructured is false", async () => {
+      const { semanticSearch } = await import("../../core/search/search.js");
+      const { updateStructuredKnowledge } = await import(
+        "../utils/structured-knowledge.js"
+      );
+
+      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
+      vi.mocked(updateStructuredKnowledge).mockClear();
+
+      const input = {
+        query: "TypeScript",
+        goal: "Learn TypeScript",
+        options: {
+          mode: "summary" as const,
+          saveStructured: false,
+        },
+      };
+
+      const result = await handleAgentQuery(input, options);
+
+      expect(result.success).toBe(true);
+      expect(vi.mocked(updateStructuredKnowledge)).not.toHaveBeenCalled();
     });
   });
 });

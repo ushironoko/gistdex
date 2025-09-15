@@ -99,6 +99,7 @@ describe("query-tool", () => {
             resultCount: 2,
           }),
         }),
+        expect.stringContaining("/queries"),
       );
     });
 
@@ -219,6 +220,7 @@ describe("query-tool", () => {
             isChainResult: true,
           }),
         }),
+        expect.stringContaining("/queries"),
       );
     });
 
@@ -482,6 +484,7 @@ describe("query-tool", () => {
             searchStrategy: "hybrid",
           }),
         }),
+        expect.stringContaining("/queries"),
       );
     });
 
