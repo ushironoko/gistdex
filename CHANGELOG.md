@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.6] - 2025-09-15
+
+- Merge pull request #104 from ushironoko/refactor/mcp-tools-simplification
+- fix CLAUDE.md
+- fix readme
+- fix test
+- add handover
+- test(mcp): update query-chain tests and implementation
+- refactor(mcp): simplify agent-query-tool implementation
+- refactor(mcp): update server and utilities to use common modules
+- refactor(mcp): remove complex agent-in-the-loop tools
+- feat(mcp): add common utility modules for text processing and score analysis
+
+
 ## [1.3.5] - 2025-09-15
 
 - Merge pull request #103 from ushironoko:feature/save-structured-knowledge
