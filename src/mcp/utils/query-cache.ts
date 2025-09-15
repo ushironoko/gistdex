@@ -36,22 +36,6 @@ export function getCacheDir(): string {
 }
 
 /**
- * Ensure cache directories exist
- */
-export async function ensureCacheDirectories(): Promise<void> {
-  const cacheDir = getCacheDir();
-  const resultsDir = join(cacheDir, "results");
-
-  if (!existsSync(cacheDir)) {
-    mkdirSync(cacheDir, { recursive: true });
-  }
-
-  if (!existsSync(resultsDir)) {
-    mkdirSync(resultsDir, { recursive: true });
-  }
-}
-
-/**
  * Load cached queries from disk
  */
 export function loadCachedQueries(): QueryCache {

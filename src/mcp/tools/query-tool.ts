@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import {
   getOriginalContent,
@@ -127,7 +128,9 @@ async function handleQueryOperation(
             isChainResult: true,
           },
         };
-        await updateStructuredKnowledge(data.query, update);
+        // Save to queries subdirectory
+        const cacheDir = join(process.cwd(), ".gistdex", "cache", "queries");
+        await updateStructuredKnowledge(data.query, update, cacheDir);
 
         console.log(
           `Updated structured knowledge for "${data.query}" with ${chainResult.combinedResults.length} unique results`,
@@ -299,7 +302,9 @@ async function handleQueryOperation(
             queryExecuted: data.query,
           },
         };
-        await updateStructuredKnowledge(data.query, update);
+        // Save to queries subdirectory
+        const cacheDir = join(process.cwd(), ".gistdex", "cache", "queries");
+        await updateStructuredKnowledge(data.query, update, cacheDir);
       }
     }
 

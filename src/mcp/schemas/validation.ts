@@ -369,6 +369,15 @@ export const agentQueryToolSchema = z.object({
         .optional()
         .default(false)
         .describe("Include debug information"),
+      saveStructured: z
+        .union([
+          z.boolean(),
+          z.string().transform((val) => val === "true" || val === "1"),
+          z.number().transform((val) => val !== 0),
+        ])
+        .optional()
+        .default(false)
+        .describe("Save results as structured knowledge in .gistdex/cache/"),
     })
     .optional()
     .describe("Search options"),
