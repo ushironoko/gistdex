@@ -71,7 +71,7 @@
     "ora": "8.2.0",
     "sqlite-vec": "0.1.6",
     "tree-sitter-wasms": "0.1.11",
-    "web-tree-sitter": "0.24.5",
+    "web-tree-sitter": "0.25.9",
     "zod": "3.25.76"
   },
   "devDependencies": {
