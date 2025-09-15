@@ -439,7 +439,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "2) Executes queries strategically with progress tracking " +
         "3) Evaluates results and decides next actions " +
         "4) Provides comprehensive analysis and recommendations " +
-        "Use this for complex research tasks that require multiple search iterations.",
+        "Use this for complex research tasks that require multiple search iterations. " +
+        "Supports three response modes: " +
+        "- summary: Quick overview (~5K tokens, default) " +
+        "- detailed: Results with analysis (~15K tokens) " +
+        "- full: Complete information (may exceed token limits) " +
+        "Supports pagination via cursor-based approach following MCP standard.",
       inputSchema: {
         type: "object",
         properties: {
@@ -451,17 +456,40 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "string",
             description: "Initial search query text",
           },
+          cursor: {
+            type: "string",
+            description:
+              "Pagination cursor for continuing from previous results",
+          },
+          options: {
+            type: "object",
+            properties: {
+              mode: {
+                type: "string",
+                enum: ["summary", "detailed", "full"],
+                default: "summary",
+                description:
+                  "Response mode: summary (~5K tokens), detailed (~15K tokens), or full (may exceed limits)",
+              },
+              k: {
+                type: "number",
+                description:
+                  "Number of results per query (max 5 for MCP token limits)",
+                default: 5,
+                maximum: 5,
+              },
+              pageSize: {
+                type: "number",
+                description: "Page size for pagination (max 10)",
+                default: 5,
+                maximum: 10,
+              },
+            },
+          },
           maxIterations: {
             type: "number",
             description: "Maximum number of search iterations",
             default: 5,
-          },
-          k: {
-            type: "number",
-            description:
-              "Number of results per query (max 5 for MCP token limits)",
-            default: 5,
-            maximum: 5,
           },
           provider: {
             type: "string",
