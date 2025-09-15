@@ -11,9 +11,15 @@ import {
   agentQueryToolSchema,
 } from "../schemas/validation.js";
 import {
-  analyzeContentTypes,
+  analyzeContentCharacteristics,
   analyzeSemanticCoherence,
+  type ContentCharacteristics,
+  extractMainTopics as extractTopics,
 } from "../utils/metadata-generator.js";
+import {
+  calculateDetailedMetrics,
+  type DetailedScoreMetrics,
+} from "../utils/score-analysis.js";
 import { updateStructuredKnowledge } from "../utils/structured-knowledge.js";
 import {
   type BaseToolOptions,
@@ -27,22 +33,9 @@ type AgentQueryInput = AgentQueryToolInput;
 
 /**
  * Detailed metrics for agent decision making
+ * Re-exported from score-analysis module
  */
-export interface DetailedMetrics {
-  totalResults: number;
-  avgScore: number;
-  maxScore: number;
-  minScore: number;
-  scoreVariance: number;
-  scoreStandardDeviation: number;
-  medianScore: number;
-  scorePercentiles: {
-    p25: number;
-    p50: number;
-    p75: number;
-    p90: number;
-  };
-}
+export type DetailedMetrics = DetailedScoreMetrics;
 
 /**
  * Semantic analysis with topic clustering
@@ -74,14 +67,9 @@ export interface QueryAnalysis {
 
 /**
  * Content characteristics analysis
+ * Re-exported from metadata-generator module
  */
-export interface ContentCharacteristics {
-  predominantType: "code" | "documentation" | "mixed" | "example";
-  codeLanguages?: string[];
-  hasExamples: boolean;
-  hasImplementation: boolean;
-  completeness: number; // 0-1
-}
+export type { ContentCharacteristics } from "../utils/metadata-generator.js";
 
 /**
  * Next action suggestions for agent
@@ -237,61 +225,7 @@ function removeEmbeddingFromResults(
   });
 }
 
-/**
- * Calculate detailed metrics from search results
- */
-function calculateDetailedMetrics(
-  results: VectorSearchResult[],
-): DetailedMetrics {
-  if (results.length === 0) {
-    return {
-      totalResults: 0,
-      avgScore: 0,
-      maxScore: 0,
-      minScore: 0,
-      scoreVariance: 0,
-      scoreStandardDeviation: 0,
-      medianScore: 0,
-      scorePercentiles: {
-        p25: 0,
-        p50: 0,
-        p75: 0,
-        p90: 0,
-      },
-    };
-  }
-
-  const scores = results.map((r) => r.score).sort((a, b) => a - b);
-  const sum = scores.reduce((acc, score) => acc + score, 0);
-  const avg = sum / scores.length;
-
-  // Calculate variance and standard deviation
-  const variance =
-    scores.reduce((acc, score) => acc + (score - avg) ** 2, 0) / scores.length;
-  const stdDev = Math.sqrt(variance);
-
-  // Calculate percentiles
-  const getPercentile = (p: number) => {
-    const index = Math.ceil((p / 100) * scores.length) - 1;
-    return scores[Math.max(0, Math.min(index, scores.length - 1))] ?? 0;
-  };
-
-  return {
-    totalResults: results.length,
-    avgScore: avg,
-    maxScore: Math.max(...scores),
-    minScore: Math.min(...scores),
-    scoreVariance: variance,
-    scoreStandardDeviation: stdDev,
-    medianScore: getPercentile(50),
-    scorePercentiles: {
-      p25: getPercentile(25),
-      p50: getPercentile(50),
-      p75: getPercentile(75),
-      p90: getPercentile(90),
-    },
-  };
-}
+// calculateDetailedMetrics is now imported from score-analysis.ts
 
 /**
  * Enhance semantic analysis with topic clustering
@@ -389,61 +323,7 @@ function analyzeQuery(query: string): QueryAnalysis {
   };
 }
 
-/**
- * Analyze content characteristics
- */
-function analyzeContentCharacteristics(
-  results: VectorSearchResult[],
-): ContentCharacteristics {
-  const contentAnalysis = analyzeContentTypes(results);
-
-  const codeType = contentAnalysis.contentTypes.find((t) => t.type === "code");
-  const docType = contentAnalysis.contentTypes.find(
-    (t) => t.type === "documentation",
-  );
-  const exampleType = contentAnalysis.contentTypes.find(
-    (t) => t.type === "example",
-  );
-
-  const hasCode = (codeType?.count ?? 0) > 0;
-  const hasDocs = (docType?.count ?? 0) > 0;
-  const hasExamples = (exampleType?.count ?? 0) > 0;
-
-  const predominantType =
-    hasCode && hasDocs
-      ? "mixed"
-      : hasCode
-        ? "code"
-        : hasDocs
-          ? "documentation"
-          : hasExamples
-            ? "example"
-            : "mixed";
-
-  // Detect code languages (simplified)
-  const codeLanguages: string[] = [];
-  for (const result of results) {
-    if (/import .* from|export|const|let|var/.test(result.content)) {
-      if (!codeLanguages.includes("javascript"))
-        codeLanguages.push("javascript");
-    }
-    if (/interface|type|enum|namespace/.test(result.content)) {
-      if (!codeLanguages.includes("typescript"))
-        codeLanguages.push("typescript");
-    }
-    if (/def |class |import |from |if __name__/.test(result.content)) {
-      if (!codeLanguages.includes("python")) codeLanguages.push("python");
-    }
-  }
-
-  return {
-    predominantType,
-    codeLanguages: codeLanguages.length > 0 ? codeLanguages : undefined,
-    hasExamples,
-    hasImplementation: hasCode,
-    completeness: Math.min(1, results.length / 10), // Simple completeness metric
-  };
-}
+// analyzeContentCharacteristics is now imported from metadata-generator.ts
 
 /**
  * Generate next action suggestions
@@ -641,69 +521,13 @@ function trackProgress(
 
 /**
  * Extract main topics from search results using frequency analysis
+ * Delegates to the common metadata-generator utility
  */
 function extractMainTopics(
   results: VectorSearchResult[],
   topN: number = 3,
 ): string[] {
-  const wordFreq = new Map<string, number>();
-
-  // Count word frequency across all results
-  for (const result of results) {
-    // Simple tokenization - split by spaces and common punctuation
-    const words = result.content
-      .toLowerCase()
-      .split(/[\s,;.!?()[\]{}:"']+/)
-      .filter((word) => word.length > 3); // Filter short words
-
-    for (const word of words) {
-      wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
-    }
-  }
-
-  // Filter common stop words (simplified list)
-  const stopWords = new Set([
-    "this",
-    "that",
-    "these",
-    "those",
-    "with",
-    "from",
-    "have",
-    "been",
-    "will",
-    "would",
-    "could",
-    "should",
-    "which",
-    "where",
-    "when",
-    "what",
-    "about",
-    "their",
-    "there",
-    "after",
-    "before",
-    "some",
-    "many",
-    "more",
-    "most",
-    "other",
-    "such",
-    "only",
-    "also",
-    "into",
-    "over",
-    "under",
-    "through",
-  ]);
-
-  // Sort by frequency and return top N non-stop words
-  return Array.from(wordFreq.entries())
-    .filter(([word, freq]) => freq >= 2 && !stopWords.has(word))
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, topN)
-    .map(([word]) => word);
+  return extractTopics(results, topN);
 }
 
 /**

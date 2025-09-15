@@ -88,24 +88,23 @@ MCP tools available:
 - `gistdex_index` - Index content from various sources
 - `gistdex_query` - Search indexed content (supports `section` option for markdown)
 - `gistdex_list` - List indexed items with statistics
-- `gistdex_evaluate` - Evaluate search results against a goal (Agent in the Loop)
-- `gistdex_refine_query` - Refine search query based on evaluation feedback (Agent in the Loop)
-- `gistdex_plan_execute_stage` - Execute a single stage of a query plan with agent control (Agent in the Loop)
+- `gistdex_agent_query` - Autonomous agent-based search with strategic planning and execution
 
-#### Agent in the Loop Architecture
+#### Agent Query Architecture
 
-The project implements an Agent in the Loop architecture for advanced query planning and execution:
+The project implements autonomous agent-based search with strategic planning and execution:
 
-1. **Stage Execution**: Use `gistdex_plan_execute_stage` to execute individual stages with agent control
-2. **Result Evaluation**: Use `gistdex_evaluate` to assess if results meet the goal
-3. **Query Refinement**: Use `gistdex_refine_query` to improve queries based on feedback
-4. **Agent Cache**: Results are cached in `.gistdex/cache/agent/` for analysis and reuse
+1. **Strategic Planning**: `gistdex_agent_query` creates multi-stage query plans based on research goals
+2. **Autonomous Execution**: Executes queries strategically with progress tracking and evaluation
+3. **Adaptive Refinement**: Automatically evaluates results and decides next actions
+4. **Comprehensive Analysis**: Provides detailed analysis and recommendations for complex research tasks
+5. **Agent Cache**: Results are cached in `.gistdex/cache/agent/` for analysis and reuse
 
 This architecture allows LLM agents to:
-- Execute queries step-by-step with evaluation at each stage
-- Refine queries based on intermediate results
-- Build structured knowledge incrementally
-- Maintain full control over the search process
+- Plan and execute complex search strategies autonomously
+- Evaluate results and refine queries automatically
+- Build structured knowledge through multi-stage research
+- Handle complex research tasks requiring multiple search iterations
 
 **重要な開発上の注意事項:**
 MCPツールに新しいオプションを追加する際は、以下の3箇所すべての実装が必要：
@@ -265,7 +264,7 @@ Tests are colocated with source files using `.test.ts` suffix. Run tests with co
 ### MCP Server Integration (v0.5.0+)
 
 - Added Model Context Protocol (MCP) server for LLM integration
-- Three MCP tools: `gistdex_index`, `gistdex_query`, `gistdex_list`
+- Four MCP tools: `gistdex_index`, `gistdex_query`, `gistdex_list`, `gistdex_agent_query`
 - Common tool handler factory to eliminate code duplication
 - CLI supports `--mcp` flag to start server
 - Configurable via `.mcp.json` with `cwd` field for database location

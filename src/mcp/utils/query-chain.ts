@@ -175,10 +175,7 @@ export function buildStructuredResult(
     .split(/[-_]/) // Split by dash or underscore
     .map((word) => word.trim())
     .filter((word) => word.length > 0)
-    .map((word, _index) => {
-      // Preserve "TypeScript", "JavaScript" etc.
-      if (word.toLowerCase() === "typescript") return "TypeScript";
-      if (word.toLowerCase() === "javascript") return "JavaScript";
+    .map((word) => {
       // Capitalize first letter of each word
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
@@ -272,16 +269,4 @@ export function buildStructuredResult(
     content: lines.join("\n"),
     metadata,
   };
-}
-
-/**
- * Save chain result as structured knowledge
- */
-export async function saveChainResult(
-  chainResult: ChainResult,
-  cacheDir?: string,
-): Promise<void> {
-  const { saveStructuredKnowledge } = await import("./structured-knowledge.js");
-  const structured = buildStructuredResult(chainResult);
-  await saveStructuredKnowledge(structured, cacheDir);
 }

@@ -1,17 +1,15 @@
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
+import {
+  calculateScoreDistribution as calculateDistribution,
+  type ScoreDistribution as ScoreDistributionType,
+} from "./score-analysis.js";
+import { extractKeywords as extractKeywordsFromText } from "./stop-words.js";
 
 /**
  * Score distribution analysis for search results
+ * Re-exported from score-analysis module
  */
-export interface ScoreDistribution {
-  high: number; // 0.8以上の結果数
-  medium: number; // 0.5-0.8の結果数
-  low: number; // 0.5未満の結果数
-  histogram: Array<{
-    range: string;
-    count: number;
-  }>;
-}
+export type ScoreDistribution = ScoreDistributionType;
 
 /**
  * Keyword coverage analysis for search results
@@ -98,241 +96,25 @@ export interface ExecutionContext {
 
 /**
  * Extract keywords from a query string (supports both English and Japanese)
+ * Internal wrapper that uses the common utility
  */
 function extractKeywords(query: string): string[] {
-  // Common English stop words
-  const englishStopWords = new Set([
-    "a",
-    "an",
-    "the",
-    "and",
-    "or",
-    "but",
-    "in",
-    "on",
-    "at",
-    "to",
-    "for",
-    "of",
-    "with",
-    "by",
-    "from",
-    "as",
-    "is",
-    "was",
-    "are",
-    "were",
-    "been",
-    "be",
-    "have",
-    "has",
-    "had",
-    "do",
-    "does",
-    "did",
-    "will",
-    "would",
-    "could",
-    "should",
-    "may",
-    "might",
-    "must",
-    "can",
-    "this",
-    "that",
-    "these",
-    "those",
-    "i",
-    "you",
-    "he",
-    "she",
-    "it",
-    "we",
-    "they",
-    "what",
-    "which",
-    "who",
-    "when",
-    "where",
-    "why",
-    "how",
-  ]);
-
-  // Common Japanese particles and stop words
-  const japaneseStopWords = new Set([
-    "の",
-    "に",
-    "は",
-    "を",
-    "た",
-    "が",
-    "で",
-    "て",
-    "と",
-    "し",
-    "れ",
-    "さ",
-    "ある",
-    "いる",
-    "も",
-    "する",
-    "から",
-    "な",
-    "こと",
-    "として",
-    "い",
-    "や",
-    "など",
-    "なる",
-    "へ",
-    "か",
-    "だ",
-    "これ",
-    "それ",
-    "あれ",
-    "この",
-    "その",
-    "あの",
-    "です",
-    "ます",
-    "でした",
-    "ました",
-    "ません",
-    "でしょう",
-    "だろう",
-    "よう",
-    "ため",
-    "ので",
-    "けど",
-    "しかし",
-    "また",
-    "および",
-    "または",
-    "について",
-    "にて",
-    "より",
-    "まで",
-    "もの",
-    "ところ",
-    "という",
-    "といった",
-    "における",
-    "において",
-    "に関する",
-    "に対する",
-    "に対して",
-  ]);
-
-  // Detect if the query contains Japanese characters
-  const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(query);
-
-  const keywords: string[] = [];
-
-  if (hasJapanese) {
-    // Japanese text processing
-    // Split by various delimiters including Japanese punctuation
-    const japaneseTokens = query
-      .split(/[\s、。！？・,;.!?]+/)
-      .filter((word) => word.length > 0);
-
-    for (const token of japaneseTokens) {
-      // Extract meaningful parts from Japanese text
-      // This is a simplified approach - ideally we'd use a proper morphological analyzer
-
-      // Split mixed alphanumeric and Japanese
-      const subTokens = token.split(
-        /([a-zA-Z0-9]+|[\u3040-\u309F]+|[\u30A0-\u30FF]+|[\u4E00-\u9FAF]+)/,
-      );
-
-      for (const subToken of subTokens) {
-        const lowerToken = subToken.toLowerCase();
-
-        // Skip empty tokens and stop words
-        if (
-          !subToken ||
-          japaneseStopWords.has(subToken) ||
-          englishStopWords.has(lowerToken)
-        ) {
-          continue;
-        }
-
-        // For Japanese: keep tokens that are likely to be meaningful
-        if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(subToken)) {
-          // Skip single hiragana characters (likely particles)
-          if (subToken.length === 1 && /[\u3040-\u309F]/.test(subToken)) {
-            continue;
-          }
-          keywords.push(subToken);
-        }
-        // For English/alphanumeric: apply length filter
-        else if (subToken.length > 2) {
-          keywords.push(lowerToken);
-        }
-      }
-    }
-  } else {
-    // English text processing (existing logic)
-    const englishTokens = query
-      .toLowerCase()
-      .split(/[\s,;.!?]+/)
-      .filter((word) => word.length > 2 && !englishStopWords.has(word));
-
-    keywords.push(...englishTokens);
-  }
-
-  // Remove duplicates while preserving order
-  return [...new Set(keywords)];
+  // Use the common utility with appropriate options
+  return extractKeywordsFromText(query, {
+    languages: ["all"],
+    minLength: 2,
+    minFrequency: 1,
+  });
 }
 
 /**
  * Calculate score distribution for search results
+ * Delegates to the common score-analysis utility
  */
 export function calculateScoreDistribution(
   results: VectorSearchResult[],
 ): ScoreDistribution {
-  const distribution = {
-    high: 0,
-    medium: 0,
-    low: 0,
-    histogram: [] as Array<{ range: string; count: number }>,
-  };
-
-  // Count results by score range
-  for (const result of results) {
-    if (result.score >= 0.8) {
-      distribution.high++;
-    } else if (result.score >= 0.5) {
-      distribution.medium++;
-    } else {
-      distribution.low++;
-    }
-  }
-
-  // Create histogram with 0.1 intervals
-  const ranges = [
-    "0.0-0.1",
-    "0.1-0.2",
-    "0.2-0.3",
-    "0.3-0.4",
-    "0.4-0.5",
-    "0.5-0.6",
-    "0.6-0.7",
-    "0.7-0.8",
-    "0.8-0.9",
-    "0.9-1.0",
-  ];
-
-  for (const range of ranges) {
-    const [minStr, maxStr] = range.split("-");
-    const min = Number.parseFloat(minStr ?? "0");
-    const max = Number.parseFloat(maxStr ?? "1");
-    const count = results.filter((r) => r.score >= min && r.score < max).length;
-    if (count > 0) {
-      distribution.histogram.push({ range, count });
-    }
-  }
-
-  return distribution;
+  return calculateDistribution(results);
 }
 
 /**
@@ -675,4 +457,103 @@ export function createExecutionContext(_query: string): ExecutionContext {
       sources: [], // Will be populated from database
     },
   };
+}
+
+/**
+ * Content characteristics for detailed analysis
+ */
+export interface ContentCharacteristics {
+  predominantType: "code" | "documentation" | "example" | "mixed";
+  codeLanguages?: string[];
+  hasExamples: boolean;
+  hasImplementation: boolean;
+  completeness: number; // 0-1 indicating how complete the content appears
+}
+
+/**
+ * Analyze content characteristics with code language detection
+ */
+export function analyzeContentCharacteristics(
+  results: VectorSearchResult[],
+): ContentCharacteristics {
+  const contentAnalysis = analyzeContentTypes(results);
+
+  const codeType = contentAnalysis.contentTypes.find((t) => t.type === "code");
+  const docType = contentAnalysis.contentTypes.find(
+    (t) => t.type === "documentation",
+  );
+  const exampleType = contentAnalysis.contentTypes.find(
+    (t) => t.type === "example",
+  );
+
+  const hasCode = (codeType?.count ?? 0) > 0;
+  const hasDocs = (docType?.count ?? 0) > 0;
+  const hasExamples = (exampleType?.count ?? 0) > 0;
+
+  const predominantType =
+    hasCode && hasDocs
+      ? "mixed"
+      : hasCode
+        ? "code"
+        : hasDocs
+          ? "documentation"
+          : hasExamples
+            ? "example"
+            : "mixed";
+
+  // Detect code languages (simplified)
+  const codeLanguages: string[] = [];
+  for (const result of results) {
+    if (/import .* from|export|const|let|var/.test(result.content)) {
+      if (!codeLanguages.includes("javascript"))
+        codeLanguages.push("javascript");
+    }
+    if (/interface|type|enum|namespace/.test(result.content)) {
+      if (!codeLanguages.includes("typescript"))
+        codeLanguages.push("typescript");
+    }
+    if (/def |class |import |from |if __name__/.test(result.content)) {
+      if (!codeLanguages.includes("python")) codeLanguages.push("python");
+    }
+    if (
+      /func |package |import \(|var |const |type \w+ struct/.test(
+        result.content,
+      )
+    ) {
+      if (!codeLanguages.includes("go")) codeLanguages.push("go");
+    }
+    if (/fn |impl |pub |let |mut |use |mod /.test(result.content)) {
+      if (!codeLanguages.includes("rust")) codeLanguages.push("rust");
+    }
+  }
+
+  return {
+    predominantType,
+    codeLanguages: codeLanguages.length > 0 ? codeLanguages : undefined,
+    hasExamples,
+    hasImplementation: hasCode,
+    completeness: Math.min(1, results.length / 10), // Simple completeness metric
+  };
+}
+
+/**
+ * Extract main topics from search results using frequency analysis
+ */
+export function extractMainTopics(
+  results: VectorSearchResult[],
+  topN: number = 3,
+): string[] {
+  // Combine all content
+  const allContent = results.map((r) => r.content).join(" ");
+
+  // Extract keywords with frequency analysis
+  const keywords = extractKeywordsFromText(allContent, {
+    languages: ["all"],
+    minLength: 4, // Longer words are more likely to be topics
+    minFrequency: 2, // Must appear at least twice
+    topN: topN * 3, // Get more candidates
+  });
+
+  // Return top N topics
+  return keywords.slice(0, topN);
 }

@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
+import { getCacheDir } from "./cache-utils.js";
 
 export type StructuredKnowledge = {
   topic: string;
@@ -143,21 +144,6 @@ export function mergeKnowledge(
       totalQueries: ((existing.metadata.totalQueries as number) || 0) + 1,
     },
   };
-}
-
-/**
- * Get cache directory path
- */
-function getCacheDir(): string {
-  const localCache = join(process.cwd(), ".gistdex", "cache");
-  const gistdexDir = dirname(localCache);
-
-  // Create .gistdex directory if it doesn't exist
-  if (!existsSync(gistdexDir)) {
-    mkdirSync(gistdexDir, { recursive: true });
-  }
-
-  return localCache;
 }
 
 /**

@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
+import { getCacheDir } from "./cache-utils.js";
 
 export interface CachedQuery {
   query: string;
@@ -18,22 +19,6 @@ export interface QueryCache {
 }
 
 const CACHE_VERSION = "1.0.0";
-
-/**
- * Get the cache directory path
- */
-export function getCacheDir(): string {
-  // Check for .gistdex/cache in current directory first
-  const localCache = join(process.cwd(), ".gistdex", "cache");
-  const gistdexDir = dirname(localCache);
-
-  // Create .gistdex directory if it doesn't exist
-  if (!existsSync(gistdexDir)) {
-    mkdirSync(gistdexDir, { recursive: true });
-  }
-
-  return localCache;
-}
 
 /**
  * Load cached queries from disk

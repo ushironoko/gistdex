@@ -30,6 +30,14 @@ vi.mock("../utils/metadata-generator.js", () => ({
     hasExamples: true,
     hasImplementation: true,
   })),
+  extractMainTopics: vi.fn(() => ["typescript", "functions", "types"]),
+  analyzeContentCharacteristics: vi.fn(() => ({
+    predominantType: "code",
+    hasExamples: true,
+    hasImplementation: true,
+    codeLanguages: ["TypeScript"],
+    completeness: 0.8,
+  })),
 }));
 
 vi.mock("../utils/structured-knowledge.js", () => ({
