@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.7] - 2025-09-16
+
+- Merge pull request #106 from ushironoko/feat/improve-markdown-chunking-hierarchy
+- feat: improve markdown chunking to preserve heading hierarchy
+
+
 ## [1.3.6] - 2025-09-15
 
 - Merge pull request #104 from ushironoko/refactor/mcp-tools-simplification
