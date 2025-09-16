@@ -30,6 +30,19 @@ Show complete original content instead of snippets:
 npx @ushironoko/gistdex query --full "react hooks"
 ```
 
+### Section Content (-s, --section)
+
+For markdown files, retrieve the complete section containing the match:
+
+```bash
+npx @ushironoko/gistdex query --section "installation guide"
+```
+
+This option:
+- Returns the entire markdown section (heading and all content under it)
+- Preserves document structure and context
+- Cannot be used together with `--full`
+
 ### Filter by Type (-t, --type)
 
 Filter by source type (gist, github, file, text):
@@ -88,6 +101,9 @@ npx @ushironoko/gistdex query --no-rerank "quick search"
 
 ### With --full Flag
 Shows complete original content instead of chunks.
+
+### With --section Flag
+Shows the complete markdown section, including heading information.
 
 ## Troubleshooting
 
