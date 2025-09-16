@@ -235,15 +235,57 @@ function enhanceSemanticAnalysis(
   results: VectorSearchResult[],
   basicAnalysis: ReturnType<typeof analyzeSemanticCoherence>,
 ): EnhancedSemanticAnalysis {
+  const language = detectLanguage(query);
+  const minWordLength = getMinWordLength(language);
   const coverageGaps: string[] = [];
 
   // Identify coverage gaps based on query keywords not found in results
-  const queryWords = query.toLowerCase().split(/\s+/);
+  const queryWords = tokenizeByLanguage(query.toLowerCase(), language);
   const resultContent = results.map((r) => r.content.toLowerCase()).join(" ");
 
   for (const word of queryWords) {
-    if (word.length > 3 && !resultContent.includes(word)) {
-      coverageGaps.push(word);
+    let shouldCheckWord = false;
+
+    if (language === "ja" || language === "mixed") {
+      // For Japanese, check meaningful words
+      // Kanji characters (Chinese characters used in Japanese)
+      // Examples: 機, 能, 実, 装
+      const isKanji = /[\u4E00-\u9FAF]/.test(word);
+      // Katakana words of 2+ chars (foreign/technical terms)
+      // Examples: データ, クエリ, システム
+      const isKatakana = /[\u30A0-\u30FF]{2,}/.test(word);
+      // Hiragana words longer than 2 chars (native Japanese words)
+      // Examples: ある, できる, なる
+      const isLongHiragana = /[\u3040-\u309F]/.test(word) && word.length > 2;
+      // English words (3+ letters)
+      // Examples: API, search, index
+      const isEnglishWord = /[a-zA-Z]{3,}/.test(word);
+
+      shouldCheckWord =
+        (isKanji || isKatakana || isLongHiragana || isEnglishWord) &&
+        !isStopword(word, language === "ja" ? "ja" : "en");
+    } else {
+      // For English, use minimum word length
+      shouldCheckWord = word.length >= minWordLength && !isStopword(word, "en");
+    }
+
+    if (shouldCheckWord) {
+      // Check if word exists in results
+      let wordFound = false;
+
+      // Check for Japanese characters (Hiragana, Katakana, Kanji)
+      if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(word)) {
+        // Japanese word - check for exact match
+        wordFound = resultContent.includes(word);
+      } else {
+        // English word - check with word boundaries
+        const regex = new RegExp(`\\b${word}\\b`, "i");
+        wordFound = regex.test(resultContent);
+      }
+
+      if (!wordFound) {
+        coverageGaps.push(word);
+      }
     }
   }
 
@@ -254,11 +296,20 @@ function enhanceSemanticAnalysis(
       for (let j = i + 1; j < results.length; j++) {
         const content1 = results[i]?.content.toLowerCase() ?? "";
         const content2 = results[j]?.content.toLowerCase() ?? "";
-        const words1 = new Set(content1.split(/\s+/));
-        const words2 = new Set(content2.split(/\s+/));
+
+        // Tokenize based on detected language of each content
+        const lang1 = detectLanguage(content1);
+        const lang2 = detectLanguage(content2);
+
+        const words1 = new Set(tokenizeByLanguage(content1, lang1));
+        const words2 = new Set(tokenizeByLanguage(content2, lang2));
+
         const intersection = new Set([...words1].filter((x) => words2.has(x)));
         const union = new Set([...words1, ...words2]);
-        redundancy += intersection.size / union.size;
+
+        if (union.size > 0) {
+          redundancy += intersection.size / union.size;
+        }
       }
     }
     redundancy = redundancy / ((results.length * (results.length - 1)) / 2);
@@ -281,45 +332,278 @@ function enhanceSemanticAnalysis(
 /**
  * Analyze query characteristics
  */
+/**
+ * Detect dominant language in text
+ */
+function detectLanguage(text: string): "ja" | "en" | "mixed" {
+  // Japanese characters detection
+  // \u3040-\u309F: Hiragana (あ-ん)
+  // \u30A0-\u30FF: Katakana (ア-ン)
+  // \u4E00-\u9FAF: Kanji (一-龯)
+  const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text);
+
+  // English words detection (3+ consecutive letters)
+  // Examples: "the", "hello", "TypeScript"
+  const hasEnglish = /[a-zA-Z]{3,}/.test(text);
+
+  if (hasJapanese && hasEnglish) return "mixed";
+  if (hasJapanese) return "ja";
+  return "en";
+}
+
+/**
+ * Tokenize text based on language
+ */
+function tokenizeByLanguage(
+  text: string,
+  language: "ja" | "en" | "mixed",
+): string[] {
+  if (language === "ja" || language === "mixed") {
+    // Simple Japanese tokenization (splits on particles and punctuation)
+    // For more accurate tokenization, consider using a proper morphological analyzer
+
+    // Japanese/Chinese punctuation and whitespace:
+    // \s: Regular whitespace
+    // \u3000: Full-width space (　)
+    // 、。！？: Japanese punctuation marks (、。！？)
+    // 「」『』: Japanese quotation marks
+    // （）｛｝［］【】〈〉《》〔〕: Various brackets
+    // ・: Middle dot (・)
+    // …: Ellipsis
+    // ー: Long vowel mark
+    // ,;.!?()[]{}: ASCII punctuation
+    const tokens = text
+      .split(
+        /[\s\u3000、。！？「」『』（）｛｝［］【】〈〉《》〔〕・…ー,;.!?()[\]{}:"']+/,
+      )
+      .filter((token) => token.length > 0);
+
+    // Also split by common Japanese particles if needed
+    const expandedTokens: string[] = [];
+    for (const token of tokens) {
+      // Split by common particles
+      // は: topic marker, が: subject marker, を: object marker
+      // に: direction/time, で: location/method, と: with/and
+      // の: possessive, から: from, まで: until, より: than/from
+      const subTokens = token.split(
+        /(?=[はがをにでとのからまでより])|(?<=[はがをにでとのからまでより])/,
+      );
+      expandedTokens.push(...subTokens.filter((t) => t.length > 0));
+    }
+
+    return expandedTokens;
+  }
+
+  // English tokenization
+  // Split by whitespace and filter empty strings
+  return text.split(/\s+/).filter((token) => token.length > 0);
+}
+
+/**
+ * Check if a word is a stopword
+ */
+function isStopword(word: string, language: "ja" | "en" | "mixed"): boolean {
+  const englishStopwords = [
+    "it",
+    "this",
+    "that",
+    "they",
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "but",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+  ];
+  const japaneseStopwords = [
+    "それ",
+    "これ",
+    "あれ",
+    "その",
+    "この",
+    "あの",
+    "そこ",
+    "ここ",
+    "あそこ",
+  ];
+
+  if (language === "ja" || language === "mixed") {
+    const isJapaneseStopword =
+      japaneseStopwords.includes(word) ||
+      // Single hiragana character (\u3040-\u309F)
+      // Examples: は, が, を, に, で, と, の, も, や, か
+      (word.length === 1 && /[\u3040-\u309F]/.test(word));
+    if (isJapaneseStopword) return true;
+
+    // For mixed language, also check English stopwords
+    if (language === "mixed") {
+      return englishStopwords.includes(word.toLowerCase()) || word.length <= 2;
+    }
+    return false;
+  }
+
+  return englishStopwords.includes(word.toLowerCase()) || word.length <= 2;
+}
+
+/**
+ * Get minimum meaningful word length for a language
+ */
+function getMinWordLength(language: "ja" | "en" | "mixed"): number {
+  // Japanese words can be meaningful with 1 character (kanji)
+  // English words typically need at least 3 characters
+  // For mixed content, use the Japanese minimum (more permissive)
+  return language === "ja" || language === "mixed" ? 1 : 3;
+}
+
+/**
+ * Query type keywords for different languages
+ */
+const QUERY_TYPE_PATTERNS = {
+  factual: {
+    en: /how|what|why|when|where|who/i,
+    ja: /なぜ|いつ|どこ|だれ|誰|なに|何|どの|どう|どのように|どうやって/,
+  },
+  transactional: {
+    en: /implement|create|build|make|write|develop|generate/i,
+    ja: /実装|作成|作る|構築|生成|開発|書く|書いて|作って/,
+  },
+  navigational: {
+    en: /go to|find|locate|search|look for/i,
+    ja: /探す|探して|検索|見つける|見つけて|探索|どこに/,
+  },
+};
+
+/**
+ * Ambiguous terms for different languages
+ */
+const AMBIGUOUS_TERMS = {
+  en: ["it", "this", "that", "they", "them", "those", "these"],
+  ja: [
+    "それ",
+    "これ",
+    "あれ",
+    "その",
+    "この",
+    "あの",
+    "そこ",
+    "ここ",
+    "あそこ",
+    "どれ",
+  ],
+};
+
 function analyzeQuery(query: string): QueryAnalysis {
-  const words = query.split(/\s+/);
-  const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(query);
+  const language = detectLanguage(query);
+  const words = tokenizeByLanguage(query, language);
 
   // Determine complexity based on word count and structure
   const complexity =
     words.length <= 3 ? "simple" : words.length <= 7 ? "moderate" : "complex";
 
   // Calculate specificity (more specific terms = higher specificity)
-  const specificTerms = words.filter((w) => w.length > 5 || /[A-Z]/.test(w));
+  let specificTerms: string[] = [];
+
+  if (language === "ja" || language === "mixed") {
+    // Japanese specific terms: kanji compounds, katakana terms, or longer words
+    specificTerms = words.filter(
+      (w) =>
+        // Kanji compounds (2+ characters)
+        // Examples: 実装, 開発, 機能, 処理
+        /[\u4E00-\u9FAF]{2,}/.test(w) ||
+        // Katakana terms (3+ characters, likely technical/foreign)
+        // Examples: データベース, クエリ, インデックス
+        /[\u30A0-\u30FF]{3,}/.test(w) ||
+        w.length > 4,
+    );
+  } else {
+    // English specific terms: longer words or capitalized words
+    specificTerms = words.filter((w) => w.length > 5 || /[A-Z]/.test(w));
+  }
+
   const specificity = Math.min(
     1,
     specificTerms.length / Math.max(1, words.length),
   );
 
-  // Identify ambiguous parts (very short words, pronouns, etc.)
-  const ambiguity = words.filter(
-    (w) =>
-      w.length <= 2 || ["it", "this", "that", "they"].includes(w.toLowerCase()),
-  );
+  // Identify ambiguous parts based on language
+  let ambiguity: string[] = [];
 
-  // Determine query type
+  if (language === "ja" || language === "mixed") {
+    ambiguity = words.filter(
+      (w) =>
+        AMBIGUOUS_TERMS.ja.includes(w) ||
+        (language === "mixed" && AMBIGUOUS_TERMS.en.includes(w.toLowerCase())),
+    );
+  } else {
+    ambiguity = words.filter(
+      (w) => w.length <= 2 || AMBIGUOUS_TERMS.en.includes(w.toLowerCase()),
+    );
+  }
+
+  // Determine query type based on language-specific patterns
   let queryType: "factual" | "exploratory" | "navigational" | "transactional" =
     "exploratory";
-  if (/how|what|why|when|where|who/.test(query.toLowerCase())) {
-    queryType = "factual";
-  } else if (/implement|create|build|make/.test(query.toLowerCase())) {
-    queryType = "transactional";
-  } else if (/go to|find|locate|search/.test(query.toLowerCase())) {
-    queryType = "navigational";
+
+  if (language === "ja" || language === "mixed") {
+    if (QUERY_TYPE_PATTERNS.factual.ja.test(query)) {
+      queryType = "factual";
+    } else if (QUERY_TYPE_PATTERNS.transactional.ja.test(query)) {
+      queryType = "transactional";
+    } else if (QUERY_TYPE_PATTERNS.navigational.ja.test(query)) {
+      queryType = "navigational";
+    }
+
+    // Also check English patterns for mixed content
+    if (language === "mixed" && queryType === "exploratory") {
+      if (QUERY_TYPE_PATTERNS.factual.en.test(query)) {
+        queryType = "factual";
+      } else if (QUERY_TYPE_PATTERNS.transactional.en.test(query)) {
+        queryType = "transactional";
+      } else if (QUERY_TYPE_PATTERNS.navigational.en.test(query)) {
+        queryType = "navigational";
+      }
+    }
+  } else {
+    if (QUERY_TYPE_PATTERNS.factual.en.test(query)) {
+      queryType = "factual";
+    } else if (QUERY_TYPE_PATTERNS.transactional.en.test(query)) {
+      queryType = "transactional";
+    } else if (QUERY_TYPE_PATTERNS.navigational.en.test(query)) {
+      queryType = "navigational";
+    }
   }
+
+  // Generate intent based on language
+  const intentVerb =
+    queryType === "factual"
+      ? language === "ja"
+        ? "理解する"
+        : "understand"
+      : queryType === "transactional"
+        ? language === "ja"
+          ? "作成する"
+          : "create"
+        : language === "ja"
+          ? "見つける"
+          : "find";
+
+  const estimatedIntent =
+    language === "ja"
+      ? `ユーザーは${query}について情報を${intentVerb}ことを望んでいます`
+      : `User wants to ${intentVerb} information about ${query}`;
 
   return {
     complexity,
     specificity,
     ambiguity,
     queryType,
-    estimatedIntent: `User wants to ${queryType === "factual" ? "understand" : queryType === "transactional" ? "create" : "find"} information about ${query}`,
-    languageDetected: hasJapanese ? "ja" : "en",
+    estimatedIntent,
+    languageDetected: language === "mixed" ? "mixed" : language,
   };
 }
 
@@ -537,20 +821,71 @@ function assessCoverage(
   goal: string,
   results: VectorSearchResult[],
 ): "complete" | "partial" | "insufficient" {
-  // Extract keywords from goal
-  const goalKeywords = goal
-    .toLowerCase()
-    .split(/[\s,;.!?()[\]{}:"']+/)
-    .filter((word) => word.length > 3);
+  const language = detectLanguage(goal);
+  const minWordLength = getMinWordLength(language);
+
+  // Extract keywords from goal based on language
+  let goalKeywords: string[] = [];
+
+  if (language === "ja" || language === "mixed") {
+    // For Japanese, use tokenization and filter out particles/stopwords
+    const tokens = tokenizeByLanguage(goal.toLowerCase(), language);
+    goalKeywords = tokens.filter((word) => {
+      // Keep words that are:
+      // - Kanji (meaningful even with 1 character)
+      // Examples: 機, 能, 実, 装
+      const isKanji = /[\u4E00-\u9FAF]/.test(word);
+      // - Katakana words (usually important terms)
+      // Examples: データ, クエリ, インデックス
+      const isKatakana = /[\u30A0-\u30FF]/.test(word);
+      // - Hiragana words longer than 2 characters (exclude particles)
+      // Examples: ある, できる, なる (exclude: は, が, を, に)
+      const isLongHiragana = /[\u3040-\u309F]/.test(word) && word.length > 2;
+
+      return (
+        (isKanji || isKatakana || isLongHiragana) && !isStopword(word, "ja")
+      );
+    });
+
+    // Also include English keywords if mixed
+    if (language === "mixed") {
+      const englishTokens = goal
+        .toLowerCase()
+        .split(/[^a-zA-Z]+/)
+        .filter(
+          (word) => word.length >= minWordLength && !isStopword(word, "en"),
+        );
+      goalKeywords.push(...englishTokens);
+    }
+  } else {
+    // For English, use the original logic
+    goalKeywords = goal
+      .toLowerCase()
+      .split(/[\s,;.!?()[\]{}:"']+/)
+      .filter(
+        (word) => word.length >= minWordLength && !isStopword(word, "en"),
+      );
+  }
 
   if (goalKeywords.length === 0) return "complete";
 
   // Check how many goal keywords appear in results
   const resultContent = results.map((r) => r.content.toLowerCase()).join(" ");
 
-  const coveredKeywords = goalKeywords.filter((keyword) =>
-    resultContent.includes(keyword),
-  );
+  const coveredKeywords = goalKeywords.filter((keyword) => {
+    // For Japanese keywords, check for exact matches
+    // For English keywords, check for word boundaries
+    // Japanese characters: Hiragana, Katakana, Kanji
+    // Examples: ある, データ, 機能
+    if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(keyword)) {
+      // Japanese keyword - check for exact match
+      return resultContent.includes(keyword);
+    } else {
+      // English keyword - check with word boundaries
+      const regex = new RegExp(`\\b${keyword}\\b`, "i");
+      return regex.test(resultContent);
+    }
+  });
 
   const coverageRatio = coveredKeywords.length / goalKeywords.length;
 
