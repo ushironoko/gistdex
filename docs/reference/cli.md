@@ -12,14 +12,15 @@ These options can be used with any command:
 
 ## Commands Overview
 
-| Command | Description                        |
-| ------- | ---------------------------------- |
-| `init`  | Initialize a new vector database   |
-| `index` | Index content from various sources |
-| `query` | Search indexed content             |
-| `list`  | List all indexed items             |
-| `info`  | Show database adapter information  |
-| `help`  | Display help message               |
+| Command   | Description                        |
+| --------- | ---------------------------------- |
+| `init`    | Initialize a new vector database   |
+| `index`   | Index content from various sources |
+| `query`   | Search indexed content             |
+| `list`    | List all indexed items             |
+| `info`    | Show database adapter information  |
+| `version` | Show CLI version                   |
+| `help`    | Display help message               |
 
 ## Command Details
 
@@ -151,15 +152,16 @@ npx @ushironoko/gistdex query [options] <search-query>
 
 #### Options
 
-| Option        | Short | Description                     | Default      |
-| ------------- | ----- | ------------------------------- | ------------ |
-| `--provider`  |       | Vector DB provider              | sqlite       |
-| `--db`        |       | Database file path (for SQLite) | ./gistdex.db |
-| `--top-k`     | `-k`  | Number of results               | 5            |
-| `--type`      | `-t`  | Filter by source type           | all          |
-| `--hybrid`    | `-y`  | Enable hybrid search            | false        |
-| `--no-rerank` | `-n`  | Disable re-ranking              | false        |
-| `--full`      | `-f`  | Show full content               | false        |
+| Option        | Short | Description                                            | Default      |
+| ------------- | ----- | ------------------------------------------------------ | ------------ |
+| `--provider`  |       | Vector DB provider                                     | sqlite       |
+| `--db`        |       | Database file path (for SQLite)                        | ./gistdex.db |
+| `--top-k`     | `-k`  | Number of results                                      | 5            |
+| `--type`      | `-t`  | Filter by source type                                  | all          |
+| `--hybrid`    | `-y`  | Enable hybrid search                                   | false        |
+| `--no-rerank` | `-n`  | Disable re-ranking                                     | false        |
+| `--full`      | `-f`  | Show full original content                             | false        |
+| `--section`   | `-s`  | Show full section for markdown (exclusive with --full) | false        |
 
 #### Source Types
 
@@ -181,6 +183,9 @@ npx @ushironoko/gistdex query -k 10 "async await"
 
 # Show full original content
 npx @ushironoko/gistdex query --full "configuration"
+
+# Show full markdown section
+npx @ushironoko/gistdex query --section "installation guide"
 ```
 
 ```bash [filter]
@@ -268,6 +273,21 @@ Shows:
 - Database location
 - Version information
 - Configuration details
+
+### `gistdex version`
+
+Display the CLI version.
+
+```bash
+npx @ushironoko/gistdex version
+```
+
+Alternative ways to check version:
+
+```bash
+npx @ushironoko/gistdex --version
+npx @ushironoko/gistdex -v
+```
 
 ### `gistdex help`
 

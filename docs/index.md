@@ -25,14 +25,14 @@ features:
     title: Auto Chunk Optimization
     details: Automatic chunk sizing based on file type powered by tree-sitter
   - icon: 🚀
-    title: Node.js and Bun running
-    details: npm, pnpm, yarn, or bun. Available everywhere
+    title: Cross-Platform Support
+    details: Works with Node.js 24.6+ and Bun 1.1.14+ on all platforms
   - icon: 🤖
-    title: MCP Ready
-    details: Integrate with Claude through Model Context Protocol
+    title: MCP Integration
+    details: Direct integration with Claude through Model Context Protocol with agent capabilities
   - icon: 🔧
-    title: Extensible Database
-    details: Add custom vector database adapters
+    title: Extensible Architecture
+    details: Pluggable vector database adapters with SQLite built-in
 ---
 
 ## Quick Start
@@ -80,9 +80,9 @@ npx @ushironoko/gistdex query "how to implement authentication"
 
 Gistdex uses semantic search to find content based on meaning rather than exact keywords. It indexes your code snippets, documentation, and text files for natural language queries.
 
-### Key Points
+### Key Features
 
-- **Preserve Boundaries with tree-sitter**: Automatic chunk optimization using tree-sitter CST
-- **Local Storage**: Data stays on your machine using SQLite
-- **MCP Server**: Works with Claude through Model Context Protocol
-- **CLI Tool**: Command-line interface
+- **Semantic Boundaries**: Preserves code and document structure when chunking
+- **Local-First**: All data stays on your machine using SQLite with vector extensions
+- **MCP Server**: Direct integration with Claude for AI-assisted search
+- **CLI and Library**: Use as a command-line tool or integrate as a TypeScript library

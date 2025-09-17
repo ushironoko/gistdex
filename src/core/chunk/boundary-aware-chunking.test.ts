@@ -46,6 +46,14 @@ Final thoughts and summary.`;
       chunks.forEach((chunk) => {
         expect(chunk.boundary).toBeDefined();
       });
+
+      // h3 "Details" should be included in the h2 "Background" chunk
+      const backgroundChunk = chunks.find(
+        (c) => c.boundary.title === "Background",
+      );
+      expect(backgroundChunk).toBeDefined();
+      expect(backgroundChunk?.content).toContain("### Details");
+      expect(backgroundChunk?.content).toContain("More detailed information.");
     });
 
     it("should handle markdown without headings", () => {
@@ -121,6 +129,65 @@ Another section here.`;
 
       // There should be only one chunk for this simple markdown
       expect(chunks.length).toBe(1);
+    });
+
+    it("should include h3-h6 headings in parent h1/h2 sections", () => {
+      const markdown = `# Main Section
+
+Intro text for main section.
+
+## Subsection
+
+Subsection intro.
+
+### Small Heading 1
+
+Content under small heading 1.
+
+#### Tiny Heading
+
+Tiny content.
+
+### Small Heading 2
+
+Content under small heading 2.
+
+## Another Subsection
+
+Another subsection content.`;
+
+      const chunks = chunkMarkdownByBoundary(markdown, {
+        maxChunkSize: 300,
+        overlap: 50,
+      });
+
+      // Find the "Subsection" chunk
+      const subsectionChunk = chunks.find(
+        (c) => c.boundary.title === "Subsection",
+      );
+      expect(subsectionChunk).toBeDefined();
+
+      // It should contain all h3-h6 content
+      expect(subsectionChunk?.content).toContain("## Subsection");
+      expect(subsectionChunk?.content).toContain("### Small Heading 1");
+      expect(subsectionChunk?.content).toContain(
+        "Content under small heading 1.",
+      );
+      expect(subsectionChunk?.content).toContain("#### Tiny Heading");
+      expect(subsectionChunk?.content).toContain("Tiny content.");
+      expect(subsectionChunk?.content).toContain("### Small Heading 2");
+      expect(subsectionChunk?.content).toContain(
+        "Content under small heading 2.",
+      );
+
+      // The "Another Subsection" should be a separate chunk
+      const anotherSubsectionChunk = chunks.find(
+        (c) => c.boundary.title === "Another Subsection",
+      );
+      expect(anotherSubsectionChunk).toBeDefined();
+      expect(anotherSubsectionChunk?.content).not.toContain(
+        "### Small Heading 1",
+      );
     });
 
     it("should respect maxChunkSize while maintaining boundaries", () => {

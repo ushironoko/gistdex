@@ -54,7 +54,7 @@ This configures Gistdex as an MCP server without global installation.
 
 ## Available MCP Tools
 
-When Gistdex is available, Claude Code has access to three MCP tools:
+When Gistdex is available, Claude Code has access to four MCP tools:
 
 #### 1. `gistdex_index`
 Indexes content from various sources:
@@ -62,6 +62,7 @@ Indexes content from various sources:
 - Local files (single or multiple with glob patterns)
 - GitHub Gists
 - GitHub repositories
+- Preserves semantic boundaries for code and markdown
 
 #### 2. `gistdex_query`
 Searches indexed content with options for:
@@ -69,6 +70,7 @@ Searches indexed content with options for:
 - Hybrid search (semantic + keyword)
 - Result filtering by source type
 - Full content retrieval
+- Section retrieval for markdown
 - Result re-ranking
 
 #### 3. `gistdex_list`
@@ -76,6 +78,29 @@ Lists indexed items with:
 - Metadata about each item
 - Statistics about the database
 - Filtering by source type
+
+#### 4. `gistdex_agent_query`
+Performs multi-stage search with autonomous planning:
+- Creates query strategies based on research goals
+- Executes queries with progress tracking
+- Evaluates results and suggests next actions
+- Provides analysis and recommendations
+- Can save results to `.gistdex/cache/` for future reference
+
+## Result Caching
+
+MCP tools can cache results for improved context reuse:
+
+### Cache Location
+Results are stored in `.gistdex/cache/` directory:
+- Agent query results: `.gistdex/cache/agent/`
+- Structured knowledge: `.gistdex/cache/knowledge/`
+
+### Enabling Caching
+- For `gistdex_query`: Set `saveStructured: true`
+- For `gistdex_agent_query`: Set `saveStructured: true` in options
+
+Cached results can be reused across sessions to build incremental knowledge.
 
 ## MCP Server Mode
 

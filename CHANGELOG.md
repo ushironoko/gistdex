@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.3.8] - 2025-09-17
+
+- refactor:remove unused modules
+- Merge pull request #107 from ushironoko:refactor/math-utils-and-mcp-improvements
+- fix: resolve linter error in write-structured-tool type definition
+- feat: enhance MCP tools with improved search workflow and structured knowledge
+- refactor: migrate cosine similarity calculation to math-utils module
+- feat: add math-utils module with cosine similarity and dot product optimizations
+- fix docs
+- remove doc
+
+
+## [1.3.7] - 2025-09-16
+
+- Merge pull request #106 from ushironoko/feat/improve-markdown-chunking-hierarchy
+- feat: improve markdown chunking to preserve heading hierarchy
+
+
+## [1.3.6] - 2025-09-15
+
+- Merge pull request #104 from ushironoko/refactor/mcp-tools-simplification
+- fix CLAUDE.md
+- fix readme
+- fix test
+- add handover
+- test(mcp): update query-chain tests and implementation
+- refactor(mcp): simplify agent-query-tool implementation
+- refactor(mcp): update server and utilities to use common modules
+- refactor(mcp): remove complex agent-in-the-loop tools
+- feat(mcp): add common utility modules for text processing and score analysis
+
+
+## [1.3.5] - 2025-09-15
+
+- Merge pull request #103 from ushironoko:feature/save-structured-knowledge
+- update serena
+- test(mcp): add comprehensive tests for saveStructured feature
+- feat(mcp): implement saveStructured functionality in agent query tool
+- feat(mcp): organize structured knowledge into subdirectories
+- refactor(mcp): remove unused cache directory initialization
+- feat(mcp): add saveStructured option to agent query tool
+
+
+## [1.3.4] - 2025-09-15
+
+- add pagination and summary for agent query
+- fix handover
+
+
 ## [1.3.3] - 2025-09-14
 
 - fix

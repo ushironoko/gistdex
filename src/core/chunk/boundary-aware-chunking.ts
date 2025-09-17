@@ -102,28 +102,43 @@ function parseMarkdownSections(markdown: string): Array<{
     // Check for headings
     const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
     if (headingMatch) {
-      const newLevel = headingMatch[1]?.length || 1;
+      const headingLevel = headingMatch[1]?.length || 1;
 
-      // Save previous section before starting a new heading
-      if (currentSection) {
-        sections.push({
-          content: currentSection.lines.join("\n"),
-          startOffset: currentSection.startOffset,
-          endOffset: offset - 1,
-          type: currentSection.type,
-          level: currentSection.level,
-          title: currentSection.title,
-        });
+      // Only create new section for h1 and h2
+      if (headingLevel <= 2) {
+        // Save previous section before starting a new heading
+        if (currentSection) {
+          sections.push({
+            content: currentSection.lines.join("\n"),
+            startOffset: currentSection.startOffset,
+            endOffset: offset - 1,
+            type: currentSection.type,
+            level: currentSection.level,
+            title: currentSection.title,
+          });
+        }
+
+        // Start new heading section
+        currentSection = {
+          lines: [line],
+          startOffset: offset,
+          type: "heading",
+          level: headingLevel,
+          title: headingMatch[2],
+        };
+      } else if (currentSection) {
+        // h3-h6: add to current section
+        currentSection.lines.push(line);
+      } else {
+        // No current section, start a new one even for h3-h6
+        currentSection = {
+          lines: [line],
+          startOffset: offset,
+          type: "heading",
+          level: headingLevel,
+          title: headingMatch[2],
+        };
       }
-
-      // Start new heading section
-      currentSection = {
-        lines: [line],
-        startOffset: offset,
-        type: "heading",
-        level: newLevel,
-        title: headingMatch[2],
-      };
     } else if (currentSection && currentSection.type === "heading") {
       // We're in a heading section - add all content to it
       currentSection.lines.push(line);

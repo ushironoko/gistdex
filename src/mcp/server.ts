@@ -28,7 +28,7 @@ import { handleAgentQueryTool } from "./tools/agent-query-tool.js";
 import { handleIndexTool } from "./tools/index-tool.js";
 import { handleListTool } from "./tools/list-tool.js";
 import { handleQueryTool } from "./tools/query-tool.js";
-import { ensureCacheDirectories } from "./utils/query-cache.js";
+import { handleWriteStructuredTool } from "./tools/write-structured-tool.js";
 
 // Database service will be initialized per request
 let service: DatabaseService | null = null;
@@ -50,6 +50,155 @@ const server = new Server(
 // Register tool handlers
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
+    {
+      name: "gistdex_search",
+      description:
+        "DEFAULT SEARCH TOOL: Intelligent search with automatic query planning and comprehensive analysis. " +
+        "ALWAYS USE THIS FIRST for searching indexed content. " +
+        "Automatically provides: metadata analysis, strategic hints, and next action recommendations. " +
+        "Features automatic goal tracking, coverage analysis, and quality assessment. " +
+        "Supports three response modes: summary (default), detailed, or full. " +
+        "When sufficient information is gathered, use the suggested gistdex_write_structured_result tool to save your findings.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            description: "The research goal or question to answer",
+          },
+          query: {
+            type: "string",
+            description: "Initial search query text",
+          },
+          cursor: {
+            type: "string",
+            description:
+              "Pagination cursor for continuing from previous results",
+          },
+          options: {
+            type: "object",
+            properties: {
+              mode: {
+                type: "string",
+                enum: ["summary", "detailed", "full"],
+                default: "summary",
+                description:
+                  "Response mode: summary (~5K tokens), detailed (~15K tokens), or full (may exceed limits)",
+              },
+              k: {
+                type: "number",
+                description:
+                  "Number of results per query (max 5 for MCP token limits)",
+                default: 5,
+                maximum: 5,
+              },
+              pageSize: {
+                type: "number",
+                description: "Page size for pagination (max 10)",
+                default: 5,
+                maximum: 10,
+              },
+              saveStructured: {
+                type: "boolean",
+                description:
+                  "Save results as structured knowledge in .gistdex/cache/",
+                default: false,
+              },
+            },
+          },
+          maxIterations: {
+            type: "number",
+            description: "Maximum number of search iterations",
+            default: 5,
+          },
+          provider: {
+            type: "string",
+            description: "Vector database provider (e.g., 'sqlite', 'memory')",
+          },
+          db: {
+            type: "string",
+            description: "Database file path",
+          },
+        },
+        required: ["goal", "query"],
+      },
+    },
+    {
+      name: "gistdex_query_simple",
+      description:
+        "LOW-LEVEL SEARCH: Manual search with direct control over parameters. " +
+        "Use only when gistdex_search doesn't provide needed flexibility. " +
+        "For most tasks, prefer gistdex_search instead. " +
+        "Provides fine-grained control over: hybrid/semantic mode, reranking, section/full content retrieval. " +
+        "BEST PRACTICES: " +
+        "1) Use hybrid=true for broad keyword discovery " +
+        "2) Use semantic search (hybrid=false) for concept matching " +
+        "3) For markdown: use section=true for complete sections " +
+        "4) Use full=true only when entire original content is needed",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Search query text",
+          },
+          k: {
+            type: "number",
+            description: "Number of results to return",
+            default: 5,
+          },
+          type: {
+            type: "string",
+            enum: ["gist", "github", "file", "text"],
+            description: "Filter by source type",
+          },
+          hybrid: {
+            type: "boolean",
+            description: "Enable hybrid search",
+            default: false,
+          },
+          rerank: {
+            type: "boolean",
+            description: "Enable result re-ranking",
+            default: true,
+          },
+          full: {
+            type: "boolean",
+            description: "Return full original content",
+            default: false,
+          },
+          section: {
+            type: "boolean",
+            description: "Return full section content for markdown files",
+            default: false,
+          },
+          includeMetadata: {
+            type: "boolean",
+            description: "Include analysis metadata and strategic hints",
+            default: true,
+          },
+          saveStructured: {
+            type: "boolean",
+            description: "Save results as structured knowledge for future use",
+            default: false,
+          },
+          useChain: {
+            type: "boolean",
+            description: "Use query chain for multi-stage strategic search",
+            default: false,
+          },
+          provider: {
+            type: "string",
+            description: "Vector database provider (e.g., 'sqlite', 'memory')",
+          },
+          db: {
+            type: "string",
+            description: "Database file path",
+          },
+        },
+        required: ["query"],
+      },
+    },
     {
       name: "gistdex_index",
       description:
@@ -136,81 +285,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "gistdex_query",
-      description:
-        "Search indexed content using multi-stage query strategy. " +
-        "BEST PRACTICES: " +
-        "1) Stage 1: Use hybrid=true for broad keyword discovery to find relevant domains. " +
-        "2) Stage 2: Use semantic search (hybrid=false) on specific topics from Stage 1. " +
-        "3) Stage 3+: For markdown content, use section=true to get complete sections (mutually exclusive with full=true). " +
-        "4) The 'section' option retrieves the full semantic section (e.g., entire markdown heading section). " +
-        "5) Build structured knowledge incrementally by combining results from multiple queries. " +
-        "6) Use higher k values (10-20) for comprehensive coverage, lower (3-5) for focused results. " +
-        "NEW FEATURES: " +
-        "- Use 'useChain=true' to automatically execute a 3-stage query chain for comprehensive results. " +
-        "- Use 'saveStructured=true' to save search results as structured knowledge for future reference. " +
-        "- Query chains perform: semantic search → hybrid search → extended concept search. " +
-        "- Structured knowledge is cached in .gistdex/cache/ for improved LLM context reuse.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "Search query text",
-          },
-          k: {
-            type: "number",
-            description: "Number of results to return",
-            default: 5,
-          },
-          type: {
-            type: "string",
-            enum: ["gist", "github", "file", "text"],
-            description: "Filter by source type",
-          },
-          hybrid: {
-            type: "boolean",
-            description: "Enable hybrid search",
-            default: false,
-          },
-          rerank: {
-            type: "boolean",
-            description: "Enable result re-ranking",
-            default: true,
-          },
-          full: {
-            type: "boolean",
-            description: "Return full original content",
-            default: false,
-          },
-          section: {
-            type: "boolean",
-            description: "Return full section content for markdown files",
-            default: false,
-          },
-          saveStructured: {
-            type: "boolean",
-            description: "Save results as structured knowledge for future use",
-            default: false,
-          },
-          useChain: {
-            type: "boolean",
-            description: "Use query chain for multi-stage strategic search",
-            default: false,
-          },
-          provider: {
-            type: "string",
-            description: "Vector database provider (e.g., 'sqlite', 'memory')",
-          },
-          db: {
-            type: "string",
-            description: "Database file path",
-          },
-        },
-        required: ["query"],
-      },
-    },
-    {
       name: "gistdex_list",
       description:
         "List indexed items with optional filtering. " +
@@ -246,233 +320,55 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "gistdex_evaluate",
+      name: "gistdex_write_structured_result",
       description:
-        "Evaluate search results against a goal. " +
-        "Returns structured feedback to help agents decide next actions. " +
-        "Use this after gistdex_query to assess if results meet the goal. " +
-        "The tool provides: confidence score, missing aspects, and recommendations " +
-        "for whether to continue searching or use current results.",
+        "Save your analysis and findings as structured knowledge. " +
+        "Use this after gathering sufficient information through searches. " +
+        "Write comprehensive markdown-formatted content with your own insights, analysis, and conclusions. " +
+        "This tool allows you to create permanent knowledge artifacts from your research.",
       inputSchema: {
         type: "object",
         properties: {
-          goal: {
+          topic: {
             type: "string",
-            description: "The ultimate goal to achieve",
+            description: "Topic or title for the knowledge document",
           },
-          query: {
+          content: {
             type: "string",
-            description: "The query that was used",
-          },
-          results: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                content: { type: "string" },
-                score: { type: "number" },
-                metadata: { type: "object" },
-              },
-              required: ["content", "score"],
-            },
-            description: "Search results to evaluate",
-          },
-          iteration: {
-            type: "number",
-            description: "Current iteration number",
-            default: 1,
-          },
-          previousScore: {
-            type: "number",
-            description: "Score from previous iteration",
-          },
-        },
-        required: ["goal", "query", "results"],
-      },
-    },
-    {
-      name: "gistdex_refine_query",
-      description:
-        "Refine search query based on evaluation feedback. " +
-        "Generates improved queries using different strategies (broaden/narrow/pivot/combine). " +
-        "Use this after gistdex_evaluate when results need improvement. " +
-        "Returns refined query suggestions with reasoning and alternatives.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          currentQuery: {
-            type: "string",
-            description: "The current query that needs refinement",
-          },
-          goal: {
-            type: "string",
-            description: "The ultimate goal to achieve",
-          },
-          missingAspects: {
-            type: "array",
-            items: { type: "string" },
-            description: "Aspects that are missing from current results",
-            default: [],
-          },
-          foundAspects: {
-            type: "array",
-            items: { type: "string" },
-            description: "Aspects that have been found",
-            default: [],
-          },
-          strategy: {
-            type: "string",
-            enum: ["broaden", "narrow", "pivot", "combine"],
-            description: "Refinement strategy to use",
-            default: "combine",
-          },
-          iteration: {
-            type: "number",
-            description: "Current iteration number",
-            default: 1,
-          },
-        },
-        required: ["currentQuery", "goal"],
-      },
-    },
-    {
-      name: "gistdex_plan_execute_stage",
-      description:
-        "Execute a single stage of a query plan with agent control. " +
-        "This tool allows agents to execute plans step-by-step, " +
-        "evaluating results at each stage and deciding whether to continue. " +
-        "Use this for fine-grained control over the search process.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          planId: {
-            type: "string",
-            description: "The ID of the plan to execute",
-          },
-          stageIndex: {
-            type: "number",
-            description: "The index of the stage to execute (0-based)",
-          },
-          plan: {
-            type: "object",
-            description: "The complete plan object",
-            properties: {
-              id: { type: "string" },
-              goal: { type: "string" },
-              status: { type: "string" },
-              evaluationCriteria: {
-                type: "object",
-                properties: {
-                  minScore: { type: "number" },
-                  minMatches: { type: "number" },
-                  acceptableConfidence: { type: "number" },
-                },
-                required: ["minScore", "minMatches", "acceptableConfidence"],
-              },
-              stages: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    stageNumber: { type: "number" },
-                    description: { type: "string" },
-                    query: { type: "string" },
-                    expectedResults: {
-                      type: "object",
-                      properties: {
-                        keywords: { type: "array", items: { type: "string" } },
-                        patterns: { type: "array" },
-                        minConfidence: { type: "number" },
-                        minMatches: { type: "number" },
-                      },
-                      required: [
-                        "keywords",
-                        "patterns",
-                        "minConfidence",
-                        "minMatches",
-                      ],
-                    },
-                  },
-                  required: [
-                    "stageNumber",
-                    "description",
-                    "query",
-                    "expectedResults",
-                  ],
-                },
-              },
-            },
-            required: ["id", "goal", "status", "evaluationCriteria", "stages"],
-          },
-          queryOptions: {
-            type: "object",
-            properties: {
-              k: {
-                type: "number",
-                description: "Number of results",
-                default: 5,
-              },
-              hybrid: {
-                type: "boolean",
-                description: "Use hybrid search",
-                default: false,
-              },
-              rerank: {
-                type: "boolean",
-                description: "Enable reranking",
-                default: true,
-              },
-            },
-            description: "Options for query execution",
-          },
-        },
-        required: ["planId", "stageIndex", "plan"],
-      },
-    },
-    {
-      name: "gistdex_agent_query",
-      description:
-        "Autonomous agent-based search with strategic planning and execution. " +
-        "This tool enables LLM agents to plan and execute complex search strategies. " +
-        "The agent automatically: " +
-        "1) Creates a multi-stage query plan based on your goal " +
-        "2) Executes queries strategically with progress tracking " +
-        "3) Evaluates results and decides next actions " +
-        "4) Provides comprehensive analysis and recommendations " +
-        "Use this for complex research tasks that require multiple search iterations.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          goal: {
-            type: "string",
-            description: "The research goal or question to answer",
-          },
-          query: {
-            type: "string",
-            description: "Initial search query text",
-          },
-          maxIterations: {
-            type: "number",
-            description: "Maximum number of search iterations",
-            default: 5,
-          },
-          k: {
-            type: "number",
             description:
-              "Number of results per query (max 5 for MCP token limits)",
-            default: 5,
-            maximum: 5,
+              "Your structured analysis in markdown format. Include sections, headings, lists, code blocks as needed.",
           },
-          provider: {
-            type: "string",
-            description: "Vector database provider (e.g., 'sqlite', 'memory')",
+          metadata: {
+            type: "object",
+            description: "Optional metadata to include with the knowledge",
+            properties: {
+              goal: {
+                type: "string",
+                description: "The original research goal or question",
+              },
+              query: {
+                type: "string",
+                description: "Main search query used",
+              },
+              summary: {
+                type: "string",
+                description: "Brief one-paragraph summary of findings",
+              },
+              tags: {
+                type: "array",
+                items: { type: "string" },
+                description:
+                  "Tags for categorization (e.g., 'api', 'tutorial', 'architecture')",
+              },
+            },
           },
-          db: {
+          directory: {
             type: "string",
-            description: "Database file path",
+            description:
+              "Optional custom directory path (defaults to .gistdex/cache/structured)",
           },
         },
-        required: ["goal", "query"],
+        required: ["topic", "content"],
       },
     },
   ],
@@ -510,21 +406,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       service = dbService;
 
       switch (name) {
-        case "gistdex_index": {
-          const result = await handleIndexTool(args, { service });
+        case "gistdex_search": {
+          const result = await handleAgentQueryTool(args, { service });
           return {
-            content: [
-              {
-                type: "text",
-                text: result.success
-                  ? `✅ ${result.message}\nIndexed ${result.itemsIndexed} chunks.`
-                  : `❌ ${result.message}\n${result.errors?.join("\n") || ""}`,
-              },
-            ],
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         }
 
-        case "gistdex_query": {
+        case "gistdex_query_simple": {
           const result = await handleQueryTool(args, { service });
           if (!result.success) {
             return {
@@ -556,6 +445,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               {
                 type: "text",
                 text: `Found ${results.length} results:${formattedResults}`,
+              },
+            ],
+          };
+        }
+
+        case "gistdex_index": {
+          const result = await handleIndexTool(args, { service });
+          return {
+            content: [
+              {
+                type: "text",
+                text: result.success
+                  ? `✅ ${result.message}\nIndexed ${result.itemsIndexed} chunks.`
+                  : `❌ ${result.message}\n${result.errors?.join("\n") || ""}`,
               },
             ],
           };
@@ -615,40 +518,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           };
         }
 
-        case "gistdex_evaluate": {
-          const { handleEvaluateTool } = await import(
-            "./tools/evaluate-tool.js"
-          );
-          const result = await handleEvaluateTool(args, { service });
+        case "gistdex_write_structured_result": {
+          // Write structured result doesn't need database service, but pass empty options for consistency
+          const result = await handleWriteStructuredTool(args, {});
           return {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-          };
-        }
-
-        case "gistdex_refine_query": {
-          const { handleRefineQueryTool } = await import(
-            "./tools/refine-query-tool.js"
-          );
-          const result = await handleRefineQueryTool(args, { service });
-          return {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-          };
-        }
-
-        case "gistdex_plan_execute_stage": {
-          const { handlePlanExecuteStage } = await import(
-            "./tools/plan-execute-stage-tool.js"
-          );
-          const result = await handlePlanExecuteStage(args, { service });
-          return {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-          };
-        }
-
-        case "gistdex_agent_query": {
-          const result = await handleAgentQueryTool(args, { service });
-          return {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+            content: [
+              {
+                type: "text",
+                text: result.success
+                  ? `✅ ${result.message}\nSaved to: ${result.savedPath}`
+                  : `❌ ${result.message}`,
+              },
+            ],
           };
         }
 
@@ -673,9 +554,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Start MCP server - this should only be called from the CLI
 export async function startMCPServer() {
   try {
-    // Ensure cache directories exist
-    await ensureCacheDirectories();
-
     // Print initialization message with best practices
     console.error("🚀 Gistdex MCP Server initialized");
     console.error("📚 Best Practices:");
