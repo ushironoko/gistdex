@@ -62,10 +62,10 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@ai-sdk/google": "2.0.13",
+    "@ai-sdk/google": "2.0.14",
     "@inquirer/prompts": "7.8.4",
     "@modelcontextprotocol/sdk": "1.17.5",
-    "ai": "5.0.38",
+    "ai": "5.0.44",
     "chalk": "5.6.2",
     "gunshi": "0.26.3",
     "ora": "8.2.0",
