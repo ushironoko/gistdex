@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.8] - 2025-09-17
+
+- refactor:remove unused modules
+- Merge pull request #107 from ushironoko:refactor/math-utils-and-mcp-improvements
+- fix: resolve linter error in write-structured-tool type definition
+- feat: enhance MCP tools with improved search workflow and structured knowledge
+- refactor: migrate cosine similarity calculation to math-utils module
+- feat: add math-utils module with cosine similarity and dot product optimizations
+- fix docs
+- remove doc
+
+
 ## [1.3.7] - 2025-09-16
 
 - Merge pull request #106 from ushironoko/feat/improve-markdown-chunking-hierarchy
