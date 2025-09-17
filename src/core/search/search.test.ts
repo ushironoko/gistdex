@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   cleanupTestDatabase,
   createTestDatabase,
-} from "../../test-helpers/test-db.js";
+} from "../../../tests/helpers/test-db.js";
 import type { DatabaseService } from "../database/database-service.js";
 import type { VectorSearchResult } from "../vector-db/adapters/types.js";
 import { getSectionContent, hybridSearch, semanticSearch } from "./search.js";

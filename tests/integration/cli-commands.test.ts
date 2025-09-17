@@ -3,7 +3,11 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { setupEmbeddingMocks } from "../helpers/mock-embeddings.js";
 import { testCode, testDocuments } from "../helpers/test-fixtures.js";
+
+// Setup mocks for embedding generation
+setupEmbeddingMocks();
 
 /**
  * CLI Commands Integration Test
@@ -28,7 +32,7 @@ describe("CLI Commands Integration", () => {
         cwd: process.cwd(),
         env: {
           ...process.env,
-          GOOGLE_GENERATIVE_AI_API_KEY: "test-key",
+          NODE_NO_WARNINGS: "1",
         },
         encoding: "utf8",
       });
@@ -37,8 +41,20 @@ describe("CLI Commands Integration", () => {
       const execError = error as {
         stdout?: Buffer | string;
         stderr?: Buffer | string;
+        output?: Array<Buffer | string | null>;
       };
-      return execError.stdout?.toString() || execError.stderr?.toString() || "";
+      // CLIツールの出力はstderrにも出力されることがあるため、両方をチェック
+      const stdout = execError.stdout?.toString() || "";
+      const stderr = execError.stderr?.toString() || "";
+      // execSyncのoutputプロパティをチェック
+      if (execError.output) {
+        const outputStr = execError.output
+          .filter(Boolean)
+          .map((buf) => buf?.toString() || "")
+          .join("");
+        if (outputStr) return outputStr;
+      }
+      return stdout || stderr || "";
     }
   }
 

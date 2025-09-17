@@ -1,26 +1,22 @@
 import { mkdtemp, rmdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { chunkText } from "../../src/core/chunk/chunking.js";
 import type { DatabaseService } from "../../src/core/database/database-service.js";
 import { generateEmbeddingsBatch } from "../../src/core/embedding/embedding.js";
 import { indexFile, indexText } from "../../src/core/indexer/indexer.js";
+import { setupEmbeddingMocks } from "../helpers/mock-embeddings.js";
 import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
 import { testCode, testDocuments } from "../helpers/test-fixtures.js";
 import { assertEmbeddingValid, withTimeout } from "../helpers/test-utils.js";
 
+// Setup mocks for embedding generation
+setupEmbeddingMocks();
+
 describe("Indexing Flow Integration Tests", () => {
   let db: DatabaseService;
   let tempDir: string;
-
-  beforeAll(() => {
-    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-      console.warn(
-        "GOOGLE_GENERATIVE_AI_API_KEY not set. Using mock embeddings for tests.",
-      );
-    }
-  });
 
   beforeEach(async () => {
     db = await createTestDatabase({ provider: "memory", dimension: 768 });
@@ -227,13 +223,12 @@ describe("Indexing Flow Integration Tests", () => {
         expect(text).toContain(chunk.trim());
       }
 
-      if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-        const embeddings = await generateEmbeddingsBatch(chunks);
-        expect(embeddings.length).toBe(chunks.length);
+      // Test with mocked embeddings
+      const embeddings = await generateEmbeddingsBatch(chunks);
+      expect(embeddings.length).toBe(chunks.length);
 
-        for (const embedding of embeddings) {
-          assertEmbeddingValid(embedding, 768);
-        }
+      for (const embedding of embeddings) {
+        assertEmbeddingValid(embedding, 768);
       }
     });
 
@@ -328,7 +323,9 @@ describe("Indexing Flow Integration Tests", () => {
     it("should handle non-existent file paths", async () => {
       const nonExistentPath = join(tempDir, "non-existent.txt");
 
-      await expect(indexFile(nonExistentPath, {}, {}, db)).rejects.toThrow();
+      const result = await indexFile(nonExistentPath, {}, {}, db);
+      expect(result.itemsIndexed).toBe(0);
+      expect(result.errors.length).toBeGreaterThan(0);
     });
 
     it("should continue indexing after partial failure", async () => {

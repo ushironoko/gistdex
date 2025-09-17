@@ -1,3 +1,6 @@
+📖 READ: 2025-09-17 13:00:00
+---
+
 # セッション引き継ぎ情報 - Gistdexテストスイート改善
 
 ## セッション概要
@@ -63,7 +66,7 @@ GistdexプロジェクトのTypeScriptテストスイートの大幅な改善作
 以下の4つのテストファイルはすべて成功：
 - ✅ `src/core/indexer/indexer.test.ts` - 22テスト成功
 - ✅ `src/core/embedding/embedding.test.ts` - 22テスト成功
-- ✅ `src/core/search/search.test.ts` - 11テスト成功
+- ✅ `src/core/search/search.ts` - 11テスト成功
 - ✅ `src/core/database/database-service-integration.test.ts` - 9テスト成功
 
 ### 全体のテスト実行結果

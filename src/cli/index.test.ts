@@ -3,6 +3,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { setupEmbeddingMocks } from "../../tests/helpers/mock-embeddings.js";
+
+// Setup mocks for embedding generation
+setupEmbeddingMocks();
 
 describe("CLI main entry point", () => {
   let tempDir: string;
@@ -23,27 +27,37 @@ describe("CLI main entry point", () => {
     code: number;
   } {
     try {
-      const stdout = execSync(`node dist/cli/index.js ${args}`, {
+      const result = execSync(`node dist/cli/index.js ${args}`, {
         cwd: process.cwd(),
         env: {
           ...process.env,
-          GOOGLE_GENERATIVE_AI_API_KEY:
-            process.env.GOOGLE_GENERATIVE_AI_API_KEY || "test-key",
           NODE_NO_WARNINGS: "1",
         },
         encoding: "utf8",
-        stdio: "pipe",
       });
-      return { stdout: stdout.toString(), stderr: "", code: 0 };
+      return { stdout: result.toString(), stderr: "", code: 0 };
     } catch (error) {
       const execError = error as {
         stdout?: Buffer | string;
         stderr?: Buffer | string;
         status?: number;
+        output?: Array<Buffer | string | null>;
       };
+      // CLIツールの出力はstderrにも出力されることがあるため、両方を結合
+      const stdout = execError.stdout?.toString() || "";
+      const stderr = execError.stderr?.toString() || "";
+      // outputプロパティからも取得を試みる
+      let combined = stdout || stderr;
+      if (!combined && execError.output) {
+        const outputStr = execError.output
+          .filter(Boolean)
+          .map((buf) => buf?.toString() || "")
+          .join("");
+        if (outputStr) combined = outputStr;
+      }
       return {
-        stdout: execError.stdout?.toString() || "",
-        stderr: execError.stderr?.toString() || "",
+        stdout: combined,
+        stderr: stderr,
         code: execError.status || 1,
       };
     }

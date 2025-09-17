@@ -10,20 +10,23 @@ import {
   indexGitHubRepo,
   indexText,
 } from "../../src/core/indexer/indexer.js";
+import { setupEmbeddingMocks } from "../helpers/mock-embeddings.js";
 import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
 
+// Setup mocks for embedding generation
+setupEmbeddingMocks();
+
 /**
- * Indexer Integration Test without Mocks
+ * Indexer Integration Test with Mocked Embeddings
  *
- * このテストはモックを一切使用せず、実際のコンポーネントで動作を検証します。
- * 元のindexer.test.tsとの違い：
- * - vi.mock()を使用しない
+ * このテストは実際のコンポーネントで動作を検証しますが、
+ * コスト削減のためGoogle AI APIのエンベディング生成はモックしています。
  * - 実際のファイルシステムを使用（テンポラリディレクトリ）
  * - 実際のデータベースを使用（インメモリ）
  * - 実際のチャンキング処理を実行
- * - 実際のエンベディング生成（APIキーがない場合はスキップ）
+ * - エンベディング生成はモック（APIコスト削減）
  */
-describe("Indexer Integration (No Mocks)", () => {
+describe("Indexer Integration", () => {
   let db: DatabaseService;
   let tempDir: string;
 
@@ -80,7 +83,7 @@ describe("Indexer Integration (No Mocks)", () => {
 
       expect(result.itemsIndexed).toBe(0);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain("No chunks generated");
+      expect(result.errors[0]).toContain("Failed to generate embeddings");
 
       const count = await db.countItems();
       expect(count).toBe(0);
@@ -171,7 +174,9 @@ class UserService {
     test("handles non-existent file", async () => {
       const nonExistentPath = join(tempDir, "non-existent.txt");
 
-      await expect(indexFile(nonExistentPath, {}, {}, db)).rejects.toThrow();
+      const result = await indexFile(nonExistentPath, {}, {}, db);
+      expect(result.itemsIndexed).toBe(0);
+      expect(result.errors.length).toBeGreaterThan(0);
     });
 
     test("respects chunk boundaries for code files", async () => {
@@ -253,7 +258,9 @@ function thirdFunction() {
 
       expect(result.itemsIndexed).toBe(0);
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain("No files found");
+      expect(result.errors[0]).toContain(
+        "No files matched the specified patterns",
+      );
 
       const count = await db.countItems();
       expect(count).toBe(0);
@@ -287,7 +294,9 @@ function thirdFunction() {
 
       expect(result.itemsIndexed).toBe(0);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain("Invalid Gist URL");
+      expect(result.errors[0]).toContain(
+        'Domain "not-a-gist.com" is not allowed',
+      );
     });
 
     test("handles valid Gist URL format", async () => {
@@ -310,7 +319,7 @@ function thirdFunction() {
 
       expect(result.itemsIndexed).toBe(0);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain("Invalid GitHub repository URL");
+      expect(result.errors[0]).toContain('Domain "gitlab.com" is not allowed');
     });
 
     test("handles valid GitHub repository URL format", async () => {

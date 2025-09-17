@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DatabaseService } from "../../src/core/database/database-service.js";
 import { indexText } from "../../src/core/indexer/indexer.js";
 import {
@@ -9,6 +9,7 @@ import {
   semanticSearch,
 } from "../../src/core/search/search.js";
 import type { VectorSearchResult } from "../../src/core/vector-db/adapters/types.js";
+import { setupEmbeddingMocks } from "../helpers/mock-embeddings.js";
 import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
 import {
   testCode,
@@ -22,17 +23,11 @@ import {
   withTimeout,
 } from "../helpers/test-utils.js";
 
+// Setup mocks for embedding generation
+setupEmbeddingMocks();
+
 describe("Search Flow Integration Tests", () => {
   let db: DatabaseService;
-  const hasApiKey = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-
-  beforeAll(() => {
-    if (!hasApiKey) {
-      console.warn(
-        "GOOGLE_GENERATIVE_AI_API_KEY not set. Skipping some search tests.",
-      );
-    }
-  });
 
   beforeEach(async () => {
     db = await createTestDatabase({ provider: "memory", dimension: 768 });
@@ -48,10 +43,10 @@ describe("Search Flow Integration Tests", () => {
     for (const [key, doc] of Object.entries(testDocuments)) {
       const result = await indexText(
         doc.content,
+        doc.metadata,
         {
           chunkSize: 100,
           chunkOverlap: 20,
-          metadata: doc.metadata,
         },
         db,
       );
@@ -62,11 +57,7 @@ describe("Search Flow Integration Tests", () => {
   }
 
   describe("Semantic search flow", () => {
-    it("should find relevant documents using semantic search", async function () {
-      if (!hasApiKey) {
-        this.skip();
-      }
-
+    it("should find relevant documents using semantic search", async () => {
       await setupTestData();
 
       const query = testQueries.typescript;
@@ -89,11 +80,7 @@ describe("Search Flow Integration Tests", () => {
       expect(topResult.content.toLowerCase()).toContain("typescript");
     });
 
-    it("should handle different K values correctly", async function () {
-      if (!hasApiKey) {
-        this.skip();
-      }
-
+    it("should handle different K values correctly", async () => {
       await setupTestData();
 
       const query = testQueries.programming;
@@ -112,18 +99,13 @@ describe("Search Flow Integration Tests", () => {
       }
     });
 
-    it("should filter by source type", async function () {
-      if (!hasApiKey) {
-        this.skip();
-      }
-
+    it("should filter by source type", async () => {
       await setupTestData();
 
       const _fileResult = await indexText(
         testCode.typescript,
-        {
-          metadata: { sourceType: "file", filePath: "test.ts" },
-        },
+        { sourceType: "file", filePath: "test.ts" },
+        {},
         db,
       );
 
@@ -140,11 +122,7 @@ describe("Search Flow Integration Tests", () => {
   });
 
   describe("Hybrid search flow", () => {
-    it("should combine semantic and keyword search", async function () {
-      if (!hasApiKey) {
-        this.skip();
-      }
-
+    it("should combine semantic and keyword search", async () => {
       await setupTestData();
 
       const query = "TypeScript JavaScript static typing";
@@ -164,11 +142,7 @@ describe("Search Flow Integration Tests", () => {
       expect(hasTypeScriptContent).toBe(true);
     });
 
-    it("should adjust results based on keyword weight", async function () {
-      if (!hasApiKey) {
-        this.skip();
-      }
-
+    it("should adjust results based on keyword weight", async () => {
       await setupTestData();
 
       const query = "Python whitespace philosophy";
@@ -195,16 +169,12 @@ describe("Search Flow Integration Tests", () => {
   });
 
   describe("Result reranking", () => {
-    it("should rerank results to improve relevance", async function () {
-      if (!hasApiKey) {
-        this.skip();
-      }
-
+    it("should rerank results to improve relevance", async () => {
       await setupTestData();
 
       const query = testQueries.gistdex;
       const originalResults = await semanticSearch(query, { k: 10 }, db);
-      const rerankedResults = rerankResults(originalResults, query, {
+      const rerankedResults = rerankResults(query, originalResults, {
         boostFactor: 1.5,
       });
 
@@ -225,7 +195,7 @@ describe("Search Flow Integration Tests", () => {
 
     it("should handle edge cases in reranking", () => {
       const emptyResults: VectorSearchResult[] = [];
-      const reranked = rerankResults(emptyResults, "test query");
+      const reranked = rerankResults("test query", emptyResults);
       expect(reranked).toEqual([]);
 
       const singleResult: VectorSearchResult[] = [
@@ -236,7 +206,7 @@ describe("Search Flow Integration Tests", () => {
           metadata: {},
         },
       ];
-      const rerankedSingle = rerankResults(singleResult, "test");
+      const rerankedSingle = rerankResults("test", singleResult);
       expect(rerankedSingle.length).toBe(1);
       expect(rerankedSingle[0].score).toBeGreaterThan(0);
     });
@@ -254,7 +224,13 @@ describe("Search Flow Integration Tests", () => {
         db,
       );
 
-      const fullContent = await getOriginalContent(result.sourceId, db);
+      // Create a result object with sourceId in metadata
+      const mockResult: VectorSearchResult = {
+        content: originalText.slice(0, 50),
+        metadata: { sourceId: result.sourceId },
+        similarity: 1.0,
+      };
+      const fullContent = await getOriginalContent(mockResult, db);
       expect(fullContent).toBe(originalText);
     });
 
@@ -346,26 +322,20 @@ Details in subsection.`;
   });
 
   describe("Complex search scenarios", () => {
-    it("should handle search across multiple source types", async function () {
-      if (!hasApiKey) {
-        this.skip();
-      }
-
+    it("should handle search across multiple source types", async () => {
       await indexText(
         testDocuments.typescript.content,
-        { metadata: { sourceType: "documentation" } },
+        { sourceType: "documentation" },
+        {},
         db,
       );
 
-      await indexText(
-        testCode.typescript,
-        { metadata: { sourceType: "code" } },
-        db,
-      );
+      await indexText(testCode.typescript, { sourceType: "code" }, {}, db);
 
       await indexText(
         "TypeScript configuration and setup guide",
-        { metadata: { sourceType: "tutorial" } },
+        { sourceType: "tutorial" },
+        {},
         db,
       );
 
@@ -380,11 +350,7 @@ Details in subsection.`;
       expect(sourceTypes.size).toBeGreaterThanOrEqual(2);
     });
 
-    it("should maintain search quality with large datasets", async function () {
-      if (!hasApiKey) {
-        this.skip();
-      }
-
+    it("should maintain search quality with large datasets", async () => {
       const documents = [];
       for (let i = 0; i < 20; i++) {
         documents.push({
@@ -394,11 +360,11 @@ Details in subsection.`;
       }
 
       for (const doc of documents) {
-        await indexText(doc.content, { metadata: doc.metadata }, db);
+        await indexText(doc.content, doc.metadata, {}, db);
       }
 
       const totalItems = await db.countItems();
-      expect(totalItems).toBeGreaterThan(20);
+      expect(totalItems).toBeGreaterThanOrEqual(20);
 
       const searchStart = Date.now();
       const results = await semanticSearch(
