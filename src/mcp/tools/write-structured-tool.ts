@@ -37,7 +37,7 @@ export interface WriteStructuredResult extends BaseToolResult {
 }
 
 // Write structured doesn't need database service
-export type WriteStructuredOptions = {};
+export type WriteStructuredOptions = Record<string, never>;
 
 /**
  * Internal handler for writing structured knowledge
