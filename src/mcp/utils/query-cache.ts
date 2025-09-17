@@ -22,8 +22,9 @@ const CACHE_VERSION = "1.0.0";
 
 /**
  * Load cached queries from disk
+ * @internal
  */
-export function loadCachedQueries(): QueryCache {
+function loadCachedQueries(): QueryCache {
   const cacheFile = join(getCacheDir(), "queries.json");
 
   if (!existsSync(cacheFile)) {

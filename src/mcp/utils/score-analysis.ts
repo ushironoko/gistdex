@@ -37,14 +37,6 @@ export interface ScoreDistribution {
 }
 
 /**
- * Combined score analysis
- */
-export interface ScoreAnalysis {
-  metrics: DetailedScoreMetrics;
-  distribution: ScoreDistribution;
-}
-
-/**
  * Calculate detailed metrics from search results
  */
 export function calculateDetailedMetrics(
@@ -148,76 +140,4 @@ export function calculateScoreDistribution(
   }
 
   return distribution;
-}
-
-/**
- * Analyze scores comprehensively
- */
-export function analyzeScores(results: VectorSearchResult[]): ScoreAnalysis {
-  return {
-    metrics: calculateDetailedMetrics(results),
-    distribution: calculateScoreDistribution(results),
-  };
-}
-
-/**
- * Get score quality assessment
- */
-export function assessScoreQuality(
-  analysis: ScoreAnalysis,
-): "excellent" | "good" | "fair" | "poor" {
-  const { metrics, distribution } = analysis;
-
-  if (metrics.totalResults === 0) {
-    return "poor";
-  }
-
-  // Assess based on average score and distribution
-  if (
-    metrics.avgScore >= 0.8 &&
-    distribution.high >= metrics.totalResults * 0.5
-  ) {
-    return "excellent";
-  }
-  if (
-    metrics.avgScore >= 0.6 &&
-    distribution.high >= metrics.totalResults * 0.3
-  ) {
-    return "good";
-  }
-  if (metrics.avgScore >= 0.4) {
-    return "fair";
-  }
-  return "poor";
-}
-
-/**
- * Format score analysis for display
- */
-export function formatScoreAnalysis(analysis: ScoreAnalysis): string {
-  const { metrics, distribution } = analysis;
-
-  if (metrics.totalResults === 0) {
-    return "No results to analyze";
-  }
-
-  const lines = [
-    `Total Results: ${metrics.totalResults}`,
-    `Average Score: ${metrics.avgScore.toFixed(3)}`,
-    `Score Range: ${metrics.minScore.toFixed(3)} - ${metrics.maxScore.toFixed(3)}`,
-    `Standard Deviation: ${metrics.scoreStandardDeviation.toFixed(3)}`,
-    "",
-    "Score Distribution:",
-    `  High (≥0.8): ${distribution.high} results`,
-    `  Medium (0.5-0.8): ${distribution.medium} results`,
-    `  Low (<0.5): ${distribution.low} results`,
-    "",
-    "Percentiles:",
-    `  25th: ${metrics.scorePercentiles.p25.toFixed(3)}`,
-    `  50th (Median): ${metrics.scorePercentiles.p50.toFixed(3)}`,
-    `  75th: ${metrics.scorePercentiles.p75.toFixed(3)}`,
-    `  90th: ${metrics.scorePercentiles.p90.toFixed(3)}`,
-  ];
-
-  return lines.join("\n");
 }

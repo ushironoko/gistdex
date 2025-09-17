@@ -19,20 +19,3 @@ export function getCacheDir(): string {
 
   return localCache;
 }
-
-/**
- * Ensure a specific cache subdirectory exists
- *
- * @param subdir - Subdirectory name within the cache directory
- * @returns Full path to the subdirectory
- */
-export function ensureCacheSubdir(subdir: string): string {
-  const cacheDir = getCacheDir();
-  const fullPath = join(cacheDir, subdir);
-
-  if (!existsSync(fullPath)) {
-    mkdirSync(fullPath, { recursive: true });
-  }
-
-  return fullPath;
-}

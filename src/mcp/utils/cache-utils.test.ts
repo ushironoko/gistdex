@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ensureCacheSubdir, getCacheDir } from "./cache-utils.js";
+import { getCacheDir } from "./cache-utils.js";
 
 describe("cache-utils", () => {
   const testDir = join(process.cwd(), "test-cache");
@@ -52,25 +52,6 @@ describe("cache-utils", () => {
           configurable: true,
         });
       }
-    });
-  });
-
-  describe("ensureCacheSubdir", () => {
-    it("should create and return subdirectory path", () => {
-      const subdir = ensureCacheSubdir("test-subdir");
-      const expectedPath = join(getCacheDir(), "test-subdir");
-
-      expect(subdir).toBe(expectedPath);
-      expect(existsSync(subdir)).toBe(true);
-    });
-
-    it("should not fail if subdirectory already exists", () => {
-      const subdirName = "existing-subdir";
-      const subdir1 = ensureCacheSubdir(subdirName);
-      const subdir2 = ensureCacheSubdir(subdirName);
-
-      expect(subdir1).toBe(subdir2);
-      expect(existsSync(subdir1)).toBe(true);
     });
   });
 });
