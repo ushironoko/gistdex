@@ -23,15 +23,15 @@
     "package.json"
   ],
   "scripts": {
-    "dev": "tsdown --watch",
-    "build": "tsdown",
+    "dev": "tsdown --watch --tsconfig tsconfig.app.json",
+    "build": "tsdown --tsconfig tsconfig.app.json",
     "start": "node dist/cli/index.js",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "lint": "biome check --write .",
     "format": "biome format --write .",
-    "tsc": "tsgo --noEmit",
+    "tsc": "tsgo --project tsconfig.app.json --noEmit && tsgo --project tsconfig.test.json --noEmit",
     "prepare": "pnpm format && pnpm run lint && pnpm run tsc && pnpm run test && pnpm run build && pnpm run docs:build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
