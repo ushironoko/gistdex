@@ -85,20 +85,22 @@ npx gistdex -m
 
 MCP tools available:
 
+- `gistdex_search` - Autonomous agent-based search with strategic planning and execution (PRIMARY TOOL)
+- `gistdex_query_simple` - Simple search for indexed content (use only when gistdex_search lacks needed flexibility)
 - `gistdex_index` - Index content from various sources
-- `gistdex_query` - Search indexed content (supports `section` option for markdown)
 - `gistdex_list` - List indexed items with statistics
-- `gistdex_agent_query` - Autonomous agent-based search with strategic planning and execution
+- `gistdex_write_structured_result` - Save agent-generated structured analysis and findings
 
-#### Agent Query Architecture
+#### Agent Search Architecture
 
 The project implements autonomous agent-based search with strategic planning and execution:
 
-1. **Strategic Planning**: `gistdex_agent_query` creates multi-stage query plans based on research goals
+1. **Strategic Planning**: `gistdex_search` creates multi-stage query plans based on research goals
 2. **Autonomous Execution**: Executes queries strategically with progress tracking and evaluation
 3. **Adaptive Refinement**: Automatically evaluates results and decides next actions
 4. **Comprehensive Analysis**: Provides detailed analysis and recommendations for complex research tasks
-5. **Agent Cache**: Results are cached in `.gistdex/cache/agent/` for analysis and reuse
+5. **Structured Knowledge**: Agents can save their findings using `gistdex_write_structured_result`
+6. **Query Caching**: Successful queries are cached in `.gistdex/cache/` for future reference
 
 This architecture allows LLM agents to:
 - Plan and execute complex search strategies autonomously
@@ -177,8 +179,8 @@ The system uses a **functional composition pattern** for vector databases, elimi
    - `withRegistry` and `withCustomRegistry` in `src/core/vector-db/adapters/registry-operations.ts` enable scoped registry usage
 3. **Factory Pattern**: `createFactory` in `src/core/vector-db/adapters/factory.ts` creates adapter instances with registry support
 4. **Service Layer**:
-   - `createDatabaseService` in `src/core/database-service.ts` provides high-level API
-   - `createDatabaseOperations` in `src/core/database-operations.ts` provides functional composition patterns
+   - `createDatabaseService` in `src/core/database/database-service.ts` provides high-level API
+   - `createDatabaseOperations` in `src/core/database/database-operations.ts` provides functional composition patterns
 
 ### Key Components
 
@@ -206,25 +208,49 @@ The system uses a **functional composition pattern** for vector databases, elimi
 
 #### Core Services (`src/core/`)
 
-- **database-service.ts** - Main service orchestrating vector operations through adapters (functional factory pattern)
-- **database-operations.ts** - Functional composition patterns for database operations (`withDatabase`, `withReadOnly`, `withTransaction`)
-- **embedding.ts** - Google AI gemini-embedding-001 model integration (768 dimensions)
-- **chunking.ts** - Text chunking with configurable size and overlap
-- **search.ts** - Semantic and hybrid search implementation with `getOriginalContent` for full content retrieval
-- **indexer.ts** - Content indexing from multiple sources with sourceId generation for chunk grouping
-- **config-operations.ts** - Configuration management with functional composition pattern
-- **security.ts** - Input validation and security utilities
-- **utils/env-loader.ts** - Environment variable loader with fallback to system environment
-- **utils/ranking.ts** - Result re-ranking algorithms for search optimization
+- **database/** - Database layer
+  - `database-service.ts` - Main service orchestrating vector operations through adapters
+  - `database-operations.ts` - Functional composition patterns (`withDatabase`, `withReadOnly`, `withTransaction`)
+- **embedding/** - Embedding generation
+  - `embedding.ts` - Google AI gemini-embedding-001 model integration (768 dimensions)
+- **chunk/** - Text chunking and parsing
+  - `chunking.ts` - Text chunking with configurable size and overlap
+  - `boundary-aware-chunking.ts` - Boundary-preserving chunking for structured content
+  - `cst-operations.ts` - Concrete Syntax Tree operations for code parsing
+  - `parser-factory.ts` - Parser creation for various file types
+- **search/** - Search functionality
+  - `search.ts` - Semantic and hybrid search with full content retrieval
+  - `security.ts` - Input validation and sanitization
+- **indexer/** - Content indexing
+  - `indexer.ts` - Multi-source indexing with sourceId generation
+  - `indexer-auto-optimize.ts` - Automatic chunk optimization
+- **config/** - Configuration management
+  - `config.ts` - Configuration loading with functional composition
+- **utils/** - Utility functions
+  - `env-loader.ts` - Environment variable loading
+  - `ranking.ts` - Result re-ranking algorithms
+  - `math-utils.ts` - Mathematical operations (cosine similarity, dot product)
+  - `config-parser.ts` - Configuration file parsing
 
 #### MCP Layer (`src/mcp/`)
 
-- **server.ts** - MCP server implementation using StdioServerTransport
-- **tools/index-tool.ts** - Tool handler for indexing content via MCP
-- **tools/query-tool.ts** - Tool handler for searching content via MCP
-- **tools/list-tool.ts** - Tool handler for listing indexed items via MCP
-- **utils/tool-handler.ts** - Common factory for creating type-safe tool handlers
-- **schemas/validation.ts** - Zod schemas for MCP tool input validation
+- **server.ts** - MCP server implementation with tool registration and routing
+- **tools/** - MCP tool implementations
+  - `agent-query-tool.ts` - Autonomous agent-based search (gistdex_search)
+  - `query-tool.ts` - Simple query tool (gistdex_query_simple)
+  - `index-tool.ts` - Content indexing tool
+  - `list-tool.ts` - List indexed items tool
+  - `write-structured-tool.ts` - Save structured knowledge tool
+- **utils/** - MCP utilities
+  - `tool-handler.ts` - Factory for creating type-safe tool handlers
+  - `metadata-generator.ts` - Analysis metadata generation
+  - `query-chain.ts` - Multi-stage query execution
+  - `query-cache.ts` - Query result caching
+  - `structured-knowledge.ts` - Structured knowledge storage
+  - `score-analysis.ts` - Score distribution analysis
+  - `stop-words.ts` - Stop word filtering for keywords
+  - `cache-utils.ts` - Cache directory management
+- **schemas/validation.ts** - Zod schemas for tool input validation
 
 #### CLI Layer (`src/cli/`)
 
@@ -260,6 +286,15 @@ The system uses a **functional composition pattern** for vector databases, elimi
 Tests are colocated with source files using `.test.ts` suffix. Run tests with coverage to ensure 80% threshold is met for branches, functions, lines, and statements.
 
 ## Recent Architecture Improvements
+
+### MCP Tool Reorganization (v1.3.7+)
+
+- Renamed and reordered MCP tools for better agent usage:
+  - `gistdex_agent_query` → `gistdex_search` (now the primary tool)
+  - `gistdex_query` → `gistdex_query_simple` (secondary tool)
+- Added `gistdex_write_structured_result` for agent-driven knowledge creation
+- Removed automatic structured data generation in favor of agent control
+- Cleaned up unused MCP utility functions and files
 
 ### MCP Server Integration (v0.5.0+)
 
@@ -300,6 +335,7 @@ Tests are colocated with source files using `.test.ts` suffix. Run tests with co
 - Eliminates experimental SQLite warnings in Node.js 24+
 - Maintains full compatibility with sqlite-vec extension for vector operations
 - Transparent to users - still accessed as "sqlite" provider
+- Dynamic provider selection in config: Linux uses "bun-sqlite", macOS uses "sqlite"
 
 ## Important Development Notes
 
@@ -366,10 +402,14 @@ Gistdex supports both TypeScript and JSON configuration files, loaded in the fol
 
 ```typescript
 import { defineGistdexConfig } from "@ushironoko/gistdex";
+import { platform } from "node:os";
+
+// Linux環境ではbun-sqlite、macOSではsqliteを使用
+const provider = platform() === "linux" ? "bun-sqlite" : "sqlite";
 
 export default defineGistdexConfig({
   vectorDB: {
-    provider: "sqlite",
+    provider,
     options: {
       path: "./gistdex.db",
       dimension: 768,
