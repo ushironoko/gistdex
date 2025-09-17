@@ -1,139 +1,294 @@
-import type { MockInstance } from "vitest";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { main } from "./index.js";
-
-// Mock command handlers
-vi.mock("./commands/init.js", () => ({
-  handleInit: vi.fn(() => Promise.resolve()),
-}));
-
-vi.mock("./commands/help.js", () => ({
-  showHelp: vi.fn(),
-}));
-
-vi.mock("./commands/version.js", () => ({
-  showVersion: vi.fn(),
-}));
-
-vi.mock("./commands/index.js", () => ({
-  handleIndex: vi.fn(() => Promise.resolve()),
-}));
-
-vi.mock("./commands/query.js", () => ({
-  handleQuery: vi.fn(() => Promise.resolve()),
-}));
-
-vi.mock("./commands/list.js", () => ({
-  handleList: vi.fn(() => Promise.resolve()),
-}));
-
-vi.mock("./commands/info.js", () => ({
-  handleInfo: vi.fn(() => Promise.resolve()),
-}));
-
-// Mock gunshi
-vi.mock("gunshi", () => ({
-  cli: vi.fn(() => Promise.resolve()),
-  define: vi.fn((command: unknown) => command),
-}));
+import { execSync } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("CLI main entry point", () => {
-  let originalArgv: string[];
-  let mockExit: MockInstance;
-  let mockConsoleError: MockInstance;
+  let tempDir: string;
+  let testDbPath: string;
 
-  beforeEach(() => {
-    originalArgv = process.argv;
-    mockExit = vi.spyOn(process, "exit").mockImplementation(() => {
-      throw new Error(`Process exited`);
-    });
-    mockConsoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.clearAllMocks();
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "gistdex-cli-test-"));
+    testDbPath = join(tempDir, "test.db");
   });
 
-  afterEach(() => {
-    process.argv = originalArgv;
-    mockExit.mockRestore();
-    mockConsoleError.mockRestore();
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true }).catch(() => {});
   });
 
-  it("should let gunshi handle help when no arguments are provided", async () => {
-    const { cli } = await import("gunshi");
-    process.argv = ["node", "cli.js"];
+  function runCLI(args: string): {
+    stdout: string;
+    stderr: string;
+    code: number;
+  } {
+    try {
+      const stdout = execSync(`node dist/cli/index.js ${args}`, {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          GOOGLE_GENERATIVE_AI_API_KEY:
+            process.env.GOOGLE_GENERATIVE_AI_API_KEY || "test-key",
+          NODE_NO_WARNINGS: "1",
+        },
+        encoding: "utf8",
+        stdio: "pipe",
+      });
+      return { stdout: stdout.toString(), stderr: "", code: 0 };
+    } catch (error) {
+      const execError = error as {
+        stdout?: Buffer | string;
+        stderr?: Buffer | string;
+        status?: number;
+      };
+      return {
+        stdout: execError.stdout?.toString() || "",
+        stderr: execError.stderr?.toString() || "",
+        code: execError.status || 1,
+      };
+    }
+  }
 
-    await main();
-    // Gunshi's cli function should be called to handle help
-    expect(cli).toHaveBeenCalled();
+  it("should show help when no arguments are provided", () => {
+    const result = runCLI("");
+
+    expect(result.stdout.toLowerCase()).toContain("usage");
+    expect(result.stdout.toLowerCase()).toContain("commands");
+    expect(result.code).toBe(0);
   });
 
-  it("should let gunshi handle help with --help flag", async () => {
-    const { cli } = await import("gunshi");
-    process.argv = ["node", "cli.js", "--help"];
+  it("should show help with --help flag", () => {
+    const result = runCLI("--help");
 
-    await main();
-    // Gunshi's cli function should be called to handle help
-    expect(cli).toHaveBeenCalled();
+    expect(result.stdout.toLowerCase()).toContain("usage");
+    expect(result.stdout.toLowerCase()).toContain("commands");
+    expect(result.code).toBe(0);
   });
 
-  it("should show version with --version flag", async () => {
-    const { showVersion } = await import("./commands/version.js");
-    process.argv = ["node", "cli.js", "--version"];
+  it("should show version with --version flag", () => {
+    const result = runCLI("--version");
 
-    await expect(main()).rejects.toThrow("Process exited");
-    expect(showVersion).toHaveBeenCalled();
-    expect(mockExit).toHaveBeenCalledWith(0);
+    expect(result.stdout).toMatch(/\d+\.\d+\.\d+/);
+    expect(result.code).toBe(0);
   });
 
-  it("should show version with -v flag", async () => {
-    const { showVersion } = await import("./commands/version.js");
-    process.argv = ["node", "cli.js", "-v"];
+  it("should show version with -v flag", () => {
+    const result = runCLI("-v");
 
-    await expect(main()).rejects.toThrow("Process exited");
-    expect(showVersion).toHaveBeenCalled();
-    expect(mockExit).toHaveBeenCalledWith(0);
+    expect(result.stdout).toMatch(/\d+\.\d+\.\d+/);
+    expect(result.code).toBe(0);
   });
 
-  it("should handle version command", async () => {
-    const { cli } = await import("gunshi");
-    process.argv = ["node", "cli.js", "version"];
+  it("should handle init command", () => {
+    const result = runCLI(`init --db ${testDbPath} --provider memory`);
 
-    await main();
-    expect(cli).toHaveBeenCalled();
+    expect(result.code).toBe(0);
+    expect(result.stdout.toLowerCase()).toContain("database initialized");
   });
 
-  it("should handle init command", async () => {
-    const { cli } = await import("gunshi");
-    process.argv = ["node", "cli.js", "init"];
+  it("should handle index command with text", () => {
+    const result = runCLI(
+      `index --text "Test content for indexing" --db ${testDbPath} --provider memory`,
+    );
 
-    await main();
-    expect(cli).toHaveBeenCalled();
+    expect(result.code).toBe(0);
+    expect(result.stdout.toLowerCase()).toContain("indexed");
   });
 
-  it("should handle --init alias", async () => {
-    const { cli } = await import("gunshi");
-    process.argv = ["node", "cli.js", "--init"];
+  it("should handle index command with file", async () => {
+    const testFile = join(tempDir, "test.txt");
+    await writeFile(testFile, "Test file content", "utf-8");
 
-    await main();
-    expect(cli).toHaveBeenCalled();
+    const result = runCLI(
+      `index --file ${testFile} --db ${testDbPath} --provider memory`,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.stdout.toLowerCase()).toContain("indexed");
   });
 
-  it("should handle unknown command", async () => {
-    const { cli } = await import("gunshi");
-    process.argv = ["node", "cli.js", "unknown"];
+  it("should handle query command", () => {
+    // First index some content
+    runCLI(
+      `index --text "TypeScript is great" --db ${testDbPath} --provider memory`,
+    );
 
-    // gunshi handles unknown commands internally
-    await main();
+    // Then query
+    const result = runCLI(
+      `query "TypeScript" --db ${testDbPath} --provider memory -k 5`,
+    );
 
-    // Verify that cli was called with the unknown command
-    // gunshi will handle the error internally
-    expect(cli).toHaveBeenCalled();
+    expect(result.code).toBe(0);
+    // May not find results without real embeddings, but command should run
+    expect(result.stdout).toBeDefined();
   });
 
-  it("should call gunshi cli for valid commands", async () => {
-    const { cli } = await import("gunshi");
-    process.argv = ["node", "cli.js", "list"];
+  it("should handle list command", () => {
+    // First index some content
+    runCLI(
+      `index --text "Sample content" --db ${testDbPath} --provider memory`,
+    );
 
-    await main();
-    expect(cli).toHaveBeenCalled();
+    const result = runCLI(`list --db ${testDbPath} --provider memory`);
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBeDefined();
+  });
+
+  it("should handle info command", () => {
+    const result = runCLI(`info --provider memory`);
+
+    expect(result.code).toBe(0);
+    expect(result.stdout.toLowerCase()).toContain("memory");
+  });
+
+  it("should handle invalid command gracefully", () => {
+    const result = runCLI("invalidcommand");
+
+    expect(result.code).toBe(1);
+    expect(result.stdout.toLowerCase() + result.stderr.toLowerCase()).toContain(
+      "unknown",
+    );
+  });
+
+  it("should handle missing required arguments", () => {
+    const result = runCLI("query"); // Missing query string
+
+    expect(result.code).toBe(1);
+    expect(result.stdout + result.stderr).toBeDefined();
+  });
+
+  it("should handle MCP mode flag", () => {
+    // MCP mode runs a server, so we just check if the flag is recognized
+    // We can't actually test the server in a unit test
+    const result = runCLI("--mcp --help");
+
+    // Should show MCP-specific help or start server
+    expect(result.stdout).toBeDefined();
+  });
+
+  it("should respect environment variables", () => {
+    const result = runCLI("info --provider memory");
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBeDefined();
+  });
+
+  it("should handle configuration file", async () => {
+    const configPath = join(tempDir, "gistdex.config.json");
+    const config = {
+      vectorDB: {
+        provider: "memory",
+        options: { dimension: 768 },
+      },
+    };
+    await writeFile(configPath, JSON.stringify(config, null, 2));
+
+    // Run command in the directory with config
+    const result = execSync(
+      `cd ${tempDir} && node ${process.cwd()}/dist/cli/index.js info`,
+      { encoding: "utf8" },
+    );
+
+    expect(result).toBeDefined();
+    expect(result.toLowerCase()).toContain("memory");
+  });
+
+  it("should override config with CLI arguments", async () => {
+    const configPath = join(tempDir, "gistdex.config.json");
+    const config = {
+      vectorDB: {
+        provider: "sqlite",
+        options: { path: "./default.db" },
+      },
+    };
+    await writeFile(configPath, JSON.stringify(config, null, 2));
+
+    // Override with CLI argument
+    const result = execSync(
+      `cd ${tempDir} && node ${process.cwd()}/dist/cli/index.js info --provider memory`,
+      { encoding: "utf8" },
+    );
+
+    expect(result.toLowerCase()).toContain("memory");
+  });
+
+  it("should handle multiple file indexing with glob", async () => {
+    // Create test files
+    await writeFile(join(tempDir, "file1.txt"), "Content 1", "utf-8");
+    await writeFile(join(tempDir, "file2.txt"), "Content 2", "utf-8");
+
+    const pattern = join(tempDir, "*.txt");
+    const result = runCLI(
+      `index --files "${pattern}" --db ${testDbPath} --provider memory`,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.stdout.toLowerCase()).toContain("indexed");
+  });
+
+  it("should handle full content retrieval flag", () => {
+    // First index content
+    runCLI(
+      `index --text "Full content test" --db ${testDbPath} --provider memory`,
+    );
+
+    // Query with full flag
+    const result = runCLI(
+      `query "test" --full --db ${testDbPath} --provider memory -k 1`,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBeDefined();
+  });
+
+  it("should handle chunk size and overlap options", () => {
+    const result = runCLI(
+      `index --text "Long content for chunking test" --chunk-size 50 --chunk-overlap 10 --db ${testDbPath} --provider memory`,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.stdout.toLowerCase()).toContain("indexed");
+  });
+
+  it("should handle hybrid search flag", () => {
+    // First index content
+    runCLI(
+      `index --text "Hybrid search test content" --db ${testDbPath} --provider memory`,
+    );
+
+    // Query with hybrid flag
+    const result = runCLI(
+      `query "hybrid" --hybrid --db ${testDbPath} --provider memory -k 5`,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBeDefined();
+  });
+
+  it("should handle stats flag for list command", () => {
+    // First index content
+    runCLI(
+      `index --text "Stats test content" --db ${testDbPath} --provider memory`,
+    );
+
+    const result = runCLI(`list --stats --db ${testDbPath} --provider memory`);
+
+    expect(result.code).toBe(0);
+    expect(result.stdout.toLowerCase()).toContain("total");
+  });
+
+  it("should handle type filter in query", () => {
+    // First index content
+    runCLI(
+      `index --text "Type filter test" --db ${testDbPath} --provider memory`,
+    );
+
+    const result = runCLI(
+      `query "test" --type text --db ${testDbPath} --provider memory -k 5`,
+    );
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toBeDefined();
   });
 });

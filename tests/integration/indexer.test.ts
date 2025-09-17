@@ -1,8 +1,7 @@
-import { describe, expect, test, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { createTestDatabase, cleanupTestDatabase } from "../helpers/test-db.js";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { DatabaseService } from "../../src/core/database/database-service.js";
 import {
   indexFile,
@@ -11,6 +10,7 @@ import {
   indexGitHubRepo,
   indexText,
 } from "../../src/core/indexer/indexer.js";
+import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
 
 /**
  * Indexer Integration Test without Mocks

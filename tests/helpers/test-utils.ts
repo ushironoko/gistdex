@@ -38,7 +38,7 @@ export function assertEmbeddingValid(
 
   for (const value of embedding) {
     expect(typeof value).toBe("number");
-    expect(isNaN(value)).toBe(false);
+    expect(Number.isNaN(value)).toBe(false);
     expect(value).toBeGreaterThanOrEqual(-1.5);
     expect(value).toBeLessThanOrEqual(1.5);
   }

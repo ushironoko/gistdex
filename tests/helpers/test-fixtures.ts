@@ -1,5 +1,4 @@
 import type { VectorSearchResult } from "../../src/core/vector-db/adapters/types.js";
-import { createMockEmbedding } from "./test-db.js";
 
 export const testDocuments = {
   typescript: {

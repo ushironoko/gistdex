@@ -65,6 +65,13 @@ export const createMemoryAdapter = (
         continue;
       }
 
+      // Skip if embedding dimensions don't match
+      if (embedding.length !== doc.embedding.length) {
+        console.warn(
+          `Skipping document ${doc.id}: embedding dimension mismatch (query: ${embedding.length}, doc: ${doc.embedding.length})`,
+        );
+        continue;
+      }
       const score = cosineSimilarity(embedding, doc.embedding);
       results.push({ doc, score });
     }

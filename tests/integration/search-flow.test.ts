@@ -1,33 +1,26 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll } from "vitest";
-import {
-  createTestDatabase,
-  cleanupTestDatabase,
-  createMockEmbedding,
-  createSimilarEmbedding,
-} from "../helpers/test-db.js";
-import {
-  testDocuments,
-  testQueries,
-  testCode,
-} from "../helpers/test-fixtures.js";
-import {
-  assertSearchResultValid,
-  assertSearchResultsOrdered,
-  withTimeout,
-  extractContentFromResults,
-  findResultByContent,
-} from "../helpers/test-utils.js";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import type { DatabaseService } from "../../src/core/database/database-service.js";
 import { indexText } from "../../src/core/indexer/indexer.js";
 import {
-  semanticSearch,
-  hybridSearch,
-  rerankResults,
   getOriginalContent,
   getSectionContent,
+  hybridSearch,
+  rerankResults,
+  semanticSearch,
 } from "../../src/core/search/search.js";
-import { generateEmbedding } from "../../src/core/embedding/embedding.js";
-import type { DatabaseService } from "../../src/core/database/database-service.js";
 import type { VectorSearchResult } from "../../src/core/vector-db/adapters/types.js";
+import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
+import {
+  testCode,
+  testDocuments,
+  testQueries,
+} from "../helpers/test-fixtures.js";
+import {
+  assertSearchResultsOrdered,
+  assertSearchResultValid,
+  findResultByContent,
+  withTimeout,
+} from "../helpers/test-utils.js";
 
 describe("Search Flow Integration Tests", () => {
   let db: DatabaseService;
@@ -126,7 +119,7 @@ describe("Search Flow Integration Tests", () => {
 
       await setupTestData();
 
-      const fileResult = await indexText(
+      const _fileResult = await indexText(
         testCode.typescript,
         {
           metadata: { sourceType: "file", filePath: "test.ts" },
@@ -155,7 +148,7 @@ describe("Search Flow Integration Tests", () => {
       await setupTestData();
 
       const query = "TypeScript JavaScript static typing";
-      const semanticResults = await semanticSearch(query, { k: 10 }, db);
+      const _semanticResults = await semanticSearch(query, { k: 10 }, db);
       const hybridResults = await hybridSearch(
         query,
         { k: 10, keywordWeight: 0.3 },
@@ -294,7 +287,7 @@ Details in subsection.`;
 
       if (section2Chunk) {
         const sectionContent = await getSectionContent(
-          section2Chunk.metadata as any,
+          section2Chunk.metadata as Record<string, unknown>,
           result.sourceId,
           db,
         );

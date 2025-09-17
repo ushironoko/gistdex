@@ -1,18 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach, beforeAll } from "vitest";
-import { createTestDatabase, cleanupTestDatabase } from "../helpers/test-db.js";
-import { testDocuments, testCode } from "../helpers/test-fixtures.js";
-import {
-  assertSearchResultValid,
-  assertEmbeddingValid,
-  withTimeout,
-} from "../helpers/test-utils.js";
-import { indexText, indexFile } from "../../src/core/indexer/indexer.js";
-import { chunkText } from "../../src/core/chunk/chunking.js";
-import { generateEmbeddingsBatch } from "../../src/core/embedding/embedding.js";
-import type { DatabaseService } from "../../src/core/database/database-service.js";
-import { writeFile, unlink, mkdtemp, rmdir } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdtemp, rmdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { chunkText } from "../../src/core/chunk/chunking.js";
+import type { DatabaseService } from "../../src/core/database/database-service.js";
+import { generateEmbeddingsBatch } from "../../src/core/embedding/embedding.js";
+import { indexFile, indexText } from "../../src/core/indexer/indexer.js";
+import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
+import { testCode, testDocuments } from "../helpers/test-fixtures.js";
+import { assertEmbeddingValid, withTimeout } from "../helpers/test-utils.js";
 
 describe("Indexing Flow Integration Tests", () => {
   let db: DatabaseService;
@@ -274,7 +270,7 @@ describe("Indexing Flow Integration Tests", () => {
         tags: ["test", "integration"],
       };
 
-      const result = await indexText(
+      const _result = await indexText(
         content,
         metadata,
         {

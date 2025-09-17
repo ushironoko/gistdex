@@ -1,11 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { execSync } from "node:child_process";
-import { createTestDatabase, cleanupTestDatabase } from "../helpers/test-db.js";
-import { testDocuments, testCode } from "../helpers/test-fixtures.js";
-import type { DatabaseService } from "../../src/core/database/database-service.js";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { testCode, testDocuments } from "../helpers/test-fixtures.js";
 
 /**
  * CLI Commands Integration Test
@@ -35,15 +33,19 @@ describe("CLI Commands Integration", () => {
         encoding: "utf8",
       });
       return output.toString();
-    } catch (error: any) {
-      return error.stdout?.toString() || error.stderr?.toString() || "";
+    } catch (error) {
+      const execError = error as {
+        stdout?: Buffer | string;
+        stderr?: Buffer | string;
+      };
+      return execError.stdout?.toString() || execError.stderr?.toString() || "";
     }
   }
 
   describe("init command", () => {
     it("should initialize configuration files", async () => {
-      const configPath = join(tempDir, "gistdex.config.json");
-      const envPath = join(tempDir, ".env");
+      const _configPath = join(tempDir, "gistdex.config.json");
+      const _envPath = join(tempDir, ".env");
 
       // 一時ディレクトリで初期化を実行
       const output = runCLI(`init`);
