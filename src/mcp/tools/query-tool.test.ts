@@ -4,13 +4,11 @@ import * as searchModule from "../../core/search/search.js";
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
 import * as queryCacheModule from "../utils/query-cache.js";
 import * as queryChainModule from "../utils/query-chain.js";
-import * as structuredKnowledgeModule from "../utils/structured-knowledge.js";
 import { handleQueryTool } from "./query-tool.js";
 
 vi.mock("../../core/search/search.js");
 vi.mock("../utils/query-cache.js");
 vi.mock("../utils/query-chain.js");
-vi.mock("../utils/structured-knowledge.js");
 
 describe("query-tool", () => {
   let mockService: DatabaseService;
@@ -80,41 +78,6 @@ describe("query-tool", () => {
     });
   });
 
-  describe("saveStructured option", () => {
-    it("should save structured knowledge when option is enabled", async () => {
-      const result = await handleQueryTool(
-        { query: "test query", saveStructured: true },
-        { service: mockService },
-      );
-
-      expect(result.success).toBe(true);
-      expect(
-        structuredKnowledgeModule.updateStructuredKnowledge,
-      ).toHaveBeenCalledWith(
-        "test query",
-        expect.objectContaining({
-          content: expect.stringContaining("Test content 1"),
-          metadata: expect.objectContaining({
-            searchStrategy: "semantic",
-            resultCount: 2,
-          }),
-        }),
-      );
-    });
-
-    it("should not save structured knowledge when option is disabled", async () => {
-      const result = await handleQueryTool(
-        { query: "test query", saveStructured: false },
-        { service: mockService },
-      );
-
-      expect(result.success).toBe(true);
-      expect(
-        structuredKnowledgeModule.updateStructuredKnowledge,
-      ).not.toHaveBeenCalled();
-    });
-  });
-
   describe("useChain option", () => {
     const mockChainResult = {
       topic: "test query",
@@ -174,51 +137,6 @@ describe("query-tool", () => {
           ]),
         }),
         mockService,
-      );
-    });
-
-    it("should save structured knowledge from chain results when both options are enabled", async () => {
-      // Mock buildStructuredResult
-      const mockBuildStructuredResult = vi.fn().mockReturnValue({
-        topic: "test query",
-        content:
-          "# Test Query\n\n## Query Chain Results\n\nTest structured content",
-        metadata: {
-          queryCount: 3,
-          resultCount: 2,
-          timestamp: expect.any(String),
-          queries: [
-            "test query",
-            "test query implementation",
-            'related to "test query"',
-          ],
-        },
-      });
-
-      // Mock the dynamic import
-      vi.doMock("../utils/query-chain.js", () => ({
-        buildStructuredResult: mockBuildStructuredResult,
-      }));
-
-      const result = await handleQueryTool(
-        { query: "test query", useChain: true, saveStructured: true },
-        { service: mockService },
-      );
-
-      expect(result.success).toBe(true);
-      expect(
-        structuredKnowledgeModule.updateStructuredKnowledge,
-      ).toHaveBeenCalledWith(
-        "test query",
-        expect.objectContaining({
-          content: expect.stringContaining("Query Chain Results"),
-          metadata: expect.objectContaining({
-            queryCount: 3,
-            resultCount: 2,
-            queryExecuted: "test query",
-            isChainResult: true,
-          }),
-        }),
       );
     });
 
@@ -458,30 +376,6 @@ describe("query-tool", () => {
       };
       vi.mocked(queryChainModule.executeQueryChain).mockResolvedValue(
         mockChainResult,
-      );
-    });
-
-    it("should handle hybrid search with saveStructured", async () => {
-      const result = await handleQueryTool(
-        { query: "test query", hybrid: true, saveStructured: true, k: 10 },
-        { service: mockService },
-      );
-
-      expect(result.success).toBe(true);
-      expect(searchModule.hybridSearch).toHaveBeenCalledWith(
-        "test query",
-        { k: 10, sourceType: undefined, keywordWeight: 0.3 },
-        mockService,
-      );
-      expect(
-        structuredKnowledgeModule.updateStructuredKnowledge,
-      ).toHaveBeenCalledWith(
-        "test query",
-        expect.objectContaining({
-          metadata: expect.objectContaining({
-            searchStrategy: "hybrid",
-          }),
-        }),
       );
     });
 

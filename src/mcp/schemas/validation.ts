@@ -296,6 +296,10 @@ export const agentQueryToolSchema = z.object({
     .string()
     .min(1)
     .describe("The agent's final goal for this search session"),
+  cursor: z
+    .string()
+    .optional()
+    .describe("Pagination cursor for continuing from previous results"),
   context: z
     .object({
       previousQueries: z
@@ -315,6 +319,13 @@ export const agentQueryToolSchema = z.object({
     .describe("Context from previous iterations"),
   options: z
     .object({
+      mode: z
+        .enum(["summary", "detailed", "full"])
+        .optional()
+        .default("summary")
+        .describe(
+          "Response mode: summary (~5K tokens), detailed (~15K tokens), or full (may exceed limits)",
+        ),
       k: z
         .number()
         .int()
@@ -323,6 +334,14 @@ export const agentQueryToolSchema = z.object({
         .optional()
         .default(5) // デフォルトも5に変更
         .describe("Number of results to return (max 5 for MCP token limits)"),
+      pageSize: z
+        .number()
+        .int()
+        .positive()
+        .max(10)
+        .optional()
+        .default(5)
+        .describe("Page size for pagination (max 10)"),
       hybrid: z
         .union([
           z.boolean(),
@@ -350,6 +369,15 @@ export const agentQueryToolSchema = z.object({
         .optional()
         .default(false)
         .describe("Include debug information"),
+      saveStructured: z
+        .union([
+          z.boolean(),
+          z.string().transform((val) => val === "true" || val === "1"),
+          z.number().transform((val) => val !== 0),
+        ])
+        .optional()
+        .default(false)
+        .describe("Save results as structured knowledge in .gistdex/cache/"),
     })
     .optional()
     .describe("Search options"),

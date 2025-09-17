@@ -10,9 +10,15 @@ import {
   agentQueryToolSchema,
 } from "../schemas/validation.js";
 import {
-  analyzeContentTypes,
+  analyzeContentCharacteristics,
   analyzeSemanticCoherence,
+  type ContentCharacteristics,
+  extractMainTopics as extractTopics,
 } from "../utils/metadata-generator.js";
+import {
+  calculateDetailedMetrics,
+  type DetailedScoreMetrics,
+} from "../utils/score-analysis.js";
 import {
   type BaseToolOptions,
   type BaseToolResult,
@@ -25,22 +31,9 @@ type AgentQueryInput = AgentQueryToolInput;
 
 /**
  * Detailed metrics for agent decision making
+ * Re-exported from score-analysis module
  */
-export interface DetailedMetrics {
-  totalResults: number;
-  avgScore: number;
-  maxScore: number;
-  minScore: number;
-  scoreVariance: number;
-  scoreStandardDeviation: number;
-  medianScore: number;
-  scorePercentiles: {
-    p25: number;
-    p50: number;
-    p75: number;
-    p90: number;
-  };
-}
+export type DetailedMetrics = DetailedScoreMetrics;
 
 /**
  * Semantic analysis with topic clustering
@@ -72,23 +65,25 @@ export interface QueryAnalysis {
 
 /**
  * Content characteristics analysis
+ * Re-exported from metadata-generator module
  */
-export interface ContentCharacteristics {
-  predominantType: "code" | "documentation" | "mixed" | "example";
-  codeLanguages?: string[];
-  hasExamples: boolean;
-  hasImplementation: boolean;
-  completeness: number; // 0-1
-}
+export type { ContentCharacteristics } from "../utils/metadata-generator.js";
 
 /**
  * Next action suggestions for agent
  */
 export interface NextActionSuggestion {
-  action: "refine" | "broaden" | "pivot" | "stop" | "index_more";
+  action:
+    | "refine"
+    | "broaden"
+    | "pivot"
+    | "stop"
+    | "index_more"
+    | "write_structured_result";
   reasoning: string;
   confidence: number; // 0-1
   suggestedQuery?: string;
+  suggestedTool?: string;
   expectedOutcome?: string;
 }
 
@@ -153,17 +148,53 @@ export interface DebugInfo {
 }
 
 /**
+ * Summary mode response
+ */
+export interface SummaryResponse {
+  totalResults: number;
+  avgScore: number;
+  qualityLevel: "high" | "medium" | "low";
+  mainTopics: string[];
+  coverageStatus: "complete" | "partial" | "insufficient";
+}
+
+/**
+ * Primary action for summary mode
+ */
+export interface PrimaryAction {
+  action: string;
+  reasoning: string;
+  confidence: number;
+}
+
+/**
+ * Recommendation for next steps
+ */
+export interface Recommendation {
+  needsMoreDetail: boolean;
+  suggestedMode?: "detailed" | "full" | null;
+  shouldStop?: boolean;
+}
+
+/**
  * Complete agent query response
  */
 export interface AgentQueryResult extends BaseToolResult {
-  results: VectorSearchResult[];
-  analysis: {
+  // Summary mode fields
+  summary?: SummaryResponse;
+  primaryAction?: PrimaryAction;
+  recommendation?: Recommendation;
+  estimatedTokens?: number;
+
+  // Detailed/Full mode fields
+  results?: VectorSearchResult[];
+  analysis?: {
     metrics: DetailedMetrics;
     semantic: EnhancedSemanticAnalysis;
     queryAnalysis: QueryAnalysis;
     contentCharacteristics: ContentCharacteristics;
   };
-  hints: {
+  hints?: {
     nextActions: NextActionSuggestion[];
     toolSuggestions: ToolSuggestion[];
     strategicConsiderations: StrategicConsideration[];
@@ -171,6 +202,9 @@ export interface AgentQueryResult extends BaseToolResult {
   };
   progress?: ProgressTracking;
   debug?: DebugInfo;
+
+  // Pagination fields
+  nextCursor?: string;
 }
 
 export interface AgentQueryOptions extends BaseToolOptions {
@@ -178,60 +212,25 @@ export interface AgentQueryOptions extends BaseToolOptions {
 }
 
 /**
- * Calculate detailed metrics from search results
+ * Remove embedding arrays from search results to reduce token usage
  */
-function calculateDetailedMetrics(
+function removeEmbeddingFromResults(
   results: VectorSearchResult[],
-): DetailedMetrics {
-  if (results.length === 0) {
-    return {
-      totalResults: 0,
-      avgScore: 0,
-      maxScore: 0,
-      minScore: 0,
-      scoreVariance: 0,
-      scoreStandardDeviation: 0,
-      medianScore: 0,
-      scorePercentiles: {
-        p25: 0,
-        p50: 0,
-        p75: 0,
-        p90: 0,
-      },
-    };
-  }
-
-  const scores = results.map((r) => r.score).sort((a, b) => a - b);
-  const sum = scores.reduce((acc, score) => acc + score, 0);
-  const avg = sum / scores.length;
-
-  // Calculate variance and standard deviation
-  const variance =
-    scores.reduce((acc, score) => acc + (score - avg) ** 2, 0) / scores.length;
-  const stdDev = Math.sqrt(variance);
-
-  // Calculate percentiles
-  const getPercentile = (p: number) => {
-    const index = Math.ceil((p / 100) * scores.length) - 1;
-    return scores[Math.max(0, Math.min(index, scores.length - 1))] ?? 0;
-  };
-
-  return {
-    totalResults: results.length,
-    avgScore: avg,
-    maxScore: Math.max(...scores),
-    minScore: Math.min(...scores),
-    scoreVariance: variance,
-    scoreStandardDeviation: stdDev,
-    medianScore: getPercentile(50),
-    scorePercentiles: {
-      p25: getPercentile(25),
-      p50: getPercentile(50),
-      p75: getPercentile(75),
-      p90: getPercentile(90),
-    },
-  };
+): VectorSearchResult[] {
+  return results.map((result) => {
+    // Create a new object without the embedding field
+    if ("embedding" in result) {
+      const { embedding: _embedding, ...rest } =
+        result as VectorSearchResult & {
+          embedding?: unknown;
+        };
+      return rest;
+    }
+    return result;
+  });
 }
+
+// calculateDetailedMetrics is now imported from score-analysis.ts
 
 /**
  * Enhance semantic analysis with topic clustering
@@ -329,61 +328,7 @@ function analyzeQuery(query: string): QueryAnalysis {
   };
 }
 
-/**
- * Analyze content characteristics
- */
-function analyzeContentCharacteristics(
-  results: VectorSearchResult[],
-): ContentCharacteristics {
-  const contentAnalysis = analyzeContentTypes(results);
-
-  const codeType = contentAnalysis.contentTypes.find((t) => t.type === "code");
-  const docType = contentAnalysis.contentTypes.find(
-    (t) => t.type === "documentation",
-  );
-  const exampleType = contentAnalysis.contentTypes.find(
-    (t) => t.type === "example",
-  );
-
-  const hasCode = (codeType?.count ?? 0) > 0;
-  const hasDocs = (docType?.count ?? 0) > 0;
-  const hasExamples = (exampleType?.count ?? 0) > 0;
-
-  const predominantType =
-    hasCode && hasDocs
-      ? "mixed"
-      : hasCode
-        ? "code"
-        : hasDocs
-          ? "documentation"
-          : hasExamples
-            ? "example"
-            : "mixed";
-
-  // Detect code languages (simplified)
-  const codeLanguages: string[] = [];
-  for (const result of results) {
-    if (/import .* from|export|const|let|var/.test(result.content)) {
-      if (!codeLanguages.includes("javascript"))
-        codeLanguages.push("javascript");
-    }
-    if (/interface|type|enum|namespace/.test(result.content)) {
-      if (!codeLanguages.includes("typescript"))
-        codeLanguages.push("typescript");
-    }
-    if (/def |class |import |from |if __name__/.test(result.content)) {
-      if (!codeLanguages.includes("python")) codeLanguages.push("python");
-    }
-  }
-
-  return {
-    predominantType,
-    codeLanguages: codeLanguages.length > 0 ? codeLanguages : undefined,
-    hasExamples,
-    hasImplementation: hasCode,
-    completeness: Math.min(1, results.length / 10), // Simple completeness metric
-  };
-}
+// analyzeContentCharacteristics is now imported from metadata-generator.ts
 
 /**
  * Generate next action suggestions
@@ -391,7 +336,7 @@ function analyzeContentCharacteristics(
 function generateNextActions(
   query: string,
   results: VectorSearchResult[],
-  analysis: AgentQueryResult["analysis"],
+  analysis: NonNullable<AgentQueryResult["analysis"]>,
   _context?: AgentQueryInput["context"],
 ): NextActionSuggestion[] {
   const suggestions: NextActionSuggestion[] = [];
@@ -407,16 +352,19 @@ function generateNextActions(
     });
   }
 
-  // If high scores and good coverage, suggest stopping
+  // If high scores and good coverage, suggest writing structured result
   if (
     analysis.metrics.avgScore > 0.8 &&
     analysis.semantic.coverageGaps.length === 0
   ) {
     suggestions.push({
-      action: "stop",
-      reasoning: "Found high-quality results with good coverage",
+      action: "write_structured_result",
+      reasoning:
+        "Found comprehensive high-quality results. Consider saving your structured analysis using the gistdex_write_structured_result tool",
       confidence: 0.95,
-      expectedOutcome: "Current results are sufficient",
+      suggestedTool: "gistdex_write_structured_result",
+      expectedOutcome:
+        "Create permanent structured knowledge from your findings",
     });
   }
 
@@ -459,14 +407,28 @@ function generateNextActions(
  * Generate tool suggestions
  */
 function generateToolSuggestions(
-  analysis: AgentQueryResult["analysis"],
+  analysis: NonNullable<AgentQueryResult["analysis"]>,
 ): ToolSuggestion[] {
   const suggestions: ToolSuggestion[] = [];
+
+  // Suggest writing structured results if quality is high
+  if (analysis.metrics.avgScore > 0.7 && analysis.metrics.totalResults >= 5) {
+    suggestions.push({
+      tool: "gistdex_write_structured_result",
+      purpose: "Save your comprehensive analysis as structured knowledge",
+      priority: "high",
+      estimatedValue: 0.9,
+      parameters: {
+        topic: "Your search topic",
+        content: "Your structured analysis in markdown format",
+      },
+    });
+  }
 
   // Suggest hybrid search if diversity is low
   if (analysis.semantic.diversityIndex < 0.3) {
     suggestions.push({
-      tool: "gistdex_query",
+      tool: "gistdex_query_simple",
       purpose: "Use hybrid search for more diverse results",
       priority: "high",
       estimatedValue: 0.8,
@@ -492,7 +454,7 @@ function generateToolSuggestions(
  * Generate strategic considerations
  */
 function generateStrategicConsiderations(
-  analysis: AgentQueryResult["analysis"],
+  analysis: NonNullable<AgentQueryResult["analysis"]>,
 ): StrategicConsideration[] {
   const considerations: StrategicConsideration[] = [];
 
@@ -525,7 +487,7 @@ function generateStrategicConsiderations(
  * Detect potential problems
  */
 function detectPotentialProblems(
-  analysis: AgentQueryResult["analysis"],
+  analysis: NonNullable<AgentQueryResult["analysis"]>,
 ): PotentialProblem[] {
   const problems: PotentialProblem[] = [];
 
@@ -580,6 +542,274 @@ function trackProgress(
 }
 
 /**
+ * Extract main topics from search results using frequency analysis
+ * Delegates to the common metadata-generator utility
+ */
+function extractMainTopics(
+  results: VectorSearchResult[],
+  topN: number = 3,
+): string[] {
+  return extractTopics(results, topN);
+}
+
+/**
+ * Assess coverage of goal keywords in results
+ */
+function assessCoverage(
+  goal: string,
+  results: VectorSearchResult[],
+): "complete" | "partial" | "insufficient" {
+  // Extract keywords from goal
+  const goalKeywords = goal
+    .toLowerCase()
+    .split(/[\s,;.!?()[\]{}:"']+/)
+    .filter((word) => word.length > 3);
+
+  if (goalKeywords.length === 0) return "complete";
+
+  // Check how many goal keywords appear in results
+  const resultContent = results.map((r) => r.content.toLowerCase()).join(" ");
+
+  const coveredKeywords = goalKeywords.filter((keyword) =>
+    resultContent.includes(keyword),
+  );
+
+  const coverageRatio = coveredKeywords.length / goalKeywords.length;
+
+  if (coverageRatio >= 0.8) return "complete";
+  if (coverageRatio >= 0.5) return "partial";
+  return "insufficient";
+}
+
+/**
+ * Determine quality level based on average score
+ */
+function getQualityLevel(avgScore: number): "high" | "medium" | "low" {
+  if (avgScore >= 0.7) return "high";
+  if (avgScore >= 0.4) return "medium";
+  return "low";
+}
+
+/**
+ * Determine primary action for summary mode
+ */
+function determinePrimaryAction(
+  qualityLevel: "high" | "medium" | "low",
+  coverageStatus: "complete" | "partial" | "insufficient",
+  resultCount: number,
+): PrimaryAction {
+  // High quality and complete coverage - stop
+  if (qualityLevel === "high" && coverageStatus === "complete") {
+    return {
+      action: "stop",
+      reasoning: "Found high-quality results with complete coverage",
+      confidence: 0.95,
+    };
+  }
+
+  // Low quality - broaden search
+  if (qualityLevel === "low") {
+    return {
+      action: "broaden",
+      reasoning: "Current results have low relevance scores",
+      confidence: 0.85,
+    };
+  }
+
+  // Insufficient coverage - refine query
+  if (coverageStatus === "insufficient") {
+    return {
+      action: "refine",
+      reasoning: "Missing coverage for key aspects of the goal",
+      confidence: 0.8,
+    };
+  }
+
+  // Few results - need more data
+  if (resultCount < 3) {
+    return {
+      action: "index_more",
+      reasoning: "Limited results available in current index",
+      confidence: 0.75,
+    };
+  }
+
+  // Default - continue with detailed mode
+  return {
+    action: "continue",
+    reasoning: "Results are promising but need deeper analysis",
+    confidence: 0.7,
+  };
+}
+
+/**
+ * Estimate token count for response (simplified)
+ */
+function estimateTokenCount(obj: unknown): number {
+  // Very rough estimation: 1 token ≈ 4 characters
+  const jsonString = JSON.stringify(obj);
+  return Math.ceil(jsonString.length / 4);
+}
+
+/**
+ * Create summary mode response
+ */
+function createSummaryResponse(
+  results: VectorSearchResult[],
+  data: AgentQueryInput,
+): AgentQueryResult {
+  // Calculate basic metrics
+  const avgScore =
+    results.length > 0
+      ? results.reduce((sum, r) => sum + r.score, 0) / results.length
+      : 0;
+
+  const qualityLevel = getQualityLevel(avgScore);
+  const mainTopics = extractMainTopics(results);
+  const coverageStatus = assessCoverage(data.goal, results);
+
+  // Determine primary action
+  const primaryAction = determinePrimaryAction(
+    qualityLevel,
+    coverageStatus,
+    results.length,
+  );
+
+  // Generate recommendation
+  const needsMoreDetail = qualityLevel === "high" && results.length > 0;
+  const suggestedMode =
+    qualityLevel === "low" ? "detailed" : needsMoreDetail ? "detailed" : null;
+
+  const summary: SummaryResponse = {
+    totalResults: results.length,
+    avgScore,
+    qualityLevel,
+    mainTopics,
+    coverageStatus,
+  };
+
+  const recommendation: Recommendation = {
+    needsMoreDetail,
+    suggestedMode,
+    shouldStop: primaryAction.action === "stop",
+  };
+
+  const response: AgentQueryResult = {
+    success: true,
+    message: "Summary generated successfully",
+    summary,
+    primaryAction,
+    recommendation,
+    estimatedTokens: estimateTokenCount({
+      summary,
+      primaryAction,
+      recommendation,
+    }),
+  };
+
+  return response;
+}
+
+/**
+ * Create detailed mode response
+ */
+function createDetailedResponse(
+  results: VectorSearchResult[],
+  data: AgentQueryInput,
+  _service: DatabaseService,
+  _searchTime: number,
+  _analysisTime: number,
+  _startTime: number,
+): AgentQueryResult {
+  // Use existing analysis generation
+  const semanticAnalysis = analyzeSemanticCoherence(results);
+  const metrics = calculateDetailedMetrics(results);
+  const enhancedSemantic = enhanceSemanticAnalysis(
+    data.query,
+    results,
+    semanticAnalysis,
+  );
+  const queryAnalysis = analyzeQuery(data.query);
+  const contentCharacteristics = analyzeContentCharacteristics(results);
+
+  const analysis: AgentQueryResult["analysis"] = {
+    metrics,
+    semantic: enhancedSemantic,
+    queryAnalysis,
+    contentCharacteristics,
+  };
+
+  // Generate hints (limited for detailed mode)
+  const nextActions = generateNextActions(
+    data.query,
+    results,
+    analysis,
+    data.context,
+  ).slice(0, 2); // Limit to 2 suggestions
+
+  const hints: AgentQueryResult["hints"] = {
+    nextActions,
+    toolSuggestions: [], // Omit for detailed mode
+    strategicConsiderations: [], // Omit for detailed mode
+    potentialProblems: [], // Omit for detailed mode
+  };
+
+  const cleanedResults = removeEmbeddingFromResults(results.slice(0, 5)); // Limit and clean results
+
+  const response: AgentQueryResult = {
+    success: true,
+    message: "Detailed results generated",
+    results: cleanedResults,
+    analysis,
+    hints,
+    estimatedTokens: estimateTokenCount({
+      results: cleanedResults,
+      analysis,
+      hints,
+    }),
+  };
+
+  return response;
+}
+
+/**
+ * Cursor structure for pagination
+ */
+interface PaginationCursor {
+  offset: number;
+  query: string;
+  goal: string;
+}
+
+/**
+ * Encode pagination cursor
+ */
+function encodeCursor(cursor: PaginationCursor): string {
+  return Buffer.from(JSON.stringify(cursor)).toString("base64");
+}
+
+/**
+ * Decode pagination cursor
+ */
+function decodeCursor(cursorString: string): PaginationCursor | null {
+  try {
+    const decoded = Buffer.from(cursorString, "base64").toString("utf-8");
+    const cursor = JSON.parse(decoded) as PaginationCursor;
+    // Validate cursor structure
+    if (
+      typeof cursor.offset !== "number" ||
+      typeof cursor.query !== "string" ||
+      typeof cursor.goal !== "string"
+    ) {
+      return null;
+    }
+    return cursor;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Internal handler for agent query operations
  */
 async function handleAgentQueryOperation(
@@ -590,16 +820,42 @@ async function handleAgentQueryOperation(
   const startTime = Date.now();
 
   try {
+    // Handle cursor if provided
+    let offset = 0;
+    if (data.cursor) {
+      const cursor = decodeCursor(data.cursor);
+      if (!cursor) {
+        return {
+          success: false,
+          message: "Invalid cursor",
+          errors: ["Invalid cursor"],
+        };
+      }
+      // Validate cursor matches current query
+      if (cursor.query !== data.query || cursor.goal !== data.goal) {
+        return {
+          success: false,
+          message: "Cursor does not match current query context",
+          errors: ["Cursor does not match current query context"],
+        };
+      }
+      offset = cursor.offset;
+    }
+
     // Execute search
     const searchStartTime = Date.now();
     let results: VectorSearchResult[];
+
+    // Determine k value - fetch more results to support pagination
+    const pageSize = data.options?.pageSize ?? 5;
+    const totalK = data.options?.k ?? pageSize * 3; // Fetch more for pagination
 
     const hybrid = data.options?.hybrid ?? false;
     if (hybrid) {
       results = await hybridSearch(
         data.query,
         {
-          k: data.options?.k ?? 5,
+          k: totalK,
           keywordWeight: 0.3,
         },
         service,
@@ -608,7 +864,7 @@ async function handleAgentQueryOperation(
       results = await semanticSearch(
         data.query,
         {
-          k: data.options?.k ?? 5,
+          k: totalK,
         },
         service,
       );
@@ -626,83 +882,168 @@ async function handleAgentQueryOperation(
       );
     }
 
+    // Apply pagination
+    const paginatedResults = results.slice(offset, offset + pageSize);
+    const hasMore = offset + pageSize < results.length;
+
     const searchTime = Date.now() - searchStartTime;
 
-    // Generate comprehensive analysis
-    const analysisStartTime = Date.now();
+    // Get response mode (defaults to "summary")
+    const mode = data.options?.mode ?? "summary";
 
-    // Basic metadata generation
-    const semanticAnalysis = analyzeSemanticCoherence(results);
+    // Handle different modes
+    switch (mode) {
+      case "summary": {
+        const response = createSummaryResponse(paginatedResults, data);
 
-    // Create enhanced analysis
-    const metrics = calculateDetailedMetrics(results);
-    const enhancedSemantic = enhanceSemanticAnalysis(
-      data.query,
-      results,
-      semanticAnalysis,
-    );
-    const queryAnalysis = analyzeQuery(data.query);
-    const contentCharacteristics = analyzeContentCharacteristics(results);
+        // Add pagination cursor if there are more results
+        if (hasMore) {
+          response.nextCursor = encodeCursor({
+            offset: offset + pageSize,
+            query: data.query,
+            goal: data.goal,
+          });
+        }
+        return response;
+      }
 
-    const analysis: AgentQueryResult["analysis"] = {
-      metrics,
-      semantic: enhancedSemantic,
-      queryAnalysis,
-      contentCharacteristics,
-    };
+      case "detailed": {
+        const analysisStartTime = Date.now();
+        const analysisTime = Date.now() - analysisStartTime;
+        const response = createDetailedResponse(
+          paginatedResults,
+          data,
+          service,
+          searchTime,
+          analysisTime,
+          startTime,
+        );
 
-    // Generate hints
-    const nextActions = generateNextActions(
-      data.query,
-      results,
-      analysis,
-      data.context,
-    );
-    const toolSuggestions = generateToolSuggestions(analysis);
-    const strategicConsiderations = generateStrategicConsiderations(analysis);
-    const potentialProblems = detectPotentialProblems(analysis);
+        // Add pagination cursor if there are more results
+        if (hasMore) {
+          response.nextCursor = encodeCursor({
+            offset: offset + pageSize,
+            query: data.query,
+            goal: data.goal,
+          });
+        }
+        return response;
+      }
 
-    const hints: AgentQueryResult["hints"] = {
-      nextActions,
-      toolSuggestions,
-      strategicConsiderations,
-      potentialProblems,
-    };
+      case "full": {
+        // Full mode - existing comprehensive implementation
+        const analysisStartTime = Date.now();
 
-    const analysisTime = Date.now() - analysisStartTime;
+        // Remove embeddings to reduce token usage
+        const cleanedResults = removeEmbeddingFromResults(paginatedResults);
 
-    // Track progress if goal is provided
-    const progress = data.goal
-      ? trackProgress(data.goal, results, data.context)
-      : undefined;
+        // Basic metadata generation (use original for analysis)
+        const semanticAnalysis = analyzeSemanticCoherence(paginatedResults);
 
-    // Build response
-    const response: Omit<AgentQueryResult, "success" | "message"> = {
-      results,
-      analysis,
-      hints,
-      progress,
-    };
+        // Create enhanced analysis
+        const metrics = calculateDetailedMetrics(paginatedResults);
+        const enhancedSemantic = enhanceSemanticAnalysis(
+          data.query,
+          paginatedResults,
+          semanticAnalysis,
+        );
+        const queryAnalysis = analyzeQuery(data.query);
+        const contentCharacteristics =
+          analyzeContentCharacteristics(paginatedResults);
 
-    // Add debug info if requested
-    if (data.options?.includeDebug) {
-      response.debug = {
-        queryExecutionTime: searchTime,
-        embeddingGenerationTime: 0, // TODO: Track this
-        vectorSearchTime: searchTime,
-        metadataGenerationTime: analysisTime,
-        totalProcessingTime: Date.now() - startTime,
-        indexStats: {
-          totalDocuments: 0, // TODO: Get from service
-          totalChunks: 0, // TODO: Get from service
-          avgChunkSize: 0, // TODO: Calculate
-          lastIndexUpdate: Date.now(),
-        },
-        searchStrategy: data.options?.hybrid ? "hybrid" : "semantic",
-      };
+        const analysis: AgentQueryResult["analysis"] = {
+          metrics,
+          semantic: enhancedSemantic,
+          queryAnalysis,
+          contentCharacteristics,
+        };
+
+        // Generate hints
+        const nextActions = generateNextActions(
+          data.query,
+          paginatedResults,
+          analysis,
+          data.context,
+        );
+        const toolSuggestions = generateToolSuggestions(analysis);
+        const strategicConsiderations =
+          generateStrategicConsiderations(analysis);
+        const potentialProblems = detectPotentialProblems(analysis);
+
+        const hints: AgentQueryResult["hints"] = {
+          nextActions,
+          toolSuggestions,
+          strategicConsiderations,
+          potentialProblems,
+        };
+
+        const analysisTime = Date.now() - analysisStartTime;
+
+        // Track progress if goal is provided
+        const progress = data.goal
+          ? trackProgress(data.goal, paginatedResults, data.context)
+          : undefined;
+
+        // Build response with cleaned results
+        const response: Omit<AgentQueryResult, "success" | "message"> = {
+          results: cleanedResults,
+          analysis,
+          hints,
+          progress,
+          estimatedTokens: estimateTokenCount({
+            results: cleanedResults,
+            analysis,
+            hints,
+            progress,
+          }),
+        };
+
+        // Add pagination cursor if there are more results
+        if (hasMore) {
+          response.nextCursor = encodeCursor({
+            offset: offset + pageSize,
+            query: data.query,
+            goal: data.goal,
+          });
+        }
+
+        // Add debug info if requested
+        if (data.options?.includeDebug) {
+          response.debug = {
+            queryExecutionTime: searchTime,
+            embeddingGenerationTime: 0, // TODO: Track this
+            vectorSearchTime: searchTime,
+            metadataGenerationTime: analysisTime,
+            totalProcessingTime: Date.now() - startTime,
+            indexStats: {
+              totalDocuments: 0, // TODO: Get from service
+              totalChunks: 0, // TODO: Get from service
+              avgChunkSize: 0, // TODO: Calculate
+              lastIndexUpdate: Date.now(),
+            },
+            searchStrategy: data.options?.hybrid ? "hybrid" : "semantic",
+          };
+        }
+
+        return createSuccessResponse(
+          "Agent query executed successfully",
+          response,
+        );
+      }
+
+      default: {
+        // Fallback to summary mode
+        const response = createSummaryResponse(paginatedResults, data);
+        if (hasMore) {
+          response.nextCursor = encodeCursor({
+            offset: offset + pageSize,
+            query: data.query,
+            goal: data.goal,
+          });
+        }
+        return response;
+      }
     }
-
-    return createSuccessResponse("Agent query executed successfully", response);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     // Return empty results on error to satisfy AgentQueryResult type
@@ -772,3 +1113,6 @@ export const handleAgentQueryTool = createToolHandler(
   agentQueryToolSchema,
   handleAgentQueryOperation,
 );
+
+// Export for testing
+export const handleAgentQuery = handleAgentQueryTool;

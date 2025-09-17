@@ -1,253 +1,125 @@
-# Session Handover: gistdex_agent_query Token Limit Problem and Solution
+📖 READ: 2025-01-08 16:30:00
+---
 
-## セッション概要
+# Session Handover - MCPツール重複コード分析・リファクタリング完了
 
-このセッションでは、gistdex MCPの`gistdex_agent_query`ツールがMCPのトークン制限（25000トークン）を超える問題の解決策を検討しました。前回のセッションでk値を5に制限するバリデーションを実装したが、それでも分析結果やヒントが多いため制限を超えることが判明しました。
+## 📊 セッション概要
+- **期間**: 2025-01-08 セッション
+- **目的**: MCPツールの重複コード分析とリファクタリング
+- **成果**: 大幅なコード整理とメンテナビリティ向上
 
-## 問題の詳細
+## 🔍 実施内容詳細
 
-### 現状の課題
-1. **トークン制限超過**
-   - MCPツールのレスポンスは最大25000トークンに制限
-   - gistdex_agent_queryはk=5でも制限を超える
-   - k=3、maxIterations=1でも48727トークンと大幅超過
+### 1. **similarity サブエージェントによる重複分析**
+- **使用ツール**: similarity-ts による全コードベース分析
+- **結果**:
+  - 90%以上類似度: 2個の重複 → **完全解決**
+  - 80%類似度: 41個の重複 → **優先度高位を対応**
+  - 70%類似度: 309個 → **選択的対応**
 
-2. **レスポンスサイズの要因**
-   - 検索結果（VectorSearchResult[]）
-   - 詳細な分析（DetailedMetrics、EnhancedSemanticAnalysis等）
-   - ヒント生成（NextActionSuggestion[]、ToolSuggestion[]等）
-   - 進捗追跡（ProgressTracking）
-   - デバッグ情報（DebugInfo）
+### 2. **新規実装した共通ユーティリティ**
 
-## 検討した解決策
+#### **A. 新規作成ファイル**
+```
+src/mcp/utils/stop-words.ts
+├── 英語ストップワード: 150+単語
+├── 日本語ストップワード: 40+単語  
+└── 統合処理関数
 
-### 案1: ページネーション（初期案）
+src/mcp/utils/score-analysis.ts
+├── 検索結果スコア分析
+├── 詳細統計機能
+└── 分布分析機能
 
-**アプローチ:**
-```typescript
-pagination: {
-  page: number;
-  includeAnalysis: boolean;
-  includeHints: boolean;
-  includeProgress: boolean;
-  includeDebug: boolean;
-}
+src/mcp/utils/cache-utils.ts
+└── キャッシュディレクトリ管理共通化
 ```
 
-**問題点:**
-- エージェント（LLM）が自動的に次のページを取得できない
-- MCPは単発のリクエスト/レスポンス形式
-- 複数回の呼び出しを前提とした設計は実用的でない
+#### **B. 機能強化ファイル**
+```
+src/mcp/utils/metadata-generator.ts
+├── ContentCharacteristics型追加
+├── extractMainTopics機能強化
+└── より詳細なメタデータ生成
 
-### 案2: 継続トークン方式
-
-**アプローチ:**
-```typescript
-{
-  results: [...],
-  summary: {
-    totalResults: 50,
-    returnedResults: 5,
-    hasMore: true,
-    continuationToken: "xxx"
-  },
-  hints: {
-    nextActions: [{
-      action: "get_more_details",
-      suggestedTool: "gistdex_agent_query",
-      parameters: { continuationToken: "xxx" }
-    }]
-  }
-}
+src/mcp/tools/agent-query-tool.ts  
+├── 重複コード大幅削除
+├── 共通ユーティリティ活用
+└── 400行 → 150行 (62.5%削減)
 ```
 
-**問題点:**
-- 状態管理が複雑
-- エージェントが継続トークンの扱いを理解する必要がある
+### 3. **Git ブランチ管理**
+- **ブランチ**: `refactor/mcp-tools-simplification`
+- **コミット構成**: 5つの論理的分割
+  1. 共通ユーティリティモジュール追加
+  2. 複雑なagent-in-the-loopツール削除
+  3. MCPサーバー・ユーティリティ更新  
+  4. agent-query-tool簡素化
+  5. テストファイル更新
 
-### 案3: 選択的フィールド返却
+### 4. **削除した複雑なツール**
+- `gistdex_evaluate` - 検索結果評価ツール
+- `gistdex_refine_query` - クエリ改善ツール  
+- `gistdex_plan_execute_stage` - ステージ実行ツール
 
-**アプローチ:**
-```typescript
-options: {
-  includeResults: true,
-  includeMetrics: false,
-  includeAnalysis: false,
-  includeHints: false,
-  maxResultsSize: 5
-}
-```
+**削除理由**: 実用性低下、複雑すぎる実装、メンテナンス負荷
 
-**利点:**
-- 必要な情報のみ取得可能
-- トークン使用量を細かく制御
+### 5. **数値的成果**
+- **総コード削減**: -1,144行
+- **重複解決率**: 高類似度100%
+- **品質チェック**: 全パス ✅
+  - TypeScript型チェック ✅
+  - Lintチェック ✅  
+  - フォーマット ✅
+- **テスト影響**: 18件調整要 ⚠️
 
-**問題点:**
-- エージェントが必要なフィールドを事前に判断する必要がある
+## 🎯 技術的特徴
 
-### 案4: サマリーモード（推奨案）
+### **設計パターン遵守**
+- 関数型プログラミング維持（class禁止）
+- TypeScript型システム最大活用
+- 純粋関数・不変性原則
 
-**アプローチ:**
-```typescript
-options: {
-  mode: "summary" | "detailed" | "full"
-}
-```
+### **国際化対応**
+- 日本語・英語両言語サポート強化
+- 文字コード適切処理
+- 言語固有ストップワード対応
 
-**モード別の返却内容:**
+## 📋 残存作業・注意事項
 
-1. **summary mode（デフォルト）**
-   - 結果の要約（件数、平均スコア、主要トピック）
-   - 主要メトリクス（最高/最低スコア、カバレッジ）
-   - 最重要な次のアクション提案（1-2個）
-   - トークン使用量: ~5000以下
+### **即座対応必要**
+1. **テスト修正**: extractKeywords実装変更で18件影響
+2. **ドキュメント更新**: 削除ツールの説明除去
 
-2. **detailed mode**
-   - 検索結果（上位5件）
-   - 基本的な分析（メトリクス、セマンティック分析）
-   - 主要なヒント
-   - トークン使用量: ~15000以下
+### **継続監視項目**  
+1. 新しい共通ユーティリティの安定性
+2. パフォーマンス影響測定
+3. 他MCPツールへの適用可能性
 
-3. **full mode**
-   - すべての情報（現在の実装と同等）
-   - エラーになる可能性を許容
+## 🚀 プロジェクト影響
 
-## 推奨実装計画
+### **短期効果**
+- メンテナンス負荷大幅軽減
+- 新機能追加容易性向上
+- コードレビュー効率化
 
-### 1. スキーマ更新（validation.ts）
+### **長期効果**  
+- プロジェクト拡張性向上
+- 新規開発者オンボーディング容易化
+- 品質指標改善
 
-```typescript
-export const agentQueryToolSchema = z.object({
-  query: z.string().min(1),
-  goal: z.string().min(1),
-  context: z.object({...}).optional(),
-  options: z.object({
-    k: z.number().int().positive().max(5).default(5),
-    mode: z.enum(["summary", "detailed", "full"]).default("summary"),
-    hybrid: z.boolean().optional(),
-    rerank: z.boolean().optional(),
-    includeDebug: z.boolean().optional()
-  }).optional()
-});
-```
+## 📝 学習・知見
 
-### 2. agent-query-tool.tsの実装変更
+### **リファクタリング戦略**
+- similarity分析の効果的活用
+- 段階的リファクタリングの重要性  
+- 共通化バランスの考慮
 
-```typescript
-async function handleAgentQueryOperation(
-  data: AgentQueryInput,
-  options: AgentQueryOptions,
-): Promise<AgentQueryResult> {
-  const mode = data.options?.mode ?? "summary";
+### **TypeScript活用**
+- ユーティリティ型の積極活用
+- 型安全性とパフォーマンスの両立
+- as anyキャスト完全排除成功
 
-  // 検索実行（共通）
-  const results = await performSearch(data, options);
+---
 
-  switch (mode) {
-    case "summary":
-      return createSummaryResponse(results, data);
-    case "detailed":
-      return createDetailedResponse(results, data);
-    case "full":
-      return createFullResponse(results, data);
-  }
-}
-
-function createSummaryResponse(results, data): AgentQueryResult {
-  return {
-    success: true,
-    message: "Summary generated",
-    summary: {
-      totalResults: results.length,
-      avgScore: calculateAvg(results),
-      topTopics: extractTopTopics(results),
-      coverageStatus: assessCoverage(data.goal, results)
-    },
-    primaryAction: generatePrimaryAction(results),
-    recommendation: {
-      needsMoreDetail: results.length > 0 && avgScore > 0.7,
-      suggestedMode: avgScore > 0.8 ? null : "detailed"
-    }
-  };
-}
-```
-
-### 3. MCPサーバーの説明更新（server.ts）
-
-```typescript
-{
-  name: "gistdex_agent_query",
-  description:
-    "Autonomous agent-based search with strategic planning. " +
-    "Supports three modes: " +
-    "- summary: Quick overview and recommendations (default, <5K tokens) " +
-    "- detailed: Results with analysis (~15K tokens) " +
-    "- full: Complete information (may exceed token limits) " +
-    "Start with summary mode, then use detailed if needed.",
-  inputSchema: {...}
-}
-```
-
-### 4. エージェントワークフロー
-
-1. **初回呼び出し**（summary mode）
-   ```typescript
-   const initial = await gistdex_agent_query({
-     query: "...",
-     goal: "...",
-     options: { mode: "summary" }
-   });
-   ```
-
-2. **エージェントの判断**
-   - サマリーで十分 → 終了
-   - 詳細が必要 → detailed modeで再呼び出し
-
-3. **詳細取得**（必要な場合）
-   ```typescript
-   const detailed = await gistdex_agent_query({
-     query: "...",
-     goal: "...",
-     options: { mode: "detailed" }
-   });
-   ```
-
-## 実装の利点
-
-1. **エージェントフレンドリー**
-   - 自然な段階的情報取得
-   - 明確なモード選択
-   - 既存のAgent in the Loopパターンと整合
-
-2. **トークン効率**
-   - デフォルトで軽量
-   - 必要に応じて詳細取得
-   - 予測可能なトークン使用量
-
-3. **後方互換性**
-   - 既存のツールに影響なし
-   - オプショナルなmode パラメータ
-   - デフォルトはsummaryで安全
-
-4. **実装の簡潔性**
-   - 複雑な状態管理不要
-   - 明確な責任分離
-   - テストしやすい
-
-## 次のステップ
-
-1. validation.tsにmodeパラメータ追加
-2. agent-query-tool.tsでモード別レスポンス実装
-3. 各モードのトークン使用量測定
-4. MCPサーバーのスキーマ・説明更新
-5. テストケース追加
-6. ドキュメント更新
-
-## 重要な考慮事項
-
-- **エージェントの学習コスト**: モード選択はシンプルで直感的
-- **デフォルトの安全性**: summaryモードで確実にトークン制限内
-- **段階的詳細化**: 必要な情報のみ取得する設計
-- **既存ツールとの整合性**: 他のgistdexツールと一貫した設計
-
-この実装により、gistdex_agent_queryのトークン制限問題を解決し、エージェントがより効率的に情報を取得できるようになります。
+**次セッション優先事項**: テスト修正 → ドキュメント更新 → パフォーマンス測定

@@ -327,6 +327,278 @@ const results = await hybridSearch(query, {
 - **No phrase search** - Can't search for exact phrases
 - **Case-insensitive only** - No case-sensitive option
 
+## Agent in the Loop (MCP Only)
+
+The Agent in the Loop feature provides intelligent search analysis and recommendations through MCP (Model Context Protocol) integration. Think of it as having a research assistant that analyzes your search results and suggests how to improve your queries for better results.
+
+### Why Agent in the Loop?
+
+When you search for information manually, you rarely find everything in a single query. Instead, you:
+1. Start with a broad search to understand the landscape
+2. Identify promising directions from initial results
+3. Refine your search based on what you learned
+4. Continue until you have enough information
+
+Agent in the Loop provides intelligent analysis and recommendations to guide this search process.
+
+### How It Works
+
+```
+User's Research Goal
+    ↓
+Agent Analyzes the Goal and Query
+    ↓
+Executes Search
+    ↓
+Evaluates Results
+    ↓
+Provides Analysis and Recommendations
+    ↓
+Suggests Next Actions
+```
+
+### The Core Steps
+
+#### Step 1: Goal Analysis
+
+When the agent receives a research goal like "How to implement JWT authentication in Node.js", it first breaks down what you're looking for:
+
+- **Keywords extracted**: JWT, authentication, Node.js, implementation
+- **Query type identified**: Implementation guide (not just theory)
+- **Complexity assessed**: Moderate (specific technology + specific framework)
+- **Language detected**: English
+
+This analysis helps the agent understand not just what to search for, but how to approach the search.
+
+#### Step 2: Search Execution
+
+The agent executes the search using the provided query and goal, applying semantic or hybrid search based on the configuration. The search leverages the existing Gistdex index to find relevant content.
+
+#### Step 3: Result Evaluation
+
+After each search, the agent evaluates the results using multiple metrics:
+
+- **Score Quality**: How relevant are the results? (0.8+ is high quality)
+- **Coverage**: Do we have all the information we need?
+- **Diversity**: Are we getting different perspectives or just duplicates?
+- **Gaps**: What's still missing?
+
+Example evaluation:
+```
+Average Score: 0.75 (good)
+Coverage: Partial (missing error handling examples)
+Diversity: 0.6 (moderate variety)
+Gap Identified: "JWT refresh token implementation"
+```
+
+#### Step 4: Recommendation Generation
+
+Based on the evaluation, the agent suggests what to do next:
+
+- **refine**: Need more specific information
+  - Example: "JWT authentication" → "JWT refresh token Node.js"
+
+- **broaden**: Current search too narrow
+  - Example: "Express JWT middleware" → "Node.js authentication"
+
+- **pivot**: Try a different angle
+  - Example: "JWT implementation" → "JWT security best practices"
+
+- **stop**: Found sufficient information
+  - Triggered when score > 0.8 and coverage is complete
+
+- **index_more**: Need more data in the index
+  - Suggested when fewer than 3 results found
+
+### Real-World Example
+
+Let's see how the agent analyzes a search for "How to handle database migrations in production":
+
+```
+Query: "database migrations production"
+Goal: "How to handle database migrations in production"
+
+Results Found: 8 matches (avg score: 0.72)
+
+Analysis:
+  - Found general migration strategies
+  - Some production-specific content
+  - Missing rollback procedures
+  - Low coverage on testing strategies
+
+Recommendations:
+  1. refine: "database migration rollback production" (confidence: 0.85)
+  2. refine: "database migration testing strategies" (confidence: 0.75)
+  3. broaden: "database deployment best practices" (confidence: 0.65)
+
+The agent suggests these follow-up queries to fill the identified gaps.
+```
+
+### Internal Analysis Features
+
+The agent uses sophisticated analysis to understand both queries and results:
+
+#### Query Analysis
+
+```typescript
+{
+  complexity: "moderate",        // simple | moderate | complex
+  specificity: 0.7,              // 0-1, how specific is the query
+  ambiguity: ["production"],     // potentially unclear terms
+  queryType: "exploratory",      // factual | exploratory | navigational
+  estimatedIntent: "User wants to learn safe migration practices"
+}
+```
+
+#### Semantic Analysis
+
+The agent clusters results by topic and identifies patterns:
+
+```typescript
+{
+  topicClusters: [
+    {
+      topic: "migration tools",
+      resultIndices: [0, 2, 3],
+      coherenceScore: 0.85
+    },
+    {
+      topic: "rollback strategies",
+      resultIndices: [1, 4],
+      coherenceScore: 0.79
+    }
+  ],
+  coverageGaps: ["testing migrations"],
+  redundancy: 0.3,  // low redundancy is good
+  diversityIndex: 0.7  // good variety of perspectives
+}
+```
+
+#### Content Characteristics
+
+The agent analyzes what type of content it's finding:
+
+```typescript
+{
+  predominantType: "documentation",  // code | documentation | discussion
+  technicalLevel: "intermediate",
+  hasExamples: true,
+  hasExplanations: true,
+  averageLength: 1250  // characters per result
+}
+```
+
+### Response Modes
+
+Choose the appropriate mode based on your needs:
+
+#### Summary Mode (Default)
+- **Size**: ~5,000 tokens
+- **Use for**: Initial exploration, quick understanding
+- **Contains**: Key findings, main topics, primary recommendation
+
+#### Detailed Mode
+- **Size**: ~15,000 tokens
+- **Use for**: Thorough research, implementation planning
+- **Contains**: Full analysis, all recommendations, strategic considerations
+
+#### Full Mode
+- **Size**: No limit (may exceed token limits)
+- **Use for**: Complete information capture
+- **Contains**: Everything, including all metadata and internal analysis
+
+### Progress Tracking
+
+The agent tracks progress toward your research goal:
+
+```typescript
+{
+  goalAlignment: 0.8,        // How well results match the goal
+  estimatedCompletion: 0.7,  // Progress estimate
+  achievedMilestones: [
+    "Found relevant content",
+    "Identified high-quality matches",
+    "Covered main aspects"
+  ],
+  missingPieces: ["Performance optimization tips"],
+  suggestedNextMilestone: "Find performance best practices"
+}
+```
+
+### Result Caching
+
+Agent query results are cached for efficiency and knowledge building:
+
+```
+.gistdex/
+  └── cache/
+      ├── agent/
+      │   └── query-[timestamp].json  # Individual query results
+      └── knowledge/
+          └── structured-[topic].json   # Organized knowledge by topic
+```
+
+Benefits of caching:
+- Avoid repeating expensive searches
+- Build cumulative knowledge over time
+- Enable cross-session learning
+- Faster responses for similar queries
+
+### Practical Use Cases
+
+#### Technical Research
+Finding comprehensive information about a new technology:
+- Agent starts broad, then narrows to specific use cases
+- Identifies authoritative sources vs. community discussions
+- Highlights implementation patterns and pitfalls
+
+#### Troubleshooting
+Investigating error messages or bugs:
+- Begins with exact error matching
+- Broadens to similar issues if needed
+- Pivots to root causes and solutions
+- Identifies related problems to watch for
+
+#### Best Practices Discovery
+Learning optimal implementation approaches:
+- Searches for established patterns
+- Compares different approaches
+- Identifies trade-offs and considerations
+- Finds real-world examples
+
+#### Documentation Creation
+Gathering information for comprehensive docs:
+- Ensures complete coverage of topics
+- Identifies gaps in existing documentation
+- Finds examples and edge cases
+- Collects different perspectives
+
+### When to Use Agent Query
+
+**Good for:**
+- Complex research questions requiring analysis and recommendations
+- Exploring unfamiliar topics where you need guidance on search strategy
+- Understanding gaps in your current search results
+- Situations where you need help refining your queries
+
+**Not ideal for:**
+- Simple, direct lookups
+- When you know exactly what you're looking for
+- When you don't need search strategy guidance
+- Single-fact verification
+
+### Understanding the Results
+
+When the agent completes, it provides:
+
+1. **Summary**: What was found and its relevance
+2. **Analysis**: Quality metrics and coverage assessment
+3. **Recommendations**: Suggested next actions
+4. **Strategic Considerations**: Important factors to consider
+5. **Potential Problems**: Identified issues or gaps
+
+This comprehensive output helps you understand not just what was found, but how confident you can be in the results and what else you might need to investigate.
+
 ## Performance Features
 
 ### 1. Batch Processing
