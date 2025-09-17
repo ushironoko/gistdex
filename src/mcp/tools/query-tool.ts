@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import {
   getOriginalContent,
@@ -19,7 +18,6 @@ import {
 } from "../utils/metadata-generator.js";
 import { findSimilarQuery, saveSuccessfulQuery } from "../utils/query-cache.js";
 import { executeQueryChain, type QueryChain } from "../utils/query-chain.js";
-import { updateStructuredKnowledge } from "../utils/structured-knowledge.js";
 import {
   type BaseToolOptions,
   type BaseToolResult,
@@ -108,34 +106,6 @@ async function handleQueryOperation(
     if (data.useChain) {
       const queryChain = createQueryChainFromInput(data.query, data);
       const chainResult = await executeQueryChain(queryChain, service);
-
-      // Save structured knowledge if requested
-      if (data.saveStructured && chainResult.combinedResults.length > 0) {
-        // Import buildStructuredResult from query-chain module
-        const { buildStructuredResult } = await import(
-          "../utils/query-chain.js"
-        );
-
-        // Build properly structured knowledge
-        const structuredKnowledge = buildStructuredResult(chainResult);
-
-        // Use update instead of save for incremental caching
-        const update = {
-          content: structuredKnowledge.content,
-          metadata: {
-            ...structuredKnowledge.metadata,
-            queryExecuted: data.query,
-            isChainResult: true,
-          },
-        };
-        // Save to queries subdirectory
-        const cacheDir = join(process.cwd(), ".gistdex", "cache", "queries");
-        await updateStructuredKnowledge(data.query, update, cacheDir);
-
-        console.log(
-          `Updated structured knowledge for "${data.query}" with ${chainResult.combinedResults.length} unique results`,
-        );
-      }
 
       return createSuccessResponse("Query chain executed successfully", {
         results: chainResult.combinedResults.map((r) => ({
@@ -280,32 +250,6 @@ async function handleQueryOperation(
         useSection: sectionUsed,
         useFull: data.full === true,
       });
-
-      // Save structured knowledge if requested
-      if (data.saveStructured) {
-        const formattedContent = finalResults
-          .map(
-            (r, i) =>
-              `### Result ${i + 1} (Score: ${r.score.toFixed(3)})\n\n${r.content}`,
-          )
-          .join("\n\n");
-
-        const update = {
-          content: formattedContent,
-          metadata: {
-            timestamp: new Date().toISOString(),
-            searchStrategy: data.hybrid ? "hybrid" : "semantic",
-            resultCount: finalResults.length,
-            avgScore:
-              finalResults.reduce((sum, r) => sum + r.score, 0) /
-              finalResults.length,
-            queryExecuted: data.query,
-          },
-        };
-        // Save to queries subdirectory
-        const cacheDir = join(process.cwd(), ".gistdex", "cache", "queries");
-        await updateStructuredKnowledge(data.query, update, cacheDir);
-      }
     }
 
     // Generate metadata if includeMetadata is enabled (or by default for better agent support)

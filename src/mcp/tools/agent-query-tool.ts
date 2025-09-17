@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import {
   hybridSearch,
@@ -20,7 +19,6 @@ import {
   calculateDetailedMetrics,
   type DetailedScoreMetrics,
 } from "../utils/score-analysis.js";
-import { updateStructuredKnowledge } from "../utils/structured-knowledge.js";
 import {
   type BaseToolOptions,
   type BaseToolResult,
@@ -75,10 +73,17 @@ export type { ContentCharacteristics } from "../utils/metadata-generator.js";
  * Next action suggestions for agent
  */
 export interface NextActionSuggestion {
-  action: "refine" | "broaden" | "pivot" | "stop" | "index_more";
+  action:
+    | "refine"
+    | "broaden"
+    | "pivot"
+    | "stop"
+    | "index_more"
+    | "write_structured_result";
   reasoning: string;
   confidence: number; // 0-1
   suggestedQuery?: string;
+  suggestedTool?: string;
   expectedOutcome?: string;
 }
 
@@ -347,16 +352,19 @@ function generateNextActions(
     });
   }
 
-  // If high scores and good coverage, suggest stopping
+  // If high scores and good coverage, suggest writing structured result
   if (
     analysis.metrics.avgScore > 0.8 &&
     analysis.semantic.coverageGaps.length === 0
   ) {
     suggestions.push({
-      action: "stop",
-      reasoning: "Found high-quality results with good coverage",
+      action: "write_structured_result",
+      reasoning:
+        "Found comprehensive high-quality results. Consider saving your structured analysis using the gistdex_write_structured_result tool",
       confidence: 0.95,
-      expectedOutcome: "Current results are sufficient",
+      suggestedTool: "gistdex_write_structured_result",
+      expectedOutcome:
+        "Create permanent structured knowledge from your findings",
     });
   }
 
@@ -403,10 +411,24 @@ function generateToolSuggestions(
 ): ToolSuggestion[] {
   const suggestions: ToolSuggestion[] = [];
 
+  // Suggest writing structured results if quality is high
+  if (analysis.metrics.avgScore > 0.7 && analysis.metrics.totalResults >= 5) {
+    suggestions.push({
+      tool: "gistdex_write_structured_result",
+      purpose: "Save your comprehensive analysis as structured knowledge",
+      priority: "high",
+      estimatedValue: 0.9,
+      parameters: {
+        topic: "Your search topic",
+        content: "Your structured analysis in markdown format",
+      },
+    });
+  }
+
   // Suggest hybrid search if diversity is low
   if (analysis.semantic.diversityIndex < 0.3) {
     suggestions.push({
-      tool: "gistdex_query",
+      tool: "gistdex_query_simple",
       purpose: "Use hybrid search for more diverse results",
       priority: "high",
       estimatedValue: 0.8,
@@ -874,45 +896,6 @@ async function handleAgentQueryOperation(
       case "summary": {
         const response = createSummaryResponse(paginatedResults, data);
 
-        // Save structured knowledge if requested
-        if (data.options?.saveStructured && response.summary) {
-          const formattedContent = `# Goal: ${data.goal}
-
-## Summary
-- Total Results: ${response.summary.totalResults}
-- Average Score: ${response.summary.avgScore.toFixed(2)}
-- Quality Level: ${response.summary.qualityLevel}
-- Main Topics: ${response.summary.mainTopics.join(", ")}
-- Coverage Status: ${response.summary.coverageStatus}
-
-## Primary Action
-- Action: ${response.primaryAction?.action || "none"}
-- Reasoning: ${response.primaryAction?.reasoning || "N/A"}
-- Confidence: ${response.primaryAction?.confidence?.toFixed(2) || "0.00"}
-
-## Recommendation
-- Needs More Detail: ${response.recommendation?.needsMoreDetail ? "Yes" : "No"}
-- Suggested Mode: ${response.recommendation?.suggestedMode || "none"}
-- Should Stop: ${response.recommendation?.shouldStop ? "Yes" : "No"}`;
-
-          const update = {
-            content: formattedContent,
-            metadata: {
-              timestamp: new Date().toISOString(),
-              mode: "summary",
-              resultCount: response.summary.totalResults,
-              avgScore: response.summary.avgScore,
-              queryExecuted: data.query,
-              goal: data.goal,
-              estimatedTokens: response.estimatedTokens,
-            },
-          };
-
-          // Save to agents subdirectory
-          const cacheDir = join(process.cwd(), ".gistdex", "cache", "agents");
-          await updateStructuredKnowledge(data.goal, update, cacheDir);
-        }
-
         // Add pagination cursor if there are more results
         if (hasMore) {
           response.nextCursor = encodeCursor({
@@ -935,57 +918,6 @@ async function handleAgentQueryOperation(
           analysisTime,
           startTime,
         );
-
-        // Save structured knowledge if requested
-        if (data.options?.saveStructured && response.analysis) {
-          const formattedContent = `# Goal: ${data.goal}
-
-## Analysis Summary
-- Query: ${data.query}
-- Results Count: ${response.results?.length || 0}
-- Estimated Tokens: ${response.estimatedTokens || 0}
-
-## Query Analysis
-- Complexity: ${response.analysis.queryAnalysis?.complexity || "unknown"}
-- Specificity: ${response.analysis.queryAnalysis?.specificity?.toFixed(2) || "0.00"}
-- Query Type: ${response.analysis.queryAnalysis?.queryType || "unknown"}
-- Language: ${response.analysis.queryAnalysis?.languageDetected || "unknown"}
-
-## Content Characteristics
-- Predominant Type: ${response.analysis.contentCharacteristics?.predominantType || "unknown"}
-- Has Examples: ${response.analysis.contentCharacteristics?.hasExamples ? "Yes" : "No"}
-- Has Implementation: ${response.analysis.contentCharacteristics?.hasImplementation ? "Yes" : "No"}
-- Completeness: ${response.analysis.contentCharacteristics?.completeness?.toFixed(2) || "0.00"}
-${response.analysis.contentCharacteristics?.codeLanguages ? `- Code Languages: ${response.analysis.contentCharacteristics.codeLanguages.join(", ")}` : ""}
-
-## Semantic Analysis
-- Diversity Index: ${response.analysis.semantic?.diversityIndex?.toFixed(2) || "0.00"}
-- Redundancy: ${response.analysis.semantic?.redundancy?.toFixed(2) || "0.00"}
-- Topic Clusters: ${response.analysis.semantic?.topicClusters?.length || 0}
-- Coverage Gaps: ${response.analysis.semantic?.coverageGaps?.join(", ") || "None"}
-
-## Next Actions
-${response.hints?.nextActions?.map((action) => `- ${action.action} (confidence: ${action.confidence?.toFixed(2) || "0.00"})`).join("\n") || "- No actions suggested"}`;
-
-          const update = {
-            content: formattedContent,
-            metadata: {
-              timestamp: new Date().toISOString(),
-              mode: "detailed",
-              resultCount: response.results?.length || 0,
-              queryExecuted: data.query,
-              goal: data.goal,
-              estimatedTokens: response.estimatedTokens,
-              queryComplexity: response.analysis.queryAnalysis?.complexity,
-              contentType:
-                response.analysis.contentCharacteristics?.predominantType,
-            },
-          };
-
-          // Save to agents subdirectory
-          const cacheDir = join(process.cwd(), ".gistdex", "cache", "agents");
-          await updateStructuredKnowledge(data.goal, update, cacheDir);
-        }
 
         // Add pagination cursor if there are more results
         if (hasMore) {
@@ -1073,112 +1005,6 @@ ${response.hints?.nextActions?.map((action) => `- ${action.action} (confidence: 
             query: data.query,
             goal: data.goal,
           });
-        }
-
-        // Save structured knowledge if requested
-        if (data.options?.saveStructured) {
-          const formattedContent = `# Goal: ${data.goal}
-
-## Full Analysis Report
-
-### Query Information
-- Query: ${data.query}
-- Search Strategy: ${data.options?.hybrid ? "hybrid" : "semantic"}
-- Results Count: ${cleanedResults.length}
-- Estimated Tokens: ${response.estimatedTokens || 0}
-
-### Detailed Metrics
-- Average Score: ${metrics.avgScore.toFixed(3)}
-- Median Score: ${metrics.medianScore.toFixed(3)}
-- Score Range: ${metrics.minScore.toFixed(3)} - ${metrics.maxScore.toFixed(3)}
-- Score Standard Deviation: ${metrics.scoreStandardDeviation.toFixed(3)}
-- Score Variance: ${metrics.scoreVariance.toFixed(3)}
-- Total Results: ${metrics.totalResults}
-
-### Query Analysis
-- Complexity: ${queryAnalysis.complexity}
-- Specificity: ${queryAnalysis.specificity.toFixed(2)}
-- Query Type: ${queryAnalysis.queryType}
-- Estimated Intent: ${queryAnalysis.estimatedIntent}
-- Language: ${queryAnalysis.languageDetected}
-${queryAnalysis.ambiguity.length > 0 ? `- Ambiguous Terms: ${queryAnalysis.ambiguity.join(", ")}` : ""}
-
-### Content Characteristics
-- Predominant Type: ${contentCharacteristics.predominantType}
-- Has Examples: ${contentCharacteristics.hasExamples ? "Yes" : "No"}
-- Has Implementation: ${contentCharacteristics.hasImplementation ? "Yes" : "No"}
-- Completeness: ${contentCharacteristics.completeness.toFixed(2)}
-${contentCharacteristics.codeLanguages ? `- Code Languages: ${contentCharacteristics.codeLanguages.join(", ")}` : ""}
-
-### Semantic Analysis
-- Diversity Index: ${enhancedSemantic.diversityIndex.toFixed(2)}
-- Redundancy: ${enhancedSemantic.redundancy.toFixed(2)}
-- Topic Clusters: ${enhancedSemantic.topicClusters.length}
-- Coverage Gaps: ${enhancedSemantic.coverageGaps.join(", ") || "None identified"}
-- Main Topics: ${
-            enhancedSemantic.topicClusters
-              .map((c) => c.mainTopic)
-              .slice(0, 3)
-              .join(", ") || "None"
-          }
-
-### Progress Tracking
-${
-  progress
-    ? `- Goal Alignment: ${progress.goalAlignment.toFixed(2)}
-- Estimated Completion: ${progress.estimatedCompletion.toFixed(2)}
-- Achieved Milestones: ${progress.achievedMilestones.join(", ") || "None"}
-- Missing Pieces: ${progress.missingPieces.join(", ") || "None"}
-- Next Milestone: ${progress.suggestedNextMilestone || "None suggested"}`
-    : "- No progress tracking available"
-}
-
-### Recommendations
-${hints.nextActions
-  .map(
-    (action) => `
-#### ${action.action}
-- Reasoning: ${action.reasoning}
-- Confidence: ${action.confidence.toFixed(2)}`,
-  )
-  .join("\n")}
-
-### Tool Suggestions
-${hints.toolSuggestions.map((tool) => `- ${tool.tool}: ${tool.purpose}`).join("\n") || "- No specific tool suggestions"}
-
-### Strategic Considerations
-${hints.strategicConsiderations.map((consideration) => `- ${consideration.consideration} (importance: ${consideration.importance})`).join("\n") || "- No strategic considerations"}
-
-### Potential Problems
-${hints.potentialProblems.map((problem) => `- ${problem.problem} (impact: ${problem.impact}) - Mitigation: ${problem.mitigation}`).join("\n") || "- No potential problems identified"}`;
-
-          const update = {
-            content: formattedContent,
-            metadata: {
-              timestamp: new Date().toISOString(),
-              mode: "full",
-              resultCount: cleanedResults.length,
-              queryExecuted: data.query,
-              goal: data.goal,
-              estimatedTokens: response.estimatedTokens,
-              searchStrategy: data.options?.hybrid ? "hybrid" : "semantic",
-              avgScore: metrics.avgScore,
-              diversityIndex: enhancedSemantic.diversityIndex,
-              redundancy: enhancedSemantic.redundancy,
-              queryComplexity: queryAnalysis.complexity,
-              contentType: contentCharacteristics.predominantType,
-              progress: progress
-                ? {
-                    goalAlignment: progress.goalAlignment,
-                    completeness: progress.estimatedCompletion,
-                  }
-                : undefined,
-            },
-          };
-
-          // Save to agents subdirectory
-          const cacheDir = join(process.cwd(), ".gistdex", "cache", "agents");
-          await updateStructuredKnowledge(data.goal, update, cacheDir);
         }
 
         // Add debug info if requested
