@@ -17,6 +17,7 @@ Thumbs.db
 _research
 tmp/
 .gistdex/
+*.tsbuildinfo
 
 # VitePress build output
 docs/.vitepress/dist/
