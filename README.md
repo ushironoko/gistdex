@@ -41,6 +41,21 @@ claude mcp add gistdex -- npx @ushironoko/gistdex --mcp
 - Node.js >= 24.6.0 or Bun >= 1.1.14
 - Google AI API key for embeddings ([Get one here](https://makersuite.google.com/app/apikey))
 
+## Testing
+
+Gistdex uses Testing Trophy approach for comprehensive test coverage:
+
+```bash
+# Run all tests
+pnpm test
+
+# Run integration tests
+pnpm test tests/integration
+
+# Run with coverage
+pnpm test:coverage
+```
+
 ## Features
 
 - **Semantic Search** - Search by meaning using Google's gemini-embedding-001
