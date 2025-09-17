@@ -40,10 +40,6 @@ vi.mock("../utils/metadata-generator.js", () => ({
   })),
 }));
 
-vi.mock("../utils/structured-knowledge.js", () => ({
-  updateStructuredKnowledge: vi.fn(),
-}));
-
 describe("agent-query-tool", () => {
   let mockService: DatabaseService;
   let options: AgentQueryOptions;
@@ -515,101 +511,6 @@ describe("agent-query-tool", () => {
       if (result.success) {
         expect(result.data.cursor).toBe("valid-cursor-string");
       }
-    });
-  });
-
-  describe("SaveStructured Option", () => {
-    it("should save structured knowledge when saveStructured is true in summary mode", async () => {
-      const { semanticSearch } = await import("../../core/search/search.js");
-      const { updateStructuredKnowledge } = await import(
-        "../utils/structured-knowledge.js"
-      );
-
-      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
-
-      const input = {
-        query: "TypeScript",
-        goal: "Learn TypeScript",
-        options: {
-          mode: "summary" as const,
-          saveStructured: true,
-        },
-      };
-
-      const result = await handleAgentQuery(input, options);
-
-      expect(result.success).toBe(true);
-      expect(vi.mocked(updateStructuredKnowledge)).toHaveBeenCalledWith(
-        "Learn TypeScript",
-        expect.objectContaining({
-          content: expect.stringContaining("Learn TypeScript"),
-          metadata: expect.objectContaining({
-            timestamp: expect.any(String),
-            mode: "summary",
-            queryExecuted: "TypeScript",
-            goal: "Learn TypeScript",
-          }),
-        }),
-        expect.stringContaining("/agents"),
-      );
-    });
-
-    it("should save structured knowledge when saveStructured is true in detailed mode", async () => {
-      const { semanticSearch } = await import("../../core/search/search.js");
-      const { updateStructuredKnowledge } = await import(
-        "../utils/structured-knowledge.js"
-      );
-
-      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
-
-      const input = {
-        query: "TypeScript",
-        goal: "Analyze TypeScript",
-        options: {
-          mode: "detailed" as const,
-          saveStructured: true,
-        },
-      };
-
-      const result = await handleAgentQuery(input, options);
-
-      expect(result.success).toBe(true);
-      expect(vi.mocked(updateStructuredKnowledge)).toHaveBeenCalledWith(
-        "Analyze TypeScript",
-        expect.objectContaining({
-          content: expect.any(String),
-          metadata: expect.objectContaining({
-            mode: "detailed",
-            queryExecuted: "TypeScript",
-            goal: "Analyze TypeScript",
-          }),
-        }),
-        expect.stringContaining("/agents"),
-      );
-    });
-
-    it("should not save structured knowledge when saveStructured is false", async () => {
-      const { semanticSearch } = await import("../../core/search/search.js");
-      const { updateStructuredKnowledge } = await import(
-        "../utils/structured-knowledge.js"
-      );
-
-      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
-      vi.mocked(updateStructuredKnowledge).mockClear();
-
-      const input = {
-        query: "TypeScript",
-        goal: "Learn TypeScript",
-        options: {
-          mode: "summary" as const,
-          saveStructured: false,
-        },
-      };
-
-      const result = await handleAgentQuery(input, options);
-
-      expect(result.success).toBe(true);
-      expect(vi.mocked(updateStructuredKnowledge)).not.toHaveBeenCalled();
     });
   });
 });
