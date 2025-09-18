@@ -6,11 +6,11 @@ import {
 } from "./database-service.js";
 
 /**
- * Integration test for DatabaseService without mocks.
- * This test uses real implementations and in-memory database
- * to ensure actual behavior is tested.
+ * Unit test for DatabaseService.
+ * This test uses in-memory adapter to test the service logic
+ * without external dependencies.
  */
-describe("DatabaseService Integration (No Mocks)", () => {
+describe("DatabaseService", () => {
   let service: ReturnType<typeof createDatabaseService>;
 
   beforeEach(() => {
