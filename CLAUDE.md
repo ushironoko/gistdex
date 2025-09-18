@@ -27,6 +27,8 @@ The project provides a CLI tool with the following commands:
   - `--files "pattern"` - Index multiple files using glob patterns (comma-separated)
   - `--gist url` - Index a GitHub Gist
   - `--github url` - Index a GitHub repository
+  - `--paths "pattern"` - Specify paths or glob patterns for GitHub repos (e.g., `"src/**/*.ts"`, `"**/*.{js,ts}"`)
+  - `--branch "branch"` - Specify branch for GitHub repos (default: main)
   - `--chunk-size N` - Set chunk size (default: 1000)
   - `--chunk-overlap N` - Set chunk overlap (default: 200)
 - `npx gistdex query` - Search indexed content using semantic/hybrid search
@@ -56,6 +58,25 @@ npx gistdex index --files "**/*.md" --chunk-size 2000 --chunk-overlap 200
 
 # Index all JavaScript and TypeScript files recursively
 npx gistdex index --files "**/*.{js,ts,jsx,tsx}"
+```
+
+#### Examples of GitHub Repository Indexing with Glob Patterns
+
+```bash
+# Index only TypeScript files from a GitHub repository
+npx gistdex index --github https://github.com/user/repo --paths "**/*.ts"
+
+# Index specific directories with multiple patterns
+npx gistdex index --github https://github.com/user/repo --paths "src/**/*.ts,lib/**/*.js"
+
+# Index documentation and source code
+npx gistdex index --github https://github.com/user/repo --paths "docs/**/*.md,src/**/*.{ts,tsx}"
+
+# Index from a specific branch
+npx gistdex index --github https://github.com/user/repo --branch develop --paths "**/*.py"
+
+# Index root directory only (backward compatibility)
+npx gistdex index --github https://github.com/user/repo --paths ""
 ```
 
 #### Examples of Full Content Retrieval
