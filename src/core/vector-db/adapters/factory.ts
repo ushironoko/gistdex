@@ -1,3 +1,4 @@
+import { mergeVectorDBConfig } from "../../utils/config-merger.js";
 import type { RegistryInterface } from "./registry.js";
 import { createRegistry } from "./registry.js";
 import type { VectorDBAdapter, VectorDBConfig } from "./types.js";
@@ -32,14 +33,9 @@ export const createFactory = (registry?: RegistryInterface) => {
   const create = async (
     config?: Partial<VectorDBConfig>,
   ): Promise<VectorDBAdapter> => {
-    const finalConfig = {
-      ...defaultConfig,
-      ...config,
-      options: {
-        ...defaultConfig.options,
-        ...config?.options,
-      },
-    };
+    const finalConfig = config
+      ? mergeVectorDBConfig(config, defaultConfig)
+      : defaultConfig;
 
     // Create new adapter instance
     const adapter = await reg.create(finalConfig);
