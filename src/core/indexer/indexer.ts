@@ -14,6 +14,13 @@ import {
   validateGistUrl,
   validateGitHubRepoUrl,
 } from "../security/security.js";
+import {
+  fetchGitHubContents,
+  fetchGitHubFileContent,
+  fetchGitHubRawContent,
+  fetchGitHubTree,
+} from "./github-tree-fetcher.js";
+import { filterPathsWithGlob, hasAnyGlobPattern } from "./glob-matcher.js";
 
 export interface IndexOptions {
   chunkSize?: number;
@@ -295,7 +302,9 @@ export async function indexGist(
     }
 
     const apiUrl = `https://api.github.com/gists/${gistId}`;
-    const response = await fetch(apiUrl);
+    const response = await fetchGitHubContents(apiUrl, {
+      onProgress: options.onProgress,
+    });
 
     if (!response.ok) {
       result.errors.push(
@@ -370,19 +379,97 @@ export async function indexGitHubRepo(
     const branch = options.branch || "main";
     const paths = options.paths || [""];
 
-    for (const path of paths) {
-      const contentsUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+    // Check if any path contains glob patterns
+    if (hasAnyGlobPattern(paths)) {
+      // Use Tree API for glob patterns
+      if (options.onProgress) {
+        options.onProgress("Fetching repository structure...");
+      }
 
-      const filesResult = await indexGitHubPath(
-        contentsUrl,
-        { owner, repo, branch },
-        options,
-        service,
-      );
+      try {
+        // Fetch entire repository tree with rate limiting
+        const allFiles = await fetchGitHubTree(owner, repo, branch, {
+          onProgress: options.onProgress,
+        });
 
-      result.itemsIndexed += filesResult.itemsIndexed;
-      result.chunksCreated += filesResult.chunksCreated;
-      result.errors.push(...filesResult.errors);
+        // Filter files based on glob patterns
+        const filePaths = allFiles.map((f) => f.path);
+        const matchedPaths = filterPathsWithGlob(filePaths, paths);
+
+        // Filter only text files
+        const textFiles = matchedPaths.filter((path) => isTextFile(path));
+
+        if (textFiles.length === 0) {
+          result.errors.push("No files matched the specified glob patterns");
+          return result;
+        }
+
+        if (options.onProgress) {
+          options.onProgress(`Found ${textFiles.length} files to index`);
+        }
+
+        // Index each matched file
+        for (let i = 0; i < textFiles.length; i++) {
+          const filePath = textFiles[i];
+          if (!filePath) continue;
+
+          if (options.onProgress) {
+            options.onProgress(
+              `Indexing file ${i + 1}/${textFiles.length}: ${filePath}`,
+              (i + 1) / textFiles.length,
+            );
+          }
+
+          try {
+            const { content, metadata } = await fetchGitHubFileContent(
+              owner,
+              repo,
+              filePath,
+              { onProgress: options.onProgress },
+            );
+
+            const fileResult = await indexText(
+              content,
+              metadata,
+              options,
+              service,
+            );
+
+            result.itemsIndexed += fileResult.itemsIndexed;
+            result.chunksCreated += fileResult.chunksCreated;
+            result.errors.push(...fileResult.errors);
+          } catch (error) {
+            result.errors.push(
+              `Failed to index file ${filePath}: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          }
+        }
+      } catch (error) {
+        result.errors.push(
+          `Failed to fetch repository tree: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        return result;
+      }
+    } else {
+      // Use existing Contents API for simple paths (backward compatibility)
+      for (const path of paths) {
+        const contentsUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+
+        const filesResult = await indexGitHubPath(
+          contentsUrl,
+          { owner, repo, branch },
+          options,
+          service,
+        );
+
+        result.itemsIndexed += filesResult.itemsIndexed;
+        result.chunksCreated += filesResult.chunksCreated;
+        result.errors.push(...filesResult.errors);
+      }
     }
   } catch (error) {
     if (error instanceof SecurityError) {
@@ -412,7 +499,9 @@ async function indexGitHubPath(
   };
 
   try {
-    const response = await fetch(contentsUrl);
+    const response = await fetchGitHubContents(contentsUrl, {
+      onProgress: options.onProgress,
+    });
 
     if (!response.ok) {
       result.errors.push(
@@ -433,8 +522,9 @@ async function indexGitHubPath(
       if (item.type === "file" && item.download_url) {
         if (isTextFile(item.name)) {
           try {
-            const fileResponse = await fetch(item.download_url);
-            const content = await fileResponse.text();
+            const content = await fetchGitHubRawContent(item.download_url, {
+              onProgress: options.onProgress,
+            });
 
             const metadata: ItemMetadata = {
               title: item.name,
