@@ -1,6 +1,5 @@
 import { vi } from "vitest";
 import type { BatchEmbeddingOptions } from "../../src/core/embedding/embedding.js";
-import { createMockEmbedding } from "./test-db.js";
 
 /**
  * Setup mocks for embedding generation functions
@@ -8,15 +7,19 @@ import { createMockEmbedding } from "./test-db.js";
  */
 export function setupEmbeddingMocks() {
   vi.mock("../../src/core/embedding/embedding.js", () => ({
-    generateEmbedding: vi.fn((_text: string) => {
-      return Promise.resolve(createMockEmbedding(768));
+    generateEmbedding: vi.fn((text: string) => {
+      return Promise.resolve(createConsistentMockEmbedding(text, 768));
     }),
     generateEmbeddings: vi.fn((texts: string[]) => {
-      return Promise.resolve(texts.map(() => createMockEmbedding(768)));
+      return Promise.resolve(
+        texts.map((text) => createConsistentMockEmbedding(text, 768)),
+      );
     }),
     generateEmbeddingsBatch: vi.fn(
       (texts: string[], options?: BatchEmbeddingOptions) => {
-        const embeddings = texts.map(() => createMockEmbedding(768));
+        const embeddings = texts.map((text) =>
+          createConsistentMockEmbedding(text, 768),
+        );
         // Call onProgress callback if provided
         if (options?.onProgress) {
           for (let i = 1; i <= texts.length; i++) {
