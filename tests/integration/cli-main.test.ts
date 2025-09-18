@@ -1,8 +1,12 @@
-import { execSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  parseCommand,
+  runCLIInDirectory,
+  runCLISecure,
+} from "../helpers/secure-cli.js";
 
 describe("CLI main entry point", () => {
   let tempDir: string;
@@ -17,48 +21,13 @@ describe("CLI main entry point", () => {
     await rm(tempDir, { recursive: true, force: true }).catch(() => {});
   });
 
-  function runCLI(args: string): {
+  function runCLI(commandString: string): {
     stdout: string;
     stderr: string;
     code: number;
   } {
-    try {
-      const result = execSync(`node dist/cli/index.js ${args}`, {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          NODE_ENV: "production", // Override NODE_ENV to allow CLI execution
-          NODE_NO_WARNINGS: "1",
-          VITEST: undefined, // Ensure VITEST is not set
-        },
-        encoding: "utf8",
-      });
-      return { stdout: result.toString(), stderr: "", code: 0 };
-    } catch (error) {
-      const execError = error as {
-        stdout?: Buffer | string;
-        stderr?: Buffer | string;
-        status?: number;
-        output?: Array<Buffer | string | null>;
-      };
-      // CLIツールの出力はstderrにも出力されることがあるため、両方を結合
-      const stdout = execError.stdout?.toString() || "";
-      const stderr = execError.stderr?.toString() || "";
-      // outputプロパティからも取得を試みる
-      let combined = stdout || stderr;
-      if (!combined && execError.output) {
-        const outputStr = execError.output
-          .filter(Boolean)
-          .map((buf) => buf?.toString() || "")
-          .join("");
-        if (outputStr) combined = outputStr;
-      }
-      return {
-        stdout: combined,
-        stderr: stderr,
-        code: execError.status || 1,
-      };
-    }
+    const args = parseCommand(commandString);
+    return runCLISecure(args);
   }
 
   it("should show help when no arguments are provided", () => {
@@ -200,20 +169,8 @@ describe("CLI main entry point", () => {
     };
     await writeFile(configPath, JSON.stringify(config, null, 2));
 
-    // Get the project root path securely
-    const projectRoot = process.cwd();
-    const cliPath = join(projectRoot, "dist/cli/index.js");
-
-    // Run command in the directory with config
-    const result = execSync(`cd ${tempDir} && node ${cliPath} info`, {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        NODE_ENV: "production",
-        NODE_NO_WARNINGS: "1",
-        VITEST: undefined,
-      },
-    });
+    // Run command in the directory with config using secure helper
+    const result = runCLIInDirectory(tempDir, ["info"]);
 
     expect(result).toBeDefined();
     // Command will show adapter info
@@ -230,23 +187,8 @@ describe("CLI main entry point", () => {
     };
     await writeFile(configPath, JSON.stringify(config, null, 2));
 
-    // Get the project root path securely
-    const projectRoot = process.cwd();
-    const cliPath = join(projectRoot, "dist/cli/index.js");
-
-    // Override with CLI argument
-    const result = execSync(
-      `cd ${tempDir} && node ${cliPath} info --provider memory`,
-      {
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          NODE_ENV: "production",
-          NODE_NO_WARNINGS: "1",
-          VITEST: undefined,
-        },
-      },
-    );
+    // Override with CLI argument using secure helper
+    const result = runCLIInDirectory(tempDir, ["info", "--provider", "memory"]);
 
     // Should show memory adapter info
     expect(result.toLowerCase()).toContain("adapter");

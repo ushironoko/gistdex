@@ -1,9 +1,13 @@
-import { execSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { testCode, testDocuments } from "../helpers/test-fixtures.js";
+import {
+  parseCommand,
+  runCLIInDirectory,
+  runCLISecure,
+} from "../helpers/secure-cli.js";
 
 /**
  * CLI Commands Integration Test
@@ -22,38 +26,10 @@ describe("CLI Commands Integration", () => {
     await rm(tempDir, { recursive: true, force: true }).catch(() => {});
   });
 
-  function runCLI(args: string): string {
-    try {
-      const output = execSync(`node dist/cli/index.js ${args}`, {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          NODE_ENV: "production", // Override NODE_ENV to allow CLI execution
-          NODE_NO_WARNINGS: "1",
-          VITEST: undefined, // Ensure VITEST is not set
-        },
-        encoding: "utf8",
-      });
-      return output.toString();
-    } catch (error) {
-      const execError = error as {
-        stdout?: Buffer | string;
-        stderr?: Buffer | string;
-        output?: Array<Buffer | string | null>;
-      };
-      // CLIツールの出力はstderrにも出力されることがあるため、両方をチェック
-      const stdout = execError.stdout?.toString() || "";
-      const stderr = execError.stderr?.toString() || "";
-      // execSyncのoutputプロパティをチェック
-      if (execError.output) {
-        const outputStr = execError.output
-          .filter(Boolean)
-          .map((buf) => buf?.toString() || "")
-          .join("");
-        if (outputStr) return outputStr;
-      }
-      return stdout || stderr || "";
-    }
+  function runCLI(commandString: string): string {
+    const args = parseCommand(commandString);
+    const result = runCLISecure(args);
+    return result.stdout;
   }
 
   describe("init command", () => {
@@ -249,15 +225,8 @@ describe("CLI Commands Integration", () => {
     });
 
     it("should display help with no arguments", async () => {
-      const output = execSync(`node ${process.cwd()}/dist/cli/index.js`, {
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          NODE_ENV: "production",
-          NODE_NO_WARNINGS: "1",
-          VITEST: undefined,
-        },
-      });
+      const result = runCLISecure([]);
+      const output = result.stdout;
 
       expect(output).toBeDefined();
       expect(output.toLowerCase()).toContain("usage");
@@ -299,10 +268,7 @@ describe("CLI Commands Integration", () => {
       await writeFile(configPath, JSON.stringify(config, null, 2));
 
       // 設定ファイルのあるディレクトリでコマンドを実行
-      const output = execSync(
-        `cd ${tempDir} && node ${process.cwd()}/dist/cli/index.js info`,
-        { encoding: "utf8" },
-      );
+      const output = runCLIInDirectory(tempDir, ["info"]);
 
       expect(output).toBeDefined();
     });
@@ -318,18 +284,11 @@ describe("CLI Commands Integration", () => {
       await writeFile(configPath, JSON.stringify(config, null, 2));
 
       // CLIで別のプロバイダを指定
-      const output = execSync(
-        `cd ${tempDir} && node ${process.cwd()}/dist/cli/index.js info --provider memory`,
-        {
-          encoding: "utf8",
-          env: {
-            ...process.env,
-            NODE_ENV: "production",
-            NODE_NO_WARNINGS: "1",
-            VITEST: undefined,
-          },
-        },
-      );
+      const output = runCLIInDirectory(tempDir, [
+        "info",
+        "--provider",
+        "memory",
+      ]);
 
       // Should show adapter info
       expect(output.toLowerCase()).toContain("adapter");
