@@ -20,10 +20,14 @@ export function assertSearchResultsOrdered(
   descending: boolean = true,
 ): void {
   for (let i = 1; i < results.length; i++) {
-    if (descending) {
-      expect(results[i - 1].score).toBeGreaterThanOrEqual(results[i].score);
-    } else {
-      expect(results[i - 1].score).toBeLessThanOrEqual(results[i].score);
+    const prevResult = results[i - 1];
+    const currResult = results[i];
+    if (prevResult && currResult) {
+      if (descending) {
+        expect(prevResult.score).toBeGreaterThanOrEqual(currResult.score);
+      } else {
+        expect(prevResult.score).toBeLessThanOrEqual(currResult.score);
+      }
     }
   }
 }
@@ -60,14 +64,16 @@ export function assertChunksValid(
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
-    expect(typeof chunk).toBe("string");
-    expect(chunk.length).toBeGreaterThan(minSize);
+    if (chunk) {
+      expect(typeof chunk).toBe("string");
+      expect(chunk.length).toBeGreaterThan(minSize);
 
-    if (i < chunks.length - 1) {
-      expect(chunk.length).toBeLessThanOrEqual(maxSize);
+      if (i < chunks.length - 1) {
+        expect(chunk.length).toBeLessThanOrEqual(maxSize);
+      }
+
+      expect(originalText).toContain(chunk.trim());
     }
-
-    expect(originalText).toContain(chunk.trim());
   }
 }
 

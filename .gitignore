@@ -23,3 +23,8 @@ tmp/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 docs/.vitepress/temp/
+
+# Test temporary directories
+data/tests/features/*
+!data/tests/features/.gitkeep
+data/test-*/

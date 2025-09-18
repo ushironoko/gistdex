@@ -271,8 +271,8 @@ export async function main(): Promise<void> {
 
 // Run main function immediately
 // This ensures compatibility with bunx, npx, and direct execution
-// Skip automatic execution during testing
-if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+// Skip automatic execution only when imported by Vitest
+if (!process.env.VITEST) {
   main().catch((error) => {
     console.error("Fatal error:", error);
     if (error instanceof Error && error.stack) {

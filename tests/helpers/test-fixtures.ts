@@ -155,9 +155,11 @@ export function createMockSearchResults(
 
   for (let i = 0; i < count; i++) {
     const doc = documents[i % documents.length];
-    results.push(
-      createMockSearchResult(doc.content, baseScore - i * 0.05, doc.metadata),
-    );
+    if (doc) {
+      results.push(
+        createMockSearchResult(doc.content, baseScore - i * 0.05, doc.metadata),
+      );
+    }
   }
 
   return results;

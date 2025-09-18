@@ -11,7 +11,9 @@
       "!**/.git",
       "!**/*.md",
       "!**/coverage",
-      "!**/docs"
+      "!**/docs",
+      "!**/data/tests",
+      "!**/data/test-*"
     ]
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
