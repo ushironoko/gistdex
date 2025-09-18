@@ -78,7 +78,7 @@ describe("Search Flow Integration Tests", () => {
 
       const topResult = results[0];
       expect(topResult).toBeDefined();
-      expect(topResult!.content.toLowerCase()).toContain("typescript");
+      expect(topResult?.content.toLowerCase()).toContain("typescript");
     });
 
     it("should handle different K values correctly", async () => {
@@ -211,7 +211,7 @@ describe("Search Flow Integration Tests", () => {
       ];
       const rerankedSingle = rerankResults("test", singleResult);
       expect(rerankedSingle.length).toBe(1);
-      expect(rerankedSingle[0]!.score).toBeGreaterThan(0);
+      expect(rerankedSingle[0]?.score).toBeGreaterThan(0);
     });
   });
 
@@ -330,7 +330,7 @@ Details in subsection.`;
       });
 
       expect(results.length).toBe(2);
-      expect(results[0]!.content).toContain("dogs");
+      expect(results[0]?.content).toContain("dogs");
 
       await cleanupTestDatabase(mockDb);
     });

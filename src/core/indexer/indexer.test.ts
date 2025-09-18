@@ -1,11 +1,11 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { setupEmbeddingMocks } from "../../../tests/helpers/mock-embeddings.js";
 import {
   cleanupTestDatabase,
   createTestDatabase,
 } from "../../../tests/helpers/test-db.js";
-import { setupEmbeddingMocks } from "../../../tests/helpers/mock-embeddings.js";
 import type { DatabaseService } from "../database/database-service.js";
 import {
   indexFile,
