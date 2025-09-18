@@ -566,3 +566,184 @@ class 構文は禁止し、関数とクロージャを利用した関数合成�
 #### テストファイルでの型の積極的な活用
 
 テストファイル内でアサーションに使う値は、`as const satisfies XXX` のように型を用いて適切に行う。
+
+## Testing Guidelines
+
+### Testing Trophy Strategy
+
+The project follows the Testing Trophy approach with the following test distribution:
+
+```
+       ／￣￣￣＼
+      ／  Manual  ＼     (5%)
+     ／    E2E     ＼    (15%)
+    ／ Integration  ＼   (60%) ← Primary focus
+   ／     Unit      ＼  (20%)
+  ￣￣￣￣￣￣￣￣￣￣
+```
+
+### Test Types
+
+1. **Unit Tests (20%)**
+   - Pure function logic tests
+   - No mocking allowed
+   - Utility functions, calculation logic
+
+2. **Integration Tests (60%)**
+   - Multi-module interaction tests
+   - Use real database (in-memory)
+   - API endpoint tests
+
+3. **E2E Tests (15%)**
+   - Complete user scenario execution
+   - CLI command execution tests
+   - MCP server integration tests
+
+4. **Manual Tests (5%)**
+   - Visual verification
+   - Debugging purposes
+
+### Test Helpers
+
+```typescript
+// tests/helpers/test-db.ts
+import { createTestDatabase } from "../helpers/test-db.js";
+
+// Use in-memory database
+const db = await createTestDatabase({ provider: "memory" });
+
+// Use temporary SQLite (when persistence needed)
+const db = await createTestDatabase({
+  provider: "sqlite",
+  persistData: false  // Auto-cleanup after test
+});
+```
+
+### Test Fixtures
+
+```typescript
+// tests/helpers/test-fixtures.ts
+import { testDocuments, testCode, testQueries } from "../helpers/test-fixtures.js";
+
+// Use common test data
+const doc = testDocuments.typescript;
+const code = testCode.python;
+```
+
+### Assertion Helpers
+
+```typescript
+// tests/helpers/test-utils.ts
+import {
+  assertSearchResultValid,
+  assertEmbeddingValid,
+  withTimeout
+} from "../helpers/test-utils.js";
+
+// Execute test with timeout
+const result = await withTimeout(
+  longRunningOperation(),
+  30000,
+  "Operation timed out"
+);
+```
+
+### Integration Test Patterns
+
+#### Full Flow Testing
+
+```typescript
+describe("Index → Search Flow", () => {
+  it("should index and retrieve content", async () => {
+    const db = await createTestDatabase();
+
+    // Index
+    await indexText("TypeScript content", {}, {}, db);
+
+    // Search
+    const results = await semanticSearch("TypeScript", { k: 5 }, db);
+
+    // Verify results
+    expect(results[0].content).toContain("TypeScript");
+  });
+});
+```
+
+#### Error Handling Testing
+
+```typescript
+it("should handle errors gracefully", async () => {
+  const db = await createTestDatabase();
+
+  // Empty content
+  const result = await indexText("", {}, {}, db);
+  expect(result.errors.length).toBeGreaterThan(0);
+
+  // Database continues to work normally
+  const count = await db.countItems();
+  expect(count).toBe(0);
+});
+```
+
+#### Concurrent Operations Testing
+
+```typescript
+it("handles concurrent operations", async () => {
+  const db = await createTestDatabase();
+
+  // Execute multiple operations concurrently
+  const operations = [
+    indexText("Doc 1", {}, {}, db),
+    indexText("Doc 2", {}, {}, db),
+    indexText("Doc 3", {}, {}, db),
+  ];
+
+  const results = await Promise.all(operations);
+
+  // Verify all succeeded
+  results.forEach(r => {
+    expect(r.itemsIndexed).toBeGreaterThan(0);
+  });
+});
+```
+
+### Best Practices
+
+#### DO ✅
+
+1. **Use real components**
+   - Leverage in-memory DB and temporary files
+
+2. **Keep tests independent**
+   - Create new DB instance for each test
+   - Clean up in afterEach
+
+3. **Write meaningful assertions**
+   - Verify actual behavior
+   - Check side effects
+
+4. **Set appropriate timeouts**
+   - Add timeouts for long-running operations
+
+#### DON'T ❌
+
+1. **Excessive mocking**
+   - Keep to minimum
+   - Only mock external APIs
+
+2. **Depend on implementation details**
+   - Test behavior, not internal implementation
+
+3. **Large test files**
+   - Split by feature
+   - Group related tests
+
+### Migration Strategy
+
+Current state: 757 mock usages → Target: <100 mock usages
+
+The goal is to reduce mocking and achieve:
+- Integration test coverage: 60%
+- Bug detection rate: 80%+
+- Test execution time: <3 minutes
+- Reduced test creation time: 30% decrease

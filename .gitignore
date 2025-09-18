@@ -17,8 +17,14 @@ Thumbs.db
 _research
 tmp/
 .gistdex/
+*.tsbuildinfo
 
 # VitePress build output
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 docs/.vitepress/temp/
+
+# Test temporary directories
+data/tests/fixtures/*
+!data/tests/fixtures/.gitkeep
+data/test-*/

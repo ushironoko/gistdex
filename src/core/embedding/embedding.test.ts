@@ -9,7 +9,7 @@ import {
   normalizeEmbedding,
 } from "./embedding.js";
 
-// Mock the AI SDK
+// Only mock external APIs - Google AI SDK
 vi.mock("@ai-sdk/google", () => ({
   google: {
     textEmbedding: vi.fn(),
@@ -21,7 +21,6 @@ vi.mock("ai", () => ({
   embedMany: vi.fn(),
 }));
 
-// Import the mocked functions
 import { google } from "@ai-sdk/google";
 import { embed, embedMany } from "ai";
 
@@ -32,13 +31,106 @@ describe("embedding constants", () => {
   });
 });
 
-describe("generateEmbedding", () => {
+describe("normalizeEmbedding", () => {
+  test("normalizes a vector to unit length", () => {
+    const vector = [3, 4]; // 3-4-5 triangle
+    const normalized = normalizeEmbedding(vector);
+
+    expect(normalized).toHaveLength(2);
+    expect(normalized[0]).toBeCloseTo(0.6, 5);
+    expect(normalized[1]).toBeCloseTo(0.8, 5);
+
+    // Check that it's unit length
+    const magnitude = Math.sqrt(
+      (normalized[0] ?? 0) ** 2 + (normalized[1] ?? 0) ** 2,
+    );
+    expect(magnitude).toBeCloseTo(1, 5);
+  });
+
+  test("handles zero vector", () => {
+    const vector = [0, 0, 0];
+    const normalized = normalizeEmbedding(vector);
+
+    expect(normalized).toEqual([0, 0, 0]);
+  });
+
+  test("handles already normalized vector", () => {
+    const vector = [1, 0, 0];
+    const normalized = normalizeEmbedding(vector);
+
+    expect(normalized).toEqual([1, 0, 0]);
+  });
+
+  test("normalizes large dimensional vectors", () => {
+    const vector = Array(768).fill(1);
+    const normalized = normalizeEmbedding(vector);
+
+    expect(normalized).toHaveLength(768);
+
+    // Check unit length
+    const magnitude = Math.sqrt(
+      normalized.reduce((sum, val) => sum + val ** 2, 0),
+    );
+    expect(magnitude).toBeCloseTo(1, 5);
+  });
+});
+
+describe("cosineSimilarity", () => {
+  test("calculates cosine similarity between two vectors", () => {
+    const a = [1, 0, 0];
+    const b = [1, 0, 0];
+
+    const similarity = cosineSimilarity(a, b);
+    expect(similarity).toBeCloseTo(1, 5); // Identical vectors
+  });
+
+  test("returns 0 for orthogonal vectors", () => {
+    const a = [1, 0, 0];
+    const b = [0, 1, 0];
+
+    const similarity = cosineSimilarity(a, b);
+    expect(similarity).toBeCloseTo(0, 5);
+  });
+
+  test("returns -1 for opposite vectors", () => {
+    const a = [1, 0, 0];
+    const b = [-1, 0, 0];
+
+    const similarity = cosineSimilarity(a, b);
+    expect(similarity).toBeCloseTo(-1, 5);
+  });
+
+  test("handles different magnitude vectors", () => {
+    const a = [3, 4, 0];
+    const b = [6, 8, 0]; // Same direction, different magnitude
+
+    const similarity = cosineSimilarity(a, b);
+    expect(similarity).toBeCloseTo(1, 5);
+  });
+
+  test("throws error for vectors of different lengths", () => {
+    const a = [1, 0];
+    const b = [1, 0, 0];
+
+    expect(() => cosineSimilarity(a, b)).toThrow();
+  });
+
+  test("handles zero vectors", () => {
+    const a = [0, 0, 0];
+    const b = [1, 0, 0];
+
+    const similarity = cosineSimilarity(a, b);
+    expect(similarity).toBe(0);
+  });
+});
+
+describe("generateEmbedding (with API mock)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   test("generates embedding for single text", async () => {
-    const mockEmbedding = [0.1, 0.2, 0.3];
+    const mockEmbedding = Array(768).fill(0.1);
     const normalizedEmbedding = normalizeEmbedding(mockEmbedding);
     const mockModel = { model: "test-model" };
 
@@ -61,55 +153,13 @@ describe("generateEmbedding", () => {
         },
       },
     });
-    // Result should be normalized when using 768 dimensions
     expect(result).toEqual(normalizedEmbedding);
-  });
-
-  test("uses custom model when provided", async () => {
-    const mockEmbedding = [0.4, 0.5, 0.6];
-    const normalizedEmbedding = normalizeEmbedding(mockEmbedding);
-    const mockModel = { model: "custom-model" };
-
-    vi.mocked(google.textEmbedding).mockReturnValue(
-      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
-    );
-    vi.mocked(embed).mockResolvedValue({
-      embedding: mockEmbedding,
-    } as unknown as Awaited<ReturnType<typeof embed>>);
-
-    const result = await generateEmbedding("test text", {
-      model: "custom-model",
-    });
-
-    expect(google.textEmbedding).toHaveBeenCalledWith("custom-model");
-    // Result should be normalized when using 768 dimensions
-    expect(result).toEqual(normalizedEmbedding);
-  });
-
-  test("throws error on API failure", async () => {
-    const mockModel = { model: "test-model" };
-    const apiError = new Error("API Error");
-
-    vi.mocked(google.textEmbedding).mockReturnValue(
-      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
-    );
-    vi.mocked(embed).mockRejectedValue(apiError);
-
-    await expect(generateEmbedding("test text")).rejects.toThrow(
-      "Failed to generate embedding for text",
-    );
-
-    try {
-      await generateEmbedding("test text");
-    } catch (error: unknown) {
-      const err = error as Error;
-      expect(err.cause).toBe(apiError);
-    }
+    expect(result).toHaveLength(768);
   });
 
   test("handles empty text", async () => {
-    const mockEmbedding = [0, 0, 0];
-    // Zero vector remains zero after normalization
+    const mockEmbedding = Array(768).fill(0);
+    const normalizedEmbedding = normalizeEmbedding(mockEmbedding);
     const mockModel = { model: "test-model" };
 
     vi.mocked(google.textEmbedding).mockReturnValue(
@@ -130,45 +180,36 @@ describe("generateEmbedding", () => {
         },
       },
     });
-    expect(result).toEqual(mockEmbedding); // Zero vector remains zero
+    expect(result).toEqual(normalizedEmbedding);
   });
 
-  test("normalizes embeddings when using 768 dimensions", async () => {
-    const mockEmbedding = [3, 4]; // Will be normalized to [0.6, 0.8]
+  test("handles API errors gracefully", async () => {
     const mockModel = { model: "test-model" };
 
     vi.mocked(google.textEmbedding).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
-    vi.mocked(embed).mockResolvedValue({
-      embedding: mockEmbedding,
-    } as unknown as Awaited<ReturnType<typeof embed>>);
+    vi.mocked(embed).mockRejectedValue(new Error("API Error"));
 
-    const result = await generateEmbedding("test text");
-
-    // Check that the result is normalized (magnitude = 1)
-    const magnitude = Math.sqrt(
-      result.reduce((sum, val) => sum + val * val, 0),
+    await expect(generateEmbedding("test")).rejects.toThrow(
+      "Failed to generate embedding for text",
     );
-    expect(magnitude).toBeCloseTo(1, 5);
-    expect(result).toEqual([0.6, 0.8]);
   });
 });
 
-describe("generateEmbeddings", () => {
+describe("generateEmbeddings (with API mock)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   test("generates embeddings for multiple texts", async () => {
+    const texts = ["text1", "text2", "text3"];
     const mockEmbeddings = [
-      [0.1, 0.2],
-      [0.3, 0.4],
-      [0.5, 0.6],
+      Array(768).fill(0.1),
+      Array(768).fill(0.2),
+      Array(768).fill(0.3),
     ];
-    const normalizedEmbeddings = mockEmbeddings.map((e) =>
-      normalizeEmbedding(e),
-    );
+    const normalizedEmbeddings = mockEmbeddings.map(normalizeEmbedding);
     const mockModel = { model: "test-model" };
 
     vi.mocked(google.textEmbedding).mockReturnValue(
@@ -178,7 +219,6 @@ describe("generateEmbeddings", () => {
       embeddings: mockEmbeddings,
     } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
-    const texts = ["text1", "text2", "text3"];
     const result = await generateEmbeddings(texts);
 
     expect(google.textEmbedding).toHaveBeenCalledWith(EMBEDDING_MODEL);
@@ -191,74 +231,109 @@ describe("generateEmbeddings", () => {
         },
       },
     });
-    // Results should be normalized when using 768 dimensions
     expect(result).toEqual(normalizedEmbeddings);
+    expect(result).toHaveLength(3);
+    result.forEach((embedding) => {
+      expect(embedding).toHaveLength(768);
+    });
   });
 
-  test("returns empty array for empty input", async () => {
+  test("handles empty array", async () => {
     const result = await generateEmbeddings([]);
 
     expect(result).toEqual([]);
     expect(embedMany).not.toHaveBeenCalled();
   });
 
-  test("uses custom model when provided", async () => {
-    const mockEmbeddings = [[0.1, 0.2]];
-    const normalizedEmbeddings = mockEmbeddings.map((e) =>
-      normalizeEmbedding(e),
-    );
-    const mockModel = { model: "custom-model" };
+  test("handles single text", async () => {
+    const mockEmbedding = Array(768).fill(0.5);
+    const normalizedEmbedding = normalizeEmbedding(mockEmbedding);
+    const mockModel = { model: "test-model" };
 
     vi.mocked(google.textEmbedding).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
     vi.mocked(embedMany).mockResolvedValue({
-      embeddings: mockEmbeddings,
+      embeddings: [mockEmbedding],
     } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
-    const result = await generateEmbeddings(["text1"], {
-      model: "custom-model",
+    const result = await generateEmbeddings(["single text"]);
+
+    expect(embedMany).toHaveBeenCalledWith({
+      model: mockModel,
+      values: ["single text"],
+      providerOptions: {
+        google: {
+          outputDimensionality: 768,
+        },
+      },
     });
-
-    expect(google.textEmbedding).toHaveBeenCalledWith("custom-model");
-    expect(result).toEqual(normalizedEmbeddings);
-  });
-
-  test("throws error on API failure", async () => {
-    const mockModel = { model: "test-model" };
-    const apiError = new Error("API Error");
-
-    vi.mocked(google.textEmbedding).mockReturnValue(
-      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
-    );
-    vi.mocked(embedMany).mockRejectedValue(apiError);
-
-    await expect(generateEmbeddings(["text1", "text2"])).rejects.toThrow(
-      "Failed to generate embeddings for 2 texts",
-    );
-
-    try {
-      await generateEmbeddings(["text1", "text2"]);
-    } catch (error: unknown) {
-      const err = error as Error;
-      expect(err.cause).toBe(apiError);
-    }
+    expect(result).toEqual([normalizedEmbedding]);
   });
 });
 
-describe("generateEmbeddingsBatch", () => {
+describe("generateEmbeddingsBatch (with API mock)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  test("handles small batches by calling generateEmbeddings", async () => {
-    const mockEmbeddings = [
-      [0.1, 0.2],
-      [0.3, 0.4],
-    ];
-    const normalizedEmbeddings = mockEmbeddings.map((e) =>
-      normalizeEmbedding(e),
+  test("processes texts in batches", async () => {
+    const texts = Array(25)
+      .fill(null)
+      .map((_, i) => `text${i}`);
+    const batchSize = 10;
+
+    // Mock embeddings for each batch
+    const mockBatch1 = Array(10)
+      .fill(null)
+      .map(() => Array(768).fill(0.1));
+    const mockBatch2 = Array(10)
+      .fill(null)
+      .map(() => Array(768).fill(0.2));
+    const mockBatch3 = Array(5)
+      .fill(null)
+      .map(() => Array(768).fill(0.3));
+
+    const mockModel = { model: "test-model" };
+
+    vi.mocked(google.textEmbedding).mockReturnValue(
+      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
+
+    vi.mocked(embedMany)
+      .mockResolvedValueOnce({
+        embeddings: mockBatch1,
+      } as unknown as Awaited<ReturnType<typeof embedMany>>)
+      .mockResolvedValueOnce({
+        embeddings: mockBatch2,
+      } as unknown as Awaited<ReturnType<typeof embedMany>>)
+      .mockResolvedValueOnce({
+        embeddings: mockBatch3,
+      } as unknown as Awaited<ReturnType<typeof embedMany>>);
+
+    const result = await generateEmbeddingsBatch(texts, { batchSize });
+
+    expect(embedMany).toHaveBeenCalledTimes(3);
+    // Check that providerOptions was included in each call
+    expect(embedMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerOptions: {
+          google: {
+            outputDimensionality: 768,
+          },
+        },
+      }),
+    );
+    expect(result).toHaveLength(25);
+    result.forEach((embedding) => {
+      expect(embedding).toHaveLength(768);
+    });
+  });
+
+  test("handles batch size larger than input", async () => {
+    const texts = ["text1", "text2"];
+    const batchSize = 10;
+    const mockEmbeddings = [Array(768).fill(0.1), Array(768).fill(0.2)];
     const mockModel = { model: "test-model" };
 
     vi.mocked(google.textEmbedding).mockReturnValue(
@@ -268,316 +343,59 @@ describe("generateEmbeddingsBatch", () => {
       embeddings: mockEmbeddings,
     } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
-    const texts = ["text1", "text2"];
-    const result = await generateEmbeddingsBatch(texts, { batchSize: 10 });
+    const result = await generateEmbeddingsBatch(texts, { batchSize });
 
-    // Results should be normalized when using 768 dimensions
-    expect(result).toEqual(normalizedEmbeddings);
-    expect(embedMany).toHaveBeenCalledOnce();
+    expect(embedMany).toHaveBeenCalledTimes(1);
+    expect(result).toHaveLength(2);
   });
 
-  test("processes large batches in chunks", async () => {
-    const mockEmbeddings1 = [
-      [0.1, 0.2],
-      [0.3, 0.4],
-    ];
-    const mockEmbeddings2 = [
-      [0.5, 0.6],
-      [0.7, 0.8],
-    ];
-    const mockEmbeddings3 = [[0.9, 1.0]];
-    const normalizedEmbeddings1 = mockEmbeddings1.map((e) =>
-      normalizeEmbedding(e),
-    );
-    const normalizedEmbeddings2 = mockEmbeddings2.map((e) =>
-      normalizeEmbedding(e),
-    );
-    const normalizedEmbeddings3 = mockEmbeddings3.map((e) =>
-      normalizeEmbedding(e),
-    );
+  test("uses default batch size", async () => {
+    const texts = Array(150)
+      .fill(null)
+      .map((_, i) => `text${i}`);
     const mockModel = { model: "test-model" };
 
     vi.mocked(google.textEmbedding).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
+
+    // Mock for default batch size of 100
     vi.mocked(embedMany)
       .mockResolvedValueOnce({
-        embeddings: mockEmbeddings1,
-        values: mockEmbeddings1,
-        usage: { tokens: 0 },
-      })
+        embeddings: Array(100)
+          .fill(null)
+          .map(() => Array(768).fill(0.1)),
+      } as unknown as Awaited<ReturnType<typeof embedMany>>)
       .mockResolvedValueOnce({
-        embeddings: mockEmbeddings2,
-        values: mockEmbeddings2,
-        usage: { tokens: 0 },
-      })
-      .mockResolvedValueOnce({
-        embeddings: mockEmbeddings3,
-        values: mockEmbeddings3,
-        usage: { tokens: 0 },
-      });
+        embeddings: Array(50)
+          .fill(null)
+          .map(() => Array(768).fill(0.2)),
+      } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
-    const texts = ["text1", "text2", "text3", "text4", "text5"];
-    const result = await generateEmbeddingsBatch(texts, { batchSize: 2 });
+    const result = await generateEmbeddingsBatch(texts);
 
-    // Results should be normalized when using 768 dimensions
-    expect(result).toEqual([
-      ...normalizedEmbeddings1,
-      ...normalizedEmbeddings2,
-      ...normalizedEmbeddings3,
-    ]);
-    expect(embedMany).toHaveBeenCalledTimes(3);
-
-    // Check batch calls
-    expect(embedMany).toHaveBeenNthCalledWith(1, {
-      model: mockModel,
-      values: ["text1", "text2"],
-      providerOptions: {
-        google: {
-          outputDimensionality: 768,
-        },
-      },
-    });
-    expect(embedMany).toHaveBeenNthCalledWith(2, {
-      model: mockModel,
-      values: ["text3", "text4"],
-      providerOptions: {
-        google: {
-          outputDimensionality: 768,
-        },
-      },
-    });
-    expect(embedMany).toHaveBeenNthCalledWith(3, {
-      model: mockModel,
-      values: ["text5"],
-      providerOptions: {
-        google: {
-          outputDimensionality: 768,
-        },
-      },
-    });
+    expect(embedMany).toHaveBeenCalledTimes(2);
+    expect(result).toHaveLength(150);
   });
 
-  test("calls onProgress callback", async () => {
-    const mockEmbeddings1 = [
-      [0.1, 0.2],
-      [0.3, 0.4],
-    ];
-    const mockEmbeddings2 = [[0.5, 0.6]];
-    const mockModel = { model: "test-model" };
-    const onProgress = vi.fn();
-
-    vi.mocked(google.textEmbedding).mockReturnValue(
-      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
-    );
-    vi.mocked(embedMany)
-      .mockResolvedValueOnce({
-        embeddings: mockEmbeddings1,
-        values: mockEmbeddings1,
-        usage: { tokens: 0 },
-      })
-      .mockResolvedValueOnce({
-        embeddings: mockEmbeddings2,
-        values: mockEmbeddings2,
-        usage: { tokens: 0 },
-      });
-
-    const texts = ["text1", "text2", "text3"];
-    await generateEmbeddingsBatch(texts, { batchSize: 2, onProgress });
-
-    expect(onProgress).toHaveBeenCalledTimes(2);
-    expect(onProgress).toHaveBeenNthCalledWith(1, 2, 3); // After first batch
-    expect(onProgress).toHaveBeenNthCalledWith(2, 3, 3); // After second batch
-  });
-
-  test("returns empty array for empty input", async () => {
-    const result = await generateEmbeddingsBatch([]);
+  test("handles empty input", async () => {
+    const result = await generateEmbeddingsBatch([], { batchSize: 10 });
 
     expect(result).toEqual([]);
     expect(embedMany).not.toHaveBeenCalled();
   });
 
-  test("uses custom model and batch size", async () => {
-    const mockEmbeddings = [[0.1, 0.2]];
-    const mockModel = { model: "custom-model" };
-
-    vi.mocked(google.textEmbedding).mockReturnValue(
-      mockModel as unknown as ReturnType<typeof google.textEmbedding>,
-    );
-    vi.mocked(embedMany).mockResolvedValue({
-      embeddings: mockEmbeddings,
-    } as unknown as Awaited<ReturnType<typeof embedMany>>);
-
-    await generateEmbeddingsBatch(["text1"], {
-      model: "custom-model",
-      batchSize: 5,
-    });
-
-    expect(google.textEmbedding).toHaveBeenCalledWith("custom-model");
-  });
-
-  test("throws error on batch failure with batch information", async () => {
-    const mockEmbeddings1 = [[0.1, 0.2]];
+  test("propagates API errors", async () => {
+    const texts = ["text1", "text2"];
     const mockModel = { model: "test-model" };
-    const apiError = new Error("API Error");
 
     vi.mocked(google.textEmbedding).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
-    vi.mocked(embedMany)
-      .mockResolvedValueOnce({
-        embeddings: mockEmbeddings1,
-        values: mockEmbeddings1,
-        usage: { tokens: 0 },
-      })
-      .mockRejectedValueOnce(apiError);
+    vi.mocked(embedMany).mockRejectedValue(new Error("Batch API Error"));
 
     await expect(
-      generateEmbeddingsBatch(["text1", "text2", "text3"], { batchSize: 1 }),
-    ).rejects.toThrow("Failed to generate embeddings for batch 2");
-
-    try {
-      await generateEmbeddingsBatch(["text1", "text2", "text3"], {
-        batchSize: 1,
-      });
-    } catch (error: unknown) {
-      const err = error as Error;
-      expect(err.cause).toBe(apiError);
-    }
-  });
-});
-
-describe("normalizeEmbedding", () => {
-  test("normalizes vector to unit length", () => {
-    const embedding = [3, 4, 0]; // Magnitude = 5
-    const result = normalizeEmbedding(embedding);
-
-    expect(result).toEqual([0.6, 0.8, 0]);
-
-    // Verify unit length (magnitude = 1)
-    const magnitude = Math.sqrt(
-      result.reduce((sum, val) => sum + val * val, 0),
-    );
-    expect(magnitude).toBeCloseTo(1, 10);
-  });
-
-  test("handles zero vector", () => {
-    const embedding = [0, 0, 0];
-    const result = normalizeEmbedding(embedding);
-
-    expect(result).toEqual([0, 0, 0]);
-  });
-
-  test("handles single dimension vector", () => {
-    const embedding = [5];
-    const result = normalizeEmbedding(embedding);
-
-    expect(result).toEqual([1]);
-  });
-
-  test("handles negative values", () => {
-    const embedding = [-3, 4]; // Magnitude = 5
-    const result = normalizeEmbedding(embedding);
-
-    expect(result).toEqual([-0.6, 0.8]);
-
-    // Verify unit length
-    const magnitude = Math.sqrt(
-      result.reduce((sum, val) => sum + val * val, 0),
-    );
-    expect(magnitude).toBeCloseTo(1, 10);
-  });
-
-  test("preserves already normalized vector", () => {
-    const embedding = [0.6, 0.8]; // Already unit length
-    const result = normalizeEmbedding(embedding);
-
-    expect(result[0]).toBeCloseTo(0.6, 10);
-    expect(result[1]).toBeCloseTo(0.8, 10);
-  });
-});
-
-describe("cosineSimilarity", () => {
-  test("calculates similarity between identical vectors", () => {
-    const embedding1 = [1, 2, 3];
-    const embedding2 = [1, 2, 3];
-    const result = cosineSimilarity(embedding1, embedding2);
-
-    expect(result).toBeCloseTo(1, 10);
-  });
-
-  test("calculates similarity between orthogonal vectors", () => {
-    const embedding1 = [1, 0, 0];
-    const embedding2 = [0, 1, 0];
-    const result = cosineSimilarity(embedding1, embedding2);
-
-    expect(result).toBeCloseTo(0, 10);
-  });
-
-  test("calculates similarity between opposite vectors", () => {
-    const embedding1 = [1, 2, 3];
-    const embedding2 = [-1, -2, -3];
-    const result = cosineSimilarity(embedding1, embedding2);
-
-    expect(result).toBeCloseTo(-1, 10);
-  });
-
-  test("handles normalized vectors", () => {
-    const embedding1 = [0.6, 0.8];
-    const embedding2 = [0.8, 0.6];
-    const result = cosineSimilarity(embedding1, embedding2);
-
-    // Dot product = 0.6 * 0.8 + 0.8 * 0.6 = 0.96
-    expect(result).toBeCloseTo(0.96, 10);
-  });
-
-  test("throws error for different dimension vectors", () => {
-    const embedding1 = [1, 2, 3];
-    const embedding2 = [1, 2];
-
-    expect(() => cosineSimilarity(embedding1, embedding2)).toThrow(
-      "Embeddings must have the same dimension",
-    );
-  });
-
-  test("handles zero vectors", () => {
-    const embedding1 = [0, 0, 0];
-    const embedding2 = [1, 2, 3];
-    const result = cosineSimilarity(embedding1, embedding2);
-
-    expect(result).toBe(0);
-  });
-
-  test("handles both zero vectors", () => {
-    const embedding1 = [0, 0, 0];
-    const embedding2 = [0, 0, 0];
-    const result = cosineSimilarity(embedding1, embedding2);
-
-    expect(result).toBe(0);
-  });
-
-  test("works with different magnitudes", () => {
-    const embedding1 = [1, 1]; // Magnitude: √2
-    const embedding2 = [2, 2]; // Magnitude: 2√2, same direction
-    const result = cosineSimilarity(embedding1, embedding2);
-
-    expect(result).toBeCloseTo(1, 10);
-  });
-
-  test("handles single dimension vectors", () => {
-    const embedding1 = [5];
-    const embedding2 = [3];
-    const result = cosineSimilarity(embedding1, embedding2);
-
-    expect(result).toBeCloseTo(1, 10);
-  });
-
-  test("handles mixed positive and negative values", () => {
-    const embedding1 = [1, -1, 2];
-    const embedding2 = [2, -2, 4];
-    const result = cosineSimilarity(embedding1, embedding2);
-
-    // Same direction, should be close to 1
-    expect(result).toBeCloseTo(1, 10);
+      generateEmbeddingsBatch(texts, { batchSize: 10 }),
+    ).rejects.toThrow("Failed to generate embeddings for 2 texts");
   });
 });

@@ -1,4 +1,25 @@
 /**
+ * Get nested value from an object using dot notation path
+ */
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  const keys = path.split(".");
+  let current: unknown = obj;
+
+  for (const key of keys) {
+    if (
+      current === null ||
+      current === undefined ||
+      typeof current !== "object"
+    ) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+
+  return current;
+}
+
+/**
  * Apply metadata filter to check if metadata matches filter criteria
  */
 export function applyMetadataFilter(
@@ -10,7 +31,12 @@ export function applyMetadataFilter(
   }
 
   for (const [key, value] of Object.entries(filter)) {
-    if (metadata[key] !== value) {
+    // Support nested properties using dot notation (e.g., "boundary.type")
+    const actualValue = key.includes(".")
+      ? getNestedValue(metadata, key)
+      : metadata[key];
+
+    if (actualValue !== value) {
       return false;
     }
   }

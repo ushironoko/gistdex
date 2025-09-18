@@ -89,10 +89,10 @@ jobs:
       - name: Check formatting
         run: pnpm exec biome check --formatter-enabled=true --linter-enabled=false .
 
-  test:
-    name: Test
+  test-unit:
+    name: Unit Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -109,15 +109,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
-        run: pnpm test
-
-      - name: Run tests with coverage
-        run: pnpm run test:coverage
+      - name: Run unit tests
+        run: pnpm run test:unit
 
   build:
     name: Build
-    needs: [lint, typecheck, format-check, test]
+    needs: [lint, typecheck, format-check, test-unit]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -141,3 +138,6 @@ jobs:
 
       - name: Verify CLI works
         run: node dist/cli/index.js --help
+
+  # Integration tests are now run weekly with real API
+  # See .github/workflows/weekly-integration.yml

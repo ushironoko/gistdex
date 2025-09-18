@@ -27,6 +27,7 @@ export interface IndexResult {
   itemsIndexed: number;
   chunksCreated: number;
   errors: string[];
+  sourceId?: string;
 }
 
 export async function indexText(
@@ -113,6 +114,7 @@ export async function indexText(
       const ids = await dbService.saveItems(items);
       result.itemsIndexed = ids.length;
       result.chunksCreated = chunks.length;
+      result.sourceId = sourceId;
     } catch (error) {
       result.errors.push(
         `Failed to save chunks: ${
