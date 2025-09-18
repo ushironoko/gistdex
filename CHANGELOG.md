@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.1] - 2025-09-18
+
+- Merge pull request #110 from ushironoko/feature/github-glob-patterns-and-rate-limiting
+- WIP
+- fix test
+- docs: update CLI and documentation for GitHub glob patterns
+- feat: add GitHub API rate limit management and Tree API integration
+- feat: add glob pattern support for GitHub repository indexing
+- fix readme
+
+
 ## [1.4.0] - 2025-09-18
 
 - Merge pull request #109 from ushironoko:feature/refactor-dependencies
