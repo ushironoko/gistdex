@@ -2,6 +2,10 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import {
+  getDefaultGistdexConfig,
+  mergeGistdexConfig,
+} from "../utils/config-merger.js";
 import type {
   AdapterFactory,
   VectorDBConfig,
@@ -81,66 +85,10 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
   };
 
   /**
-   * Apply default configuration values
+   * Apply default configuration values using defu
    */
-  const applyDefaults = (config: GistdexConfig): GistdexConfig => {
-    const result = { ...config };
-
-    // Apply defaults if not set
-    if (!result.vectorDB) {
-      result.vectorDB = {
-        provider: "sqlite",
-        options: {
-          path: "./gistdex.db",
-          dimension: 768,
-        },
-      };
-    } else {
-      // Apply defaults to options only if needed
-      if (!result.vectorDB.options) {
-        result.vectorDB.options = {
-          path: "./gistdex.db",
-          dimension: 768,
-        };
-      } else {
-        // Preserve existing options, only apply missing defaults
-        result.vectorDB.options = {
-          ...result.vectorDB.options,
-        };
-
-        // Ensure dimension is set
-        if (result.vectorDB.options.dimension === undefined) {
-          result.vectorDB.options.dimension = 768;
-        }
-
-        // Ensure path is set for sqlite providers
-        if (
-          (result.vectorDB.provider === "sqlite" ||
-            result.vectorDB.provider === "bun-sqlite" ||
-            result.vectorDB.provider === "sqlite-bun") &&
-          !result.vectorDB.options.path
-        ) {
-          result.vectorDB.options.path = "./gistdex.db";
-        }
-      }
-    }
-
-    // Apply embedding defaults
-    if (!result.embedding) {
-      result.embedding = {
-        model: "gemini-embedding-001",
-        dimension: 768,
-      };
-    } else {
-      if (!result.embedding.model) {
-        result.embedding.model = "gemini-embedding-001";
-      }
-      if (!result.embedding.dimension) {
-        result.embedding.dimension = 768;
-      }
-    }
-
-    return result;
+  const applyDefaults = (config: Partial<GistdexConfig>): GistdexConfig => {
+    return mergeGistdexConfig(config, getDefaultGistdexConfig());
   };
 
   /**
@@ -155,11 +103,8 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
     // Load config file
     const configFile = await loadConfigFile(path);
 
-    // Apply defaults only if config is empty or missing critical properties
-    const config =
-      Object.keys(configFile).length === 0
-        ? applyDefaults(configFile)
-        : configFile;
+    // Apply defaults using defu (handles partial configs properly)
+    const config = applyDefaults(configFile);
 
     cachedConfig = config;
     return config;
