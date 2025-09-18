@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.4.0] - 2025-09-18
+
+- Merge pull request #109 from ushironoko:feature/refactor-dependencies
+- Merge consola migration
+- Merge defu integration
+- feat: migrate from chalk+ora to consola for unified console output
+- feat: integrate defu library for configuration merging
+- Merge pull request #108 from ushironoko/feature/testing-trophy-integration
+- fix: address PR review comments
+- fix: resolve CI issues after security fixes
+- security: fix command injection vulnerabilities in CLI tests
+- rename test dir
+- fix ci
+- refactor: move integration tests to weekly execution with real API
+- test: fix integration test failures and improve mock embeddings
+- style: fix biome linting issues
+- fix: add missing embedding mocks to indexer tests
+- test: separate CLI unit and integration tests
+- fix: separate unit and integration tests in CI pipeline
+- fix script
+- security: resolve shell command injection vulnerabilities in CLI tests
+- test: implement comprehensive testing improvements with TypeScript Project References
+- write handover
+- add gitignore
+- config: split TypeScript configuration using Project References
+- fix test
+- test: improve test suite with Testing Trophy approach and reduce mocking by 20%
+- docs: add comprehensive Testing Guidelines for Testing Trophy approach
+- config: extend vitest to include tests/ directory
+- test: add mock-free database service integration tests
+- test: implement comprehensive integration tests for Testing Trophy
+- test: add test infrastructure with helpers for Testing Trophy approach
+- fix
+- fix gistdex.config.ts
+
+
 ## [1.3.8] - 2025-09-17
 
 - refactor:remove unused modules
