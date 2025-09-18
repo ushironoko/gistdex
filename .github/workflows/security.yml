@@ -19,4 +19,4 @@ jobs:
       - uses: anthropics/claude-code-security-review@main
         with:
           comment-pr: true
-          claude-api-key: ${{ secrets.CLAUDE_API_KEY }}
+          claude-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
