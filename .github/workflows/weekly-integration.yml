@@ -1,0 +1,53 @@
+name: Weekly Integration Tests
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC (18:00 JST)
+    - cron: "0 9 * * 1"
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  integration-tests:
+    name: Integration Tests with Real API
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Run integration tests with real API
+        run: pnpm run test:integration
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Weekly Integration Tests Failed',
+              body: `The weekly integration tests failed. Please check the [workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for details.`,
+              labels: ['test-failure', 'integration-test']
+            };
+            await github.rest.issues.create(issue);

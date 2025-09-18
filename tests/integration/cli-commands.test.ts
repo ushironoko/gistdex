@@ -3,11 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setupEmbeddingMocks } from "../helpers/mock-embeddings.js";
 import { testCode, testDocuments } from "../helpers/test-fixtures.js";
-
-// Setup mocks for embedding generation
-setupEmbeddingMocks();
 
 /**
  * CLI Commands Integration Test

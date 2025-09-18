@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import type { BatchEmbeddingOptions } from "../../src/core/embedding/embedding.js";
+import { createMockEmbedding } from "./test-db.js";
 
 /**
  * Setup mocks for embedding generation functions
@@ -7,19 +8,15 @@ import type { BatchEmbeddingOptions } from "../../src/core/embedding/embedding.j
  */
 export function setupEmbeddingMocks() {
   vi.mock("../../src/core/embedding/embedding.js", () => ({
-    generateEmbedding: vi.fn((text: string) => {
-      return Promise.resolve(createConsistentMockEmbedding(text, 768));
+    generateEmbedding: vi.fn((_text: string) => {
+      return Promise.resolve(createMockEmbedding(768));
     }),
     generateEmbeddings: vi.fn((texts: string[]) => {
-      return Promise.resolve(
-        texts.map((text) => createConsistentMockEmbedding(text, 768)),
-      );
+      return Promise.resolve(texts.map(() => createMockEmbedding(768)));
     }),
     generateEmbeddingsBatch: vi.fn(
       (texts: string[], options?: BatchEmbeddingOptions) => {
-        const embeddings = texts.map((text) =>
-          createConsistentMockEmbedding(text, 768),
-        );
+        const embeddings = texts.map(() => createMockEmbedding(768));
         // Call onProgress callback if provided
         if (options?.onProgress) {
           for (let i = 1; i <= texts.length; i++) {
@@ -55,38 +52,4 @@ export function setupEmbeddingMocks() {
       return dotProduct / (magnitude1 * magnitude2);
     },
   }));
-}
-
-/**
- * Create consistent mock embeddings for testing
- * These embeddings are deterministic based on the input text
- */
-export function createConsistentMockEmbedding(
-  text: string,
-  dimension: number = 768,
-): number[] {
-  const embedding = new Array(dimension);
-  // Use text hash to create deterministic but varied embeddings
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    hash = (hash << 5) - hash + text.charCodeAt(i);
-    hash = hash & hash; // Convert to 32bit integer
-  }
-
-  // Create deterministic embedding based on hash
-  for (let i = 0; i < dimension; i++) {
-    const seed = hash + i;
-    embedding[i] = Math.sin(seed) * 0.5 + Math.cos(seed * 2) * 0.5;
-  }
-
-  // Normalize
-  const norm = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-  return embedding.map((val) => val / norm);
-}
-
-/**
- * Mock for generateEmbeddingsBatch that creates consistent embeddings
- */
-export function mockGenerateEmbeddingsBatch(texts: string[]): number[][] {
-  return texts.map((text) => createConsistentMockEmbedding(text, 768));
 }

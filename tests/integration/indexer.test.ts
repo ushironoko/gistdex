@@ -1,13 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { setupEmbeddingMocks } from "../helpers/mock-embeddings.js";
-import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
-import { cleanupTestDir, createTestTempDir } from "../helpers/test-paths.js";
-
-// Setup mocks for embedding generation BEFORE importing modules that use them
-setupEmbeddingMocks();
-
 import type { DatabaseService } from "../../src/core/database/database-service.js";
 import {
   indexFile,
@@ -16,16 +9,17 @@ import {
   indexGitHubRepo,
   indexText,
 } from "../../src/core/indexer/indexer.js";
+import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
+import { cleanupTestDir, createTestTempDir } from "../helpers/test-paths.js";
 
 /**
- * Indexer Integration Test with Mocked Embeddings
+ * Indexer Integration Test
  *
- * このテストは実際のコンポーネントで動作を検証しますが、
- * コスト削減のためGoogle AI APIのエンベディング生成はモックしています。
+ * このテストは実際のコンポーネントで動作を検証します。
  * - 実際のファイルシステムを使用（テンポラリディレクトリ）
  * - 実際のデータベースを使用（インメモリ）
  * - 実際のチャンキング処理を実行
- * - エンベディング生成はモック（APIコスト削減）
+ * - 実際のエンベディング生成API（週次実行で実API使用）
  */
 describe("Indexer Integration", () => {
   let db: DatabaseService;

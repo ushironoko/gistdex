@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setupEmbeddingMocks } from "../helpers/mock-embeddings.js";
+import type { DatabaseService } from "../../src/core/database/database-service.js";
+import { indexText } from "../../src/core/indexer/indexer.js";
+import {
+  getOriginalContent,
+  getSectionContent,
+  hybridSearch,
+  rerankResults,
+  semanticSearch,
+} from "../../src/core/search/search.js";
+import type { VectorSearchResult } from "../../src/core/vector-db/adapters/types.js";
 import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
 import {
   testCode,
@@ -12,20 +21,6 @@ import {
   findResultByContent,
   withTimeout,
 } from "../helpers/test-utils.js";
-
-// Setup mocks for embedding generation BEFORE importing modules that use them
-setupEmbeddingMocks();
-
-import type { DatabaseService } from "../../src/core/database/database-service.js";
-import { indexText } from "../../src/core/indexer/indexer.js";
-import {
-  getOriginalContent,
-  getSectionContent,
-  hybridSearch,
-  rerankResults,
-  semanticSearch,
-} from "../../src/core/search/search.js";
-import type { VectorSearchResult } from "../../src/core/vector-db/adapters/types.js";
 
 describe("Search Flow Integration Tests", () => {
   let db: DatabaseService;

@@ -1,19 +1,14 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { setupEmbeddingMocks } from "../helpers/mock-embeddings.js";
-import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
-import { testCode, testDocuments } from "../helpers/test-fixtures.js";
-import { cleanupTestDir, createTestTempDir } from "../helpers/test-paths.js";
-import { assertEmbeddingValid, withTimeout } from "../helpers/test-utils.js";
-
-// Setup mocks for embedding generation BEFORE importing modules that use them
-setupEmbeddingMocks();
-
 import { chunkText } from "../../src/core/chunk/chunking.js";
 import type { DatabaseService } from "../../src/core/database/database-service.js";
 import { generateEmbeddingsBatch } from "../../src/core/embedding/embedding.js";
 import { indexFile, indexText } from "../../src/core/indexer/indexer.js";
+import { cleanupTestDatabase, createTestDatabase } from "../helpers/test-db.js";
+import { testCode, testDocuments } from "../helpers/test-fixtures.js";
+import { cleanupTestDir, createTestTempDir } from "../helpers/test-paths.js";
+import { assertEmbeddingValid, withTimeout } from "../helpers/test-utils.js";
 
 describe("Indexing Flow Integration Tests", () => {
   let db: DatabaseService;
