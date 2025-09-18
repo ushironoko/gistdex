@@ -63,6 +63,7 @@ describe("github-tree-fetcher", () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockTreeResponse,
+        headers: new Headers(),
       } as Response);
 
       const result = await fetchGitHubTree("owner", "repo", "main");
@@ -96,6 +97,7 @@ describe("github-tree-fetcher", () => {
         ok: false,
         status: 404,
         statusText: "Not Found",
+        headers: new Headers(),
       } as Response);
 
       await expect(
@@ -125,6 +127,7 @@ describe("github-tree-fetcher", () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockTreeResponse,
+        headers: new Headers(),
       } as Response);
 
       await fetchGitHubTree("owner", "repo", "main");
@@ -142,6 +145,7 @@ describe("github-tree-fetcher", () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () => mockContent,
+        headers: new Headers(),
       } as Response);
 
       const result = await fetchGitHubFileContent(
@@ -179,6 +183,7 @@ describe("github-tree-fetcher", () => {
         ok: false,
         status: 403,
         statusText: "Forbidden",
+        headers: new Headers(),
       } as Response);
 
       await expect(
@@ -193,6 +198,7 @@ describe("github-tree-fetcher", () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () => "content",
+        headers: new Headers(),
       } as Response);
 
       const result = await fetchGitHubFileContent(
@@ -209,6 +215,7 @@ describe("github-tree-fetcher", () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: async () => "content",
+        headers: new Headers(),
       } as Response);
 
       const result = await fetchGitHubFileContent("owner", "repo", "README.md");
