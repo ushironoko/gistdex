@@ -56,7 +56,12 @@ describe("createConfigOperations", () => {
 
       const config = await configOperations.load();
 
-      expect(config).toEqual(mockConfig);
+      // defu merges with defaults, so check specific values
+      expect(config.vectorDB?.provider).toBe(mockConfig.vectorDB?.provider);
+      expect(config.vectorDB?.options?.path).toBe(
+        mockConfig.vectorDB?.options?.path,
+      );
+      expect(config.embedding?.model).toBe(mockConfig.embedding?.model);
       expect(readFile).toHaveBeenCalledWith("./gistdex.config.json", "utf-8");
     });
 
@@ -80,7 +85,8 @@ describe("createConfigOperations", () => {
 
       // Should use defaults, not environment variables
       expect(config.vectorDB?.provider).toBe("sqlite");
-      expect(config.indexing?.chunkSize).toBeUndefined();
+      // defu provides default values for all fields
+      expect(config.indexing?.chunkSize).toBe(1000); // default value from config-merger
     });
 
     it("should load custom adapters configuration", async () => {

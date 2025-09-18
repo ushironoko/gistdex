@@ -2,8 +2,7 @@ import { existsSync, promises as fs } from "node:fs";
 import { join } from "node:path";
 import { cwd } from "node:process";
 import { confirm, input, password, select } from "@inquirer/prompts";
-import chalk from "chalk";
-import ora from "ora";
+import { consola } from "consola";
 
 interface InitOptions {
   force?: boolean;
@@ -48,11 +47,9 @@ export async function handleInit(options: InitOptions = {}): Promise<void> {
   const { force = false, silent = false } = options;
 
   if (!silent) {
-    console.log(chalk.bold.cyan("\n🎨 Welcome to Gistdex Setup!\n"));
-    console.log(
-      chalk.gray(
-        "This utility will help you create a .env file and gistdex.config.ts\n",
-      ),
+    consola.box("🎨 Welcome to Gistdex Setup!");
+    consola.info(
+      "This utility will help you create a .env file and gistdex.config.ts\n",
     );
   }
 
@@ -68,10 +65,8 @@ export async function handleInit(options: InitOptions = {}): Promise<void> {
     if (envExists) existingFiles.push(".env");
     if (configExists) existingFiles.push("gistdex.config.ts");
 
-    console.log(
-      chalk.yellow(
-        `⚠️  The following files already exist: ${existingFiles.join(", ")}`,
-      ),
+    consola.warn(
+      `The following files already exist: ${existingFiles.join(", ")}`,
     );
 
     const shouldOverwrite = await confirm({
@@ -80,20 +75,18 @@ export async function handleInit(options: InitOptions = {}): Promise<void> {
     });
 
     if (!shouldOverwrite) {
-      console.log(chalk.gray("\n✖ Setup cancelled"));
+      consola.info("Setup cancelled");
       return;
     }
   }
 
   try {
     // Collect user input
-    console.log(chalk.bold("\n📝 Configuration\n"));
+    consola.info("📝 Configuration\n");
 
     // API Key input
-    console.log(
-      chalk.gray(
-        "Get your API key at: https://makersuite.google.com/app/apikey\n",
-      ),
+    consola.info(
+      "Get your API key at: https://makersuite.google.com/app/apikey\n",
     );
     const apiKey = await password({
       message:
@@ -141,11 +134,9 @@ export async function handleInit(options: InitOptions = {}): Promise<void> {
 
       // For Bun SQLite on macOS, ask about custom SQLite path
       if (provider === "bun-sqlite" && process.platform === "darwin") {
-        console.log(
-          chalk.yellow(
-            "\n⚠️  macOS requires vanilla SQLite for extension support with Bun.\n" +
-              "   Install with: brew install sqlite\n",
-          ),
+        consola.warn(
+          "macOS requires vanilla SQLite for extension support with Bun.\n" +
+            "   Install with: brew install sqlite\n",
         );
 
         const hasCustomSqlite = await confirm({
@@ -182,49 +173,39 @@ export async function handleInit(options: InitOptions = {}): Promise<void> {
     };
 
     // Generate files
-    console.log(chalk.bold("\n📦 Generating files...\n"));
+    consola.info("📦 Generating files...\n");
 
     // Create .env file only if API key is provided
     if (config.apiKey && config.apiKey.trim().length > 0) {
-      const envSpinner = ora("Creating .env file...").start();
+      consola.start("Creating .env file...");
       await createEnvFile(envPath, config);
-      envSpinner.succeed(chalk.green("Created .env file"));
+      consola.success("Created .env file");
     } else {
-      console.log(
-        chalk.yellow("⚠️  Skipping .env file creation (no API key provided)"),
-      );
-      console.log(
-        chalk.gray(
-          "   You'll need to set GOOGLE_GENERATIVE_AI_API_KEY in your environment",
-        ),
+      consola.warn("Skipping .env file creation (no API key provided)");
+      consola.info(
+        "You'll need to set GOOGLE_GENERATIVE_AI_API_KEY in your environment",
       );
     }
 
     // Create gistdex.config.ts
-    const configSpinner = ora("Creating gistdex.config.ts...").start();
+    consola.start("Creating gistdex.config.ts...");
     await createConfigFile(configPath, config);
-    configSpinner.succeed(chalk.green("Created gistdex.config.ts"));
+    consola.success("Created gistdex.config.ts");
 
     // Success message
-    console.log(chalk.bold.green("\n✅ Setup complete!\n"));
-    console.log(chalk.bold("Next steps:"));
-    console.log(
-      chalk.gray(
-        "1. Run 'npx gistdex index --file ./README.md' to index your first document",
-      ),
+    consola.success("\n✅ Setup complete!\n");
+    consola.box("Next steps:");
+    consola.info(
+      "1. Run 'npx gistdex index --file ./README.md' to index your first document",
     );
-    console.log(
-      chalk.gray(
-        "2. Run 'npx gistdex query \"your search query\"' to search\n",
-      ),
+    consola.info(
+      "2. Run 'npx gistdex query \"your search query\"' to search\n",
     );
-    console.log(
-      chalk.gray(
-        "For more information, visit: https://github.com/ushironoko/gistdex\n",
-      ),
+    consola.info(
+      "For more information, visit: https://github.com/ushironoko/gistdex\n",
     );
   } catch (error) {
-    console.error(chalk.red("\n✖ Setup failed:"), error);
+    consola.error("Setup failed:", error);
     process.exit(1);
   }
 }

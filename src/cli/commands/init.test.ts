@@ -7,27 +7,16 @@ import { handleInit } from "./init.js";
 // Mock modules
 vi.mock("@inquirer/prompts");
 vi.mock("node:fs");
-vi.mock("chalk", () => ({
-  default: {
-    bold: Object.assign(
-      vi.fn((text: string) => text),
-      {
-        cyan: vi.fn((text: string) => text),
-        green: vi.fn((text: string) => text),
-      },
-    ),
-    gray: vi.fn((text: string) => text),
-    yellow: vi.fn((text: string) => text),
-    green: vi.fn((text: string) => text),
-    red: vi.fn((text: string) => text),
+vi.mock("consola", () => ({
+  consola: {
+    box: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    success: vi.fn(),
+    start: vi.fn(),
+    fail: vi.fn(),
   },
-}));
-
-vi.mock("ora", () => ({
-  default: vi.fn(() => ({
-    start: vi.fn().mockReturnThis(),
-    succeed: vi.fn().mockReturnThis(),
-  })),
 }));
 
 describe("handleInit", () => {
@@ -172,11 +161,12 @@ describe("handleInit", () => {
 
       await handleInit({ silent: false });
 
-      // Verify warning message was displayed
-      expect(console.log).toHaveBeenCalledWith(
+      // Verify warning message was displayed via consola
+      const { consola } = await import("consola");
+      expect(consola.warn).toHaveBeenCalledWith(
         expect.stringContaining("Skipping .env file creation"),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(consola.info).toHaveBeenCalledWith(
         expect.stringContaining(
           "You'll need to set GOOGLE_GENERATIVE_AI_API_KEY",
         ),
