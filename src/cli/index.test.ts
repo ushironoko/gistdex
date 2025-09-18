@@ -204,19 +204,20 @@ describe("CLI main entry point", () => {
     };
     await writeFile(configPath, JSON.stringify(config, null, 2));
 
+    // Get the project root path securely
+    const projectRoot = process.cwd();
+    const cliPath = join(projectRoot, "dist/cli/index.js");
+
     // Run command in the directory with config
-    const result = execSync(
-      `cd ${tempDir} && node ${process.cwd()}/dist/cli/index.js info`,
-      {
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          NODE_ENV: "production",
-          NODE_NO_WARNINGS: "1",
-          VITEST: undefined,
-        },
+    const result = execSync(`cd ${tempDir} && node ${cliPath} info`, {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        NODE_NO_WARNINGS: "1",
+        VITEST: undefined,
       },
-    );
+    });
 
     expect(result).toBeDefined();
     // Command will show adapter info
@@ -233,9 +234,13 @@ describe("CLI main entry point", () => {
     };
     await writeFile(configPath, JSON.stringify(config, null, 2));
 
+    // Get the project root path securely
+    const projectRoot = process.cwd();
+    const cliPath = join(projectRoot, "dist/cli/index.js");
+
     // Override with CLI argument
     const result = execSync(
-      `cd ${tempDir} && node ${process.cwd()}/dist/cli/index.js info --provider memory`,
+      `cd ${tempDir} && node ${cliPath} info --provider memory`,
       {
         encoding: "utf8",
         env: {
