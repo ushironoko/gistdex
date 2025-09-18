@@ -25,6 +25,6 @@ docs/.vitepress/cache/
 docs/.vitepress/temp/
 
 # Test temporary directories
-data/tests/features/*
-!data/tests/features/.gitkeep
+data/tests/fixtures/*
+!data/tests/fixtures/.gitkeep
 data/test-*/

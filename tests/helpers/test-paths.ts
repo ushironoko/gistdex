@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 
-const TEST_BASE_DIR = "./data/tests/features";
+const TEST_BASE_DIR = "./data/tests/fixtures";
 
 /**
  * Ensure test base directory exists

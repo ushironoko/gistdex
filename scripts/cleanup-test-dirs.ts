@@ -2,7 +2,7 @@
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-const TEST_BASE_DIR = "./data/tests/features";
+const TEST_BASE_DIR = "./data/tests/fixtures";
 
 function cleanupTestDirs(): void {
   if (!existsSync(TEST_BASE_DIR)) {
