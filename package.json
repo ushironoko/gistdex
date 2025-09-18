@@ -35,7 +35,7 @@
     "lint": "biome check --write .",
     "format": "biome format --write .",
     "tsc": "tsgo --project tsconfig.app.json --noEmit && tsgo --project tsconfig.test.json --noEmit",
-    "prepare": "pnpm format && pnpm run lint && pnpm run tsc && pnpm run test:unit && pnpm run build && pnpm run test:integration && pnpm run docs:build",
+    "run-all": "pnpm format && pnpm run lint && pnpm run tsc && pnpm run test:unit && pnpm run build && pnpm run test:integration && pnpm run docs:build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
