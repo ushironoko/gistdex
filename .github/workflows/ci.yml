@@ -89,10 +89,10 @@ jobs:
       - name: Check formatting
         run: pnpm exec biome check --formatter-enabled=true --linter-enabled=false .
 
-  test:
-    name: Test
+  test-unit:
+    name: Unit Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -109,15 +109,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
-        run: pnpm test
-
-      - name: Run tests with coverage
-        run: pnpm run test:coverage
+      - name: Run unit tests
+        run: pnpm run test:unit
 
   build:
     name: Build
-    needs: [lint, typecheck, format-check, test]
+    needs: [lint, typecheck, format-check, test-unit]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -141,3 +138,40 @@ jobs:
 
       - name: Verify CLI works
         run: node dist/cli/index.js --help
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  test-integration:
+    name: Integration Tests
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Run integration tests
+        run: pnpm run test:integration
