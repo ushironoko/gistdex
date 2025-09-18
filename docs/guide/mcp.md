@@ -54,53 +54,75 @@ This configures Gistdex as an MCP server without global installation.
 
 ## Available MCP Tools
 
-When Gistdex is available, Claude Code has access to four MCP tools:
+When Gistdex is available, Claude Code has access to five MCP tools:
 
-#### 1. `gistdex_index`
-Indexes content from various sources:
-- Text content
-- Local files (single or multiple with glob patterns)
-- GitHub Gists
-- GitHub repositories
-- Preserves semantic boundaries for code and markdown
+### 1. `gistdex_search` (Primary Tool)
+Intelligent search with automatic query planning and comprehensive analysis.
+- Provides automatic query strategy planning based on research goals
+- Includes metadata analysis, strategic hints, and next action recommendations
+- Features automatic goal tracking, coverage analysis, and quality assessment
+- Supports three response modes:
+  - `summary` (default, ~5K tokens)
+  - `detailed` (~15K tokens)
+  - `full` (may exceed limits)
+- Can save findings as structured knowledge for future reference
 
-#### 2. `gistdex_query`
-Searches indexed content with options for:
-- Semantic search
-- Hybrid search (semantic + keyword)
-- Result filtering by source type
-- Full content retrieval
-- Section retrieval for markdown
-- Result re-ranking
+### 2. `gistdex_query_simple` (Low-level Tool)
+Manual search with direct control over parameters.
+- Provides fine-grained control over search behavior
+- Configurable options:
+  - `hybrid`: Enable hybrid search for keyword + semantic matching
+  - `rerank`: Enable/disable result reranking
+  - `section`: Return complete sections for markdown files
+  - `full`: Return entire original content
+- Supports filtering by source type (gist, github, file, text)
+- Can include metadata analysis and strategic hints
 
-#### 3. `gistdex_list`
-Lists indexed items with:
-- Metadata about each item
-- Statistics about the database
-- Filtering by source type
+### 3. `gistdex_index`
+Indexes content from various sources with intelligent chunking:
+- Supported content types: text, files, GitHub Gists, GitHub repositories
+- Configurable chunking parameters:
+  - `chunkSize`: Size of text chunks (default: 1000)
+  - `chunkOverlap`: Overlap between chunks (default: 200)
+  - `preserveBoundaries`: Maintains semantic structure (default: true)
+- Boundary preservation features:
+  - For markdown: maintains heading hierarchy
+  - For code: respects function/class boundaries
+- Supports batch indexing with glob patterns for files
 
-#### 4. `gistdex_agent_query`
-Performs multi-stage search with autonomous planning:
-- Creates query strategies based on research goals
-- Executes queries with progress tracking
-- Evaluates results and suggests next actions
-- Provides analysis and recommendations
-- Can save results to `.gistdex/cache/` for future reference
+### 4. `gistdex_list`
+Lists indexed items with optional filtering:
+- Shows all indexed content with metadata
+- `stats=true`: Returns only statistics about the database
+- Supports filtering by source type (gist, github, file, text)
+- Configurable pagination with limit parameter
+- Displays source URLs, chunk counts, and indexing timestamps
+
+### 5. `gistdex_write_structured_result`
+Saves analysis and findings as structured knowledge:
+- Creates permanent knowledge artifacts from research results
+- Accepts markdown-formatted content with sections, headings, lists, and code blocks
+- Optional metadata fields:
+  - `goal`: Original research goal or question
+  - `query`: Main search query used
+  - `summary`: Brief one-paragraph summary
+  - `tags`: Categories for organization
+- Saves to `.gistdex/cache/structured` by default (customizable)
 
 ## Result Caching
 
-MCP tools can cache results for improved context reuse:
+MCP tools support result caching for improved context reuse:
 
 ### Cache Location
 Results are stored in `.gistdex/cache/` directory:
-- Agent query results: `.gistdex/cache/agent/`
-- Structured knowledge: `.gistdex/cache/knowledge/`
+- Structured knowledge: `.gistdex/cache/structured/`
+- Query cache: `.gistdex/cache/queries/`
 
-### Enabling Caching
-- For `gistdex_query`: Set `saveStructured: true`
-- For `gistdex_agent_query`: Set `saveStructured: true` in options
-
-Cached results can be reused across sessions to build incremental knowledge.
+### How Caching Works
+- `gistdex_search` and `gistdex_query_simple` can save results with `saveStructured: true`
+- `gistdex_write_structured_result` explicitly saves analysis as knowledge artifacts
+- Cached results persist across sessions, enabling incremental knowledge building
+- Cache files are in markdown format for easy review and editing
 
 ## MCP Server Mode
 

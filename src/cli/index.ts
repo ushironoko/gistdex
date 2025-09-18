@@ -75,7 +75,8 @@ const indexArgs = {
   },
   paths: {
     type: "string" as const,
-    description: "Comma-separated paths to include",
+    description:
+      "Paths or glob patterns for GitHub repos (e.g., 'src/**/*.ts')",
   },
 };
 
@@ -97,7 +98,11 @@ $ gistdex index --files "**/*.txt,docs/*.md"
 $ gistdex index --file ./code.ts --preserve-boundaries
 
 # Index a GitHub repository
-$ gistdex index --github https://github.com/user/repo`,
+$ gistdex index --github https://github.com/user/repo
+
+# Index GitHub repo with glob patterns
+$ gistdex index --github https://github.com/user/repo --paths "src/**/*.ts"
+$ gistdex index --github https://github.com/user/repo --paths "**/*.{js,ts,md}"`,
   run: async (ctx) => {
     await getDBConfig(ctx.values);
     return runIndexCommand({ values: ctx.values });
