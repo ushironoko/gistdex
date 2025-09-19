@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.2] - 2025-09-19
+
+- Merge pull request #111 from ushironoko:refactor/deduplicate-list-analysis
+- test: update tests to match refactored list implementations
+- feat: enhance database schema for extension and source statistics
+- refactor: use shared modules in CLI and MCP list implementations
+- feat: add shared source and extension analysis logic
+- feat: add shared type definitions for list operations
+
+
 ## [1.4.1] - 2025-09-18
 
 - Merge pull request #110 from ushironoko/feature/github-glob-patterns-and-rate-limiting
