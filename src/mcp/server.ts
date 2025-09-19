@@ -28,6 +28,7 @@ import { handleAgentQueryTool } from "./tools/agent-query-tool.js";
 import { handleIndexTool } from "./tools/index-tool.js";
 import { handleListTool } from "./tools/list-tool.js";
 import { handleQueryTool } from "./tools/query-tool.js";
+import { handleReadCachedTool } from "./tools/read-cached-tool.js";
 import { handleWriteStructuredTool } from "./tools/write-structured-tool.js";
 
 // Database service will be initialized per request
@@ -75,6 +76,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description:
               "Pagination cursor for continuing from previous results",
           },
+          visitedCache: {
+            type: "boolean",
+            description: "Whether cache has been visited in this query session",
+            default: false,
+          },
+          context: {
+            type: "object",
+            properties: {
+              previousQueries: {
+                type: "array",
+                items: { type: "string" },
+                description: "Previous queries in this session",
+              },
+              excludeResults: {
+                type: "array",
+                items: { type: "string" },
+                description: "IDs of results to exclude (already seen)",
+              },
+              focusAreas: {
+                type: "array",
+                items: { type: "string" },
+                description: "Specific areas to focus on",
+              },
+            },
+          },
           options: {
             type: "object",
             properties: {
@@ -121,6 +147,27 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
         },
         required: ["goal", "query"],
+      },
+    },
+    {
+      name: "gistdex_read_cached",
+      description:
+        "Read cached queries and structured knowledge from .gistdex/cache directory. " +
+        "Use this tool when instructed to review cache before searching. " +
+        "Can read previous query history and saved structured knowledge documents.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            enum: ["queries", "knowledge", "all"],
+            description: "Type of cache to read (default: all)",
+          },
+          topic: {
+            type: "string",
+            description: "Specific knowledge topic to read (optional)",
+          },
+        },
       },
     },
     {
@@ -424,6 +471,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       switch (name) {
         case "gistdex_search": {
           const result = await handleAgentQueryTool(args, { service });
+          return {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          };
+        }
+
+        case "gistdex_read_cached": {
+          const result = await handleReadCachedTool(args);
           return {
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
