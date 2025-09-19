@@ -60,6 +60,34 @@ export interface SearchParams {
   sourceType?: string;
 }
 
+export interface ExtensionStats {
+  extension: string;
+  totalSources: number;
+  totalFiles: number;
+  totalChunks: number;
+  language?: string;
+  category?: string;
+}
+
+export interface SourceExtensionInfo {
+  extension: string;
+  fileCount: number;
+  totalSize?: number;
+  language?: string;
+  category?: string;
+}
+
+export interface SourceWithExtensions {
+  sourceId: string;
+  title?: string;
+  url?: string;
+  sourceType?: string;
+  createdAt?: string;
+  extensionCount: number;
+  totalFiles: number;
+  extensions: SourceExtensionInfo[];
+}
+
 /**
  * Database service that uses the vector database adapter
  */

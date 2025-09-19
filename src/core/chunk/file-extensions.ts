@@ -215,3 +215,96 @@ export function isTextFile(filenameOrExt: string): boolean {
 
   return TEXT_EXTENSIONS.has(ext as FileExtension);
 }
+
+/**
+ * Extension categories for classification
+ */
+export type ExtensionCategory =
+  | "code"
+  | "documentation"
+  | "config"
+  | "style"
+  | "data"
+  | "other";
+
+/**
+ * Get category for a file extension
+ */
+export function getExtensionCategory(ext: string): ExtensionCategory {
+  const extension = ext.toLowerCase() as FileExtension;
+
+  if (CODE_EXTENSIONS.has(extension)) {
+    return "code";
+  }
+  if (MARKDOWN_EXTENSIONS.has(extension)) {
+    return "documentation";
+  }
+  if (CONFIG_EXTENSIONS.has(extension)) {
+    return "config";
+  }
+  if (extension === ".css" || extension === ".scss" || extension === ".sass") {
+    return "style";
+  }
+  if (extension === ".xml" || extension === ".xmlx") {
+    return "data";
+  }
+  return "other";
+}
+
+/**
+ * Get human-readable language name for an extension
+ */
+export function getLanguageDisplayName(ext: string): string | undefined {
+  const language = getLanguageFromExtension(ext);
+  if (!language) return undefined;
+
+  const displayNames: Record<SupportedLanguage, string> = {
+    javascript: "JavaScript",
+    typescript: "TypeScript",
+    tsx: "TypeScript (TSX)",
+    python: "Python",
+    go: "Go",
+    rust: "Rust",
+    java: "Java",
+    ruby: "Ruby",
+    c: "C",
+    cpp: "C++",
+    html: "HTML",
+    css: "CSS",
+    bash: "Bash/Shell",
+    vue: "Vue",
+  };
+
+  return displayNames[language];
+}
+
+/**
+ * Extension information for database storage
+ */
+export interface ExtensionInfo {
+  extension: string;
+  language?: string;
+  category: ExtensionCategory;
+  displayName?: string;
+}
+
+/**
+ * Get complete extension information
+ */
+export function getExtensionInfo(filenameOrExt: string): ExtensionInfo {
+  const ext =
+    filenameOrExt.includes(".") && !filenameOrExt.startsWith(".")
+      ? filenameOrExt.substring(filenameOrExt.lastIndexOf(".")).toLowerCase()
+      : filenameOrExt.toLowerCase();
+
+  const language = getLanguageFromExtension(ext);
+  const category = getExtensionCategory(ext);
+  const displayName = getLanguageDisplayName(ext);
+
+  return {
+    extension: ext,
+    language,
+    category,
+    displayName,
+  };
+}
