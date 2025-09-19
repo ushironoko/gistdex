@@ -80,12 +80,12 @@ describe("handleList", () => {
     });
 
     expect(console.log).toHaveBeenCalledWith("Database Provider: sqlite");
-    expect(console.log).toHaveBeenCalledWith("Total items: 5");
-    expect(console.log).toHaveBeenCalledWith("\nItems by source type:");
+    expect(console.log).toHaveBeenCalledWith("Total chunks: 5");
+    expect(console.log).toHaveBeenCalledWith("Unique sources: 1");
+    expect(console.log).toHaveBeenCalledWith("\nChunks by source type:");
     expect(console.log).toHaveBeenCalledWith("  text: 2");
     expect(console.log).toHaveBeenCalledWith("  file: 3");
-    expect(console.log).toHaveBeenCalledWith("\nRecent items:");
-    expect(console.log).toHaveBeenCalledWith("  [12345678] Test Item");
+    expect(console.log).toHaveBeenCalledWith("\n=== Sources Summary ===");
   });
 
   it("shows stats only when flag is set", async () => {
@@ -95,8 +95,9 @@ describe("handleList", () => {
       },
     });
 
-    expect(console.log).toHaveBeenCalledWith("Total items: 5");
-    expect(console.log).not.toHaveBeenCalledWith("\nRecent items:");
+    expect(console.log).toHaveBeenCalledWith("Total chunks: 5");
+    expect(console.log).toHaveBeenCalledWith("Unique sources: 1");
+    expect(console.log).not.toHaveBeenCalledWith("\n=== Sources Summary ===");
   });
 
   it("handles empty database", async () => {
@@ -122,7 +123,8 @@ describe("handleList", () => {
       values: {},
     });
 
-    expect(console.log).toHaveBeenCalledWith("Total items: 0");
+    expect(console.log).toHaveBeenCalledWith("Total chunks: 0");
+    expect(console.log).toHaveBeenCalledWith("Unique sources: 0");
     expect(console.log).not.toHaveBeenCalledWith("\nRecent items:");
   });
 });

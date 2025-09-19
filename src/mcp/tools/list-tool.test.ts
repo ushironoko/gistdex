@@ -247,7 +247,10 @@ describe("list-tool", () => {
       expect(result.items).toHaveLength(2);
       expect(result.items?.[0]?.id).toBe("item1");
       expect(result.items?.[1]?.id).toBe("item2");
-      expect(result.stats).toEqual(mockStats);
+      expect(result.stats).toEqual({
+        ...mockStats,
+        uniqueSources: expect.any(Number),
+      });
       expect(mockService.listItems).toHaveBeenCalledWith({ limit: 100 });
     });
 
@@ -573,7 +576,10 @@ describe("list-tool", () => {
       const result = await handleListTool(input, options);
 
       expect(result.success).toBe(true);
-      expect(result.stats).toEqual(mockStats);
+      expect(result.stats).toEqual({
+        ...mockStats,
+        uniqueSources: expect.any(Number),
+      });
       expect(result.items).toBeUndefined();
       expect(mockService.listItems).not.toHaveBeenCalled();
       expect(mockService.getStats).toHaveBeenCalled();
@@ -601,7 +607,10 @@ describe("list-tool", () => {
       const result = await handleListTool(input, options);
 
       expect(result.success).toBe(true);
-      expect(result.stats).toEqual(mockStats);
+      expect(result.stats).toEqual({
+        ...mockStats,
+        uniqueSources: expect.any(Number),
+      });
       expect(result.items).toHaveLength(1);
       expect(mockService.listItems).toHaveBeenCalled();
       expect(mockService.getStats).toHaveBeenCalled();
@@ -659,7 +668,10 @@ describe("list-tool", () => {
       const result = await handleListTool(input, options);
 
       expect(result.success).toBe(true);
-      expect(result.stats).toEqual(mockStats);
+      expect(result.stats).toEqual({
+        ...mockStats,
+        uniqueSources: expect.any(Number),
+      });
       expect(mockService.getStats).toHaveBeenCalled();
       expect(mockService.listItems).not.toHaveBeenCalled();
     });
