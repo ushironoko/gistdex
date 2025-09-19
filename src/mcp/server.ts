@@ -287,8 +287,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "gistdex_list",
       description:
-        "List indexed items with optional filtering. " +
-        "Use stats=true to get overview before querying. " +
+        "List indexed items with optional filtering and grouping. " +
+        "Use stats=true for statistics only, byExtension=true for extension grouping, " +
+        "bySource=true for source grouping (default), detailed=true for all sources. " +
         "Check what content is already indexed to avoid redundant indexing.",
       inputSchema: {
         type: "object",
@@ -306,6 +307,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           stats: {
             type: "boolean",
             description: "Return statistics only",
+            default: false,
+          },
+          byExtension: {
+            type: "boolean",
+            description: "Group results by file extension",
+            default: false,
+          },
+          bySource: {
+            type: "boolean",
+            description: "Group results by source (default behavior)",
+            default: false,
+          },
+          detailed: {
+            type: "boolean",
+            description: "Show all sources instead of top 10",
             default: false,
           },
           provider: {

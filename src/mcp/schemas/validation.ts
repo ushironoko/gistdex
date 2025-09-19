@@ -184,6 +184,33 @@ export const listToolSchema = z.object({
     .optional()
     .default(false)
     .describe("Return statistics only"),
+  byExtension: z
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
+    .optional()
+    .default(false)
+    .describe("Group results by file extension"),
+  bySource: z
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
+    .optional()
+    .default(false)
+    .describe("Group results by source (default behavior)"),
+  detailed: z
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true" || val === "1"),
+      z.number().transform((val) => val !== 0),
+    ])
+    .optional()
+    .default(false)
+    .describe("Show all sources instead of top 10"),
   provider: z
     .string()
     .optional()

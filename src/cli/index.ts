@@ -168,13 +168,38 @@ const listCommand = define({
   args: {
     ...dbArgs,
     stats: { type: "boolean" as const, description: "Show statistics only" },
+    "by-extension": {
+      type: "boolean" as const,
+      description: "Show statistics grouped by file extension",
+    },
+    "by-source": {
+      type: "boolean" as const,
+      description: "Show statistics grouped by source (default)",
+    },
+    detailed: {
+      type: "boolean" as const,
+      description: "Show all sources instead of top 10",
+    },
   },
-  examples: `# List all indexed items
+  examples: `# List all indexed items (by source)
 $ gistdex list
+
+# Show statistics grouped by extension
+$ gistdex list --by-extension
+
+# Show all sources with details
+$ gistdex list --detailed
 
 # Show statistics only
 $ gistdex list --stats`,
-  run: async (ctx) => runListCommand({ values: ctx.values }),
+  run: async (ctx) =>
+    runListCommand({
+      values: {
+        ...ctx.values,
+        byExtension: ctx.values["by-extension"],
+        bySource: ctx.values["by-source"],
+      },
+    }),
 });
 
 const infoCommand = define({
