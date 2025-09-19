@@ -327,6 +327,11 @@ export const agentQueryToolSchema = z.object({
     .string()
     .optional()
     .describe("Pagination cursor for continuing from previous results"),
+  visitedCache: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Whether cache has been visited in this query session"),
   context: z
     .object({
       previousQueries: z

@@ -79,7 +79,8 @@ export interface NextActionSuggestion {
     | "pivot"
     | "stop"
     | "index_more"
-    | "write_structured_result";
+    | "write_structured_result"
+    | "review_cache";
   reasoning: string;
   confidence: number; // 0-1
   suggestedQuery?: string;
@@ -352,19 +353,17 @@ function generateNextActions(
     });
   }
 
-  // If high scores and good coverage, suggest writing structured result
-  if (
-    analysis.metrics.avgScore > 0.8 &&
-    analysis.semantic.coverageGaps.length === 0
-  ) {
+  // Strongly recommend writing structured result with relaxed conditions
+  if (analysis.metrics.avgScore > 0.6 && results.length >= 3) {
     suggestions.push({
       action: "write_structured_result",
       reasoning:
-        "Found comprehensive high-quality results. Consider saving your structured analysis using the gistdex_write_structured_result tool",
-      confidence: 0.95,
+        "Good results found. IMPORTANT: Save your analysis using gistdex_write_structured_result " +
+        "to build knowledge base for future queries.",
+      confidence: 1.0, // Increased from 0.95
       suggestedTool: "gistdex_write_structured_result",
       expectedOutcome:
-        "Create permanent structured knowledge from your findings",
+        "Create reusable structured knowledge for improved future searches",
     });
   }
 
@@ -820,6 +819,59 @@ async function handleAgentQueryOperation(
   const startTime = Date.now();
 
   try {
+    // Check cache first if not visited yet
+    if (!data.visitedCache) {
+      const { existsSync } = await import("node:fs");
+      const { join } = await import("node:path");
+      const { getCacheDir } = await import("../utils/cache-utils.js");
+
+      const cacheDir = getCacheDir();
+      const queriesPath = join(cacheDir, "queries.md");
+      const knowledgeDir = join(cacheDir, "structured");
+
+      if (existsSync(queriesPath) || existsSync(knowledgeDir)) {
+        return {
+          success: true,
+          message: "Cache available - please review before searching",
+          results: [],
+          hints: {
+            nextActions: [
+              {
+                action: "review_cache",
+                reasoning:
+                  "Previous queries and structured knowledge exist. Review them first to leverage existing knowledge.",
+                confidence: 1.0,
+                suggestedTool: "gistdex_read_cached",
+                expectedOutcome:
+                  "Review cached content, then retry search with visitedCache=true",
+              },
+            ],
+            toolSuggestions: [
+              {
+                tool: "gistdex_read_cached",
+                purpose: "Read cached queries and structured knowledge",
+                priority: "high",
+                estimatedValue: 1.0,
+                parameters: { type: "all" },
+              },
+            ],
+            strategicConsiderations: [
+              {
+                consideration:
+                  "Cached knowledge can significantly improve search quality",
+                importance: "critical",
+                relatedActions: [
+                  "Review cache",
+                  "Incorporate cache insights into query",
+                ],
+              },
+            ],
+            potentialProblems: [],
+          },
+        };
+      }
+    }
+
     // Handle cursor if provided
     let offset = 0;
     if (data.cursor) {
@@ -876,9 +928,11 @@ async function handleAgentQueryOperation(
     }
 
     // Filter out excluded results if provided
-    if (data.context?.excludeResults?.length) {
+    const contextForFilter =
+      typeof data.context === "object" ? data.context : {};
+    if (contextForFilter.excludeResults?.length) {
       results = results.filter(
-        (r) => !data.context?.excludeResults?.includes(r.id),
+        (r) => !contextForFilter.excludeResults?.includes(r.id),
       );
     }
 
