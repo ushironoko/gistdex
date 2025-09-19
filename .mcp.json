@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "gistdex-local": {
+    "gistdex-local-test": {
       "command": "node",
       "args": ["dist/cli/index.js", "--mcp"],
       "env": {
