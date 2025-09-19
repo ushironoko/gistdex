@@ -30,6 +30,13 @@ export interface GistdexConfig {
     rerankBoostFactor?: number;
     hybridKeywordWeight?: number;
   };
+  ci?: {
+    doc?: {
+      enabled?: boolean;
+      threshold?: number;
+      documentPaths?: string[];
+    };
+  };
 }
 
 /**

@@ -8,6 +8,7 @@ loadEnvironmentVariables({ envFilePath: ".env" });
 import { cli, define } from "gunshi";
 import { generate } from "gunshi/generator";
 import packageJson from "../../package.json" with { type: "json" };
+import { handleCIDoc as runCIDocCommand } from "./commands/ci-doc.js";
 import {
   getDBConfig,
   handleIndex as runIndexCommand,
@@ -234,6 +235,58 @@ $ gistdex -v`,
   },
 });
 
+const ciDocCommand = define({
+  name: "ci:doc",
+  description: "Analyze documentation impact from code changes",
+  args: {
+    ...dbArgs,
+    diff: {
+      type: "string" as const,
+      description: "Git diff range (default: HEAD~1)",
+    },
+    threshold: {
+      type: "string" as const,
+      description: "Similarity threshold (0-1, default: 0.7)",
+    },
+    paths: {
+      type: "string" as const,
+      description:
+        "Comma-separated document paths (default: docs/**/*.md,README.md,*.md)",
+    },
+    format: {
+      type: "string" as const,
+      description:
+        "Output format: markdown, json, github-comment (default: markdown)",
+    },
+    "github-pr": {
+      type: "boolean" as const,
+      description: "Post results to GitHub PR",
+    },
+    verbose: {
+      type: "boolean" as const,
+      description: "Enable verbose output",
+    },
+  },
+  examples: `# Analyze documentation impact for latest changes
+$ gistdex ci:doc
+
+# Analyze with custom diff range
+$ gistdex ci:doc --diff main..feature-branch
+
+# Set custom similarity threshold
+$ gistdex ci:doc --threshold 0.8
+
+# Output as JSON
+$ gistdex ci:doc --format json
+
+# Post to GitHub PR
+$ gistdex ci:doc --github-pr --format github-comment
+
+# Specify custom document paths
+$ gistdex ci:doc --paths "docs/**/*.md,api/**/*.md"`,
+  run: async (ctx) => runCIDocCommand({ values: ctx.values }),
+});
+
 // Create subcommands map for CLI
 const subCommands = new Map();
 
@@ -244,6 +297,7 @@ subCommands.set("query", queryCommand);
 subCommands.set("list", listCommand);
 subCommands.set("info", infoCommand);
 subCommands.set("version", versionCommand);
+subCommands.set("ci:doc", ciDocCommand);
 
 // Define main command - this will be shown in help
 const mainCommand = define({
