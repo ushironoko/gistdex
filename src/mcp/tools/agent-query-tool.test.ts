@@ -98,6 +98,7 @@ describe("agent-query-tool", () => {
       const input = {
         query: "TypeScript functions",
         goal: "Find TypeScript function implementations",
+        visitedCache: true,
         options: {
           mode: "summary" as const,
           k: 5,
@@ -139,6 +140,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
 
       const input = {
+        visitedCache: true,
         query: "TypeScript",
         goal: "Understand TypeScript features",
         options: {
@@ -159,6 +161,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
 
       const input = {
+        visitedCache: true,
         query: "functions",
         goal: "functions and classes", // Simplified goal to match what's in results
         options: {
@@ -184,6 +187,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(lowScoreResults);
 
       const input = {
+        visitedCache: true,
         query: "test",
         goal: "find test",
         options: {
@@ -203,6 +207,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
 
       const input = {
+        visitedCache: true,
         query: "TypeScript",
         goal: "Learn TypeScript",
         // No mode specified - should default to summary
@@ -222,6 +227,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
 
       const input = {
+        visitedCache: true,
         query: "TypeScript",
         goal: "Analyze TypeScript usage",
         options: {
@@ -252,6 +258,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(mockResultsWithEmbedding);
 
       const input = {
+        visitedCache: true,
         query: "TypeScript",
         goal: "Analyze TypeScript usage",
         options: {
@@ -285,6 +292,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
 
       const input = {
+        visitedCache: true,
         query: "TypeScript",
         goal: "Complete analysis",
         options: {
@@ -315,6 +323,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(mockResultsWithEmbedding);
 
       const input = {
+        visitedCache: true,
         query: "TypeScript",
         goal: "Complete analysis",
         options: {
@@ -362,6 +371,20 @@ describe("agent-query-tool", () => {
       }
     });
 
+    it("should accept visitedCache as top-level parameter", () => {
+      const input = {
+        query: "test",
+        goal: "test goal",
+        visitedCache: true,
+      };
+
+      const result = agentQueryToolSchema.safeParse(input);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.visitedCache).toBe(true);
+      }
+    });
+
     it("should reject invalid mode values", () => {
       const invalidInput = {
         query: "test",
@@ -393,6 +416,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(manyResults);
 
       const input = {
+        visitedCache: true,
         query: "TypeScript",
         goal: "Learn TypeScript",
         options: {
@@ -426,6 +450,7 @@ describe("agent-query-tool", () => {
       const firstInput = {
         query: "test",
         goal: "test goal",
+        visitedCache: true,
         options: {
           mode: "summary" as const,
           pageSize: 10,
@@ -440,6 +465,7 @@ describe("agent-query-tool", () => {
         query: "test",
         goal: "test goal",
         cursor: firstResult.nextCursor,
+        visitedCache: true,
         options: {
           mode: "summary" as const,
           pageSize: 10,
@@ -466,6 +492,7 @@ describe("agent-query-tool", () => {
       vi.mocked(semanticSearch).mockResolvedValue(fewResults);
 
       const input = {
+        visitedCache: true,
         query: "test",
         goal: "test goal",
         options: {
@@ -482,6 +509,7 @@ describe("agent-query-tool", () => {
 
     it("should handle invalid cursor gracefully", async () => {
       const input = {
+        visitedCache: true,
         query: "test",
         goal: "test goal",
         cursor: "invalid-cursor-xxx",
