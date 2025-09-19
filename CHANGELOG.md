@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.3] - 2025-09-19
+
+- Merge pull request #112 from ushironoko/feat/mcp-cache-checking
+- refactor: reorder exports in package.json
+- feat: register gistdx_read_cached tool in MCP server
+- feat: add cache checking mechanism to gistdex_search tool
+- feat: add gistdex_read_cached MCP tool for cache inspection
+- chore:fix local test mcp name
+
+
 ## [1.4.2] - 2025-09-19
 
 - Merge pull request #111 from ushironoko:refactor/deduplicate-list-analysis
