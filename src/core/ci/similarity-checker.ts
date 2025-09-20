@@ -1,4 +1,4 @@
-import { execSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { SimilarityCheckResult } from "./formatters.js";
 
@@ -58,16 +58,24 @@ export const checkCodeSimilarity = async (
  */
 const checkSimilarityToolAvailable = (): boolean => {
   try {
-    execSync("which similarity-ts", { stdio: "ignore" });
-    return true;
-  } catch {
-    // Try npx as fallback
-    try {
-      execSync("npx --no-install similarity-ts --version", { stdio: "ignore" });
+    const result = spawnSync("which", ["similarity-ts"], { stdio: "ignore" });
+    if (result.status === 0) {
       return true;
-    } catch {
-      return false;
     }
+  } catch {
+    // Ignore errors and try fallback
+  }
+
+  // Try npx as fallback
+  try {
+    const result = spawnSync(
+      "npx",
+      ["--no-install", "similarity-ts", "--version"],
+      { stdio: "ignore" },
+    );
+    return result.status === 0;
+  } catch {
+    return false;
   }
 };
 

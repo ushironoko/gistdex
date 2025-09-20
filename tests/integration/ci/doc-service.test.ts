@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -8,6 +8,43 @@ import {
 } from "../../../src/core/ci/doc-service.js";
 import type { DatabaseService } from "../../../src/core/database/database-service.js";
 import { createTestDatabase } from "../../helpers/test-db.js";
+
+// Helper function to run git commands safely
+function runGitCommand(command: string, args: string[], cwd: string): void {
+  const result = spawnSync(command, args, {
+    cwd,
+    encoding: "utf8",
+  });
+
+  if (result.error) {
+    throw new Error(`Git command failed: ${result.error.message}`);
+  }
+
+  if (result.status !== 0) {
+    const stderr = result.stderr || "";
+    const stdout = result.stdout || "";
+    throw new Error(
+      `Git command failed with status ${result.status}: ${stderr || stdout}`,
+    );
+  }
+}
+
+// Helper function to create directories
+function mkdirp(dirPath: string, cwd: string): void {
+  const result = spawnSync("mkdir", ["-p", dirPath], {
+    cwd,
+    encoding: "utf8",
+  });
+
+  if (result.error) {
+    throw new Error(`mkdir failed: ${result.error.message}`);
+  }
+
+  if (result.status !== 0) {
+    const stderr = result.stderr || "";
+    throw new Error(`mkdir failed: ${stderr}`);
+  }
+}
 
 describe("doc-service", () => {
   let db: DatabaseService;
@@ -22,9 +59,13 @@ describe("doc-service", () => {
     mkdirSync(testRepoPath, { recursive: true });
 
     // Initialize git repo
-    execSync("git init", { cwd: testRepoPath });
-    execSync('git config user.email "test@test.com"', { cwd: testRepoPath });
-    execSync('git config user.name "Test User"', { cwd: testRepoPath });
+    runGitCommand("git", ["init"], testRepoPath);
+    runGitCommand(
+      "git",
+      ["config", "user.email", "test@test.com"],
+      testRepoPath,
+    );
+    runGitCommand("git", ["config", "user.name", "Test User"], testRepoPath);
 
     // Create documentation files
     writeFileSync(
@@ -42,7 +83,7 @@ Call \`authenticate(token)\` to verify user credentials.
     );
 
     // Create docs directory
-    execSync("mkdir -p docs", { cwd: testRepoPath });
+    mkdirp("docs", testRepoPath);
 
     writeFileSync(
       join(testRepoPath, "docs", "api.md"),
@@ -69,8 +110,8 @@ export function getUserProfile(userId: string) {
 }`,
     );
 
-    execSync("git add .", { cwd: testRepoPath });
-    execSync('git commit -m "Initial commit"', { cwd: testRepoPath });
+    runGitCommand("git", ["add", "."], testRepoPath);
+    runGitCommand("git", ["commit", "-m", "Initial commit"], testRepoPath);
 
     // Make changes
     writeFileSync(
@@ -86,10 +127,12 @@ export function getUserProfile(userId: string) {
 }`,
     );
 
-    execSync("git add .", { cwd: testRepoPath });
-    execSync('git commit -m "Replace authenticate with validateCredentials"', {
-      cwd: testRepoPath,
-    });
+    runGitCommand("git", ["add", "."], testRepoPath);
+    runGitCommand(
+      "git",
+      ["commit", "-m", "Replace authenticate with validateCredentials"],
+      testRepoPath,
+    );
   });
 
   afterAll(async () => {
