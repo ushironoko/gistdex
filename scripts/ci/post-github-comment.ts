@@ -14,9 +14,11 @@ interface DocImpactAnalysis {
 interface DocImpactResult {
   file: string;
   score: number;
+  similarity?: number; // Add for backward compatibility
   matchedChunks: number;
   totalChunks: number;
   sections?: string[];
+  matchedTerms?: string[]; // Add for matched terms display
   metadata?: Record<string, unknown>;
 }
 
@@ -58,15 +60,33 @@ function formatComment(analysis: DocImpactAnalysis): string {
     comment += "This PR may affect the following documentation:\n\n";
 
     for (const result of analysis.results) {
-      const percentage = (result.score * 100).toFixed(1);
+      // Use similarity if available, otherwise fall back to score
+      const similarityScore = result.similarity ?? result.score;
+      const percentage = (similarityScore * 100).toFixed(1);
       const emoji =
-        result.score > 0.8 ? "🔴" : result.score > 0.6 ? "🟡" : "🟢";
+        similarityScore > 0.8 ? "🔴" : similarityScore > 0.6 ? "🟡" : "🟢";
 
-      comment += `### ${emoji} ${result.file}\n`;
+      // Normalize file path (remove GitHub Actions workspace prefix if present)
+      const normalizedPath = result.file
+        .replace(/^\/home\/runner\/work\/[^/]+\/[^/]+\//, "")
+        .replace(/^\//, "");
+
+      comment += `### ${emoji} ${normalizedPath}\n`;
       comment += `- **Similarity Score**: ${percentage}%\n`;
-      comment += `- **Matched Chunks**: ${result.matchedChunks}/${result.totalChunks}\n`;
 
-      if (result.sections && result.sections.length > 0) {
+      // Only show matched chunks if they have meaningful values
+      if (result.matchedChunks > 0 || result.totalChunks > 0) {
+        comment += `- **Matched Chunks**: ${result.matchedChunks}/${result.totalChunks}\n`;
+      }
+
+      // Show matched terms if available (better than sections for display)
+      if (result.matchedTerms && result.matchedTerms.length > 0) {
+        comment += `- **Matched Terms**: ${result.matchedTerms.slice(0, 5).join(", ")}`;
+        if (result.matchedTerms.length > 5) {
+          comment += ` (+${result.matchedTerms.length - 5} more)`;
+        }
+        comment += "\n";
+      } else if (result.sections && result.sections.length > 0) {
         comment += `- **Relevant Sections**: ${result.sections.join(", ")}\n`;
       }
 

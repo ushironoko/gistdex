@@ -1,15 +1,5 @@
 import type { DocAnalysisResult } from "./doc-service.js";
 
-export interface SimilarityCheckResult {
-  hasIssues: boolean;
-  duplicates?: Array<{
-    file1: string;
-    file2: string;
-    similarity: number;
-  }>;
-  message?: string;
-}
-
 /**
  * Format results as Markdown
  */
@@ -54,7 +44,6 @@ export const formatMarkdown = (
 export const formatGitHubComment = (
   results: DocAnalysisResult[],
   threshold: number,
-  similarityCheck?: SimilarityCheckResult,
 ): string => {
   if (results.length === 0) {
     return `## 📚 Documentation Impact Analysis
@@ -106,37 +95,6 @@ All documentation appears to be unaffected by the code changes.`;
   lines.push("---");
   lines.push("");
 
-  // Add similarity check results
-  if (similarityCheck) {
-    lines.push("### 🔍 Code Similarity Check");
-    lines.push("");
-
-    if (!similarityCheck.hasIssues) {
-      lines.push("✅ **No code duplication issues detected**");
-    } else if (
-      similarityCheck.duplicates &&
-      similarityCheck.duplicates.length > 0
-    ) {
-      lines.push("⚠️ **Potential code duplication detected:**");
-      lines.push("");
-      for (const dup of similarityCheck.duplicates) {
-        const simPercent = (dup.similarity * 100).toFixed(1);
-        lines.push(
-          `- \`${dup.file1}\` ↔ \`${dup.file2}\` (${simPercent}% similar)`,
-        );
-      }
-    }
-
-    if (similarityCheck.message) {
-      lines.push("");
-      lines.push(`> ${similarityCheck.message}`);
-    }
-
-    lines.push("");
-    lines.push("---");
-    lines.push("");
-  }
-
   lines.push(
     `📊 **Summary**: ${results.length} documentation file${results.length === 1 ? "" : "s"} may need review`,
   );
@@ -150,13 +108,52 @@ All documentation appears to be unaffected by the code changes.`;
 };
 
 /**
+ * Normalize file paths for GitHub Actions environment
+ */
+const normalizeFilePath = (filePath: string): string => {
+  // Remove GitHub Actions workspace path prefix
+  const workspacePrefixes = [
+    "/home/runner/work/gistdex/gistdex/",
+    process.env.GITHUB_WORKSPACE ? `${process.env.GITHUB_WORKSPACE}/` : "",
+  ].filter(Boolean);
+
+  for (const prefix of workspacePrefixes) {
+    if (filePath.startsWith(prefix)) {
+      return filePath.substring(prefix.length);
+    }
+  }
+
+  // If already a relative path, return as is
+  if (!filePath.startsWith("/")) {
+    return filePath;
+  }
+
+  // For other absolute paths, try to extract relative portion
+  const match = filePath.match(/(?:.*\/)?gistdex\/(.*)/);
+  return match?.[1] ?? filePath;
+};
+
+/**
  * Format a single result line for GitHub
  */
 const formatGitHubResultLine = (result: DocAnalysisResult): string => {
   const similarity = (result.similarity * 100).toFixed(1);
   const changeIcon = getChangeTypeIcon(result.changeType);
 
-  let line = `- ${changeIcon} **\`${result.file}\`** _(${similarity}% similarity)_`;
+  // Normalize file path
+  const normalizedFile = normalizeFilePath(result.file);
+
+  // Format file name with optional line numbers link
+  let fileDisplay = `\`${normalizedFile}\``;
+  if (result.githubUrl && result.startLine && result.endLine) {
+    // Add clickable line number range
+    fileDisplay += ` [(L${result.startLine}-L${result.endLine})](${result.githubUrl})`;
+  } else if (result.githubUrl && result.startLine) {
+    // Single line reference
+    fileDisplay += ` [(L${result.startLine})](${result.githubUrl})`;
+  }
+
+  let line = `- ${changeIcon} **${fileDisplay}** _(${similarity}% similarity)_`;
 
   if (result.matchedTerms && result.matchedTerms.length > 0) {
     const terms = result.matchedTerms
@@ -187,8 +184,20 @@ export const formatJSON = (
       threshold,
       impactCount: results.length,
       results: results.map((r) => ({
-        ...r,
+        file: normalizeFilePath(r.file),
+        score: r.similarity, // Keep original score field for compatibility
+        similarity: r.similarity, // Add similarity field for post-github-comment.ts
+        matchedChunks: r.matchedTerms?.length ?? 0, // Provide default value
+        totalChunks: r.matchedTerms?.length ?? 0, // Provide default value (same as matched for now)
         similarityPercent: (r.similarity * 100).toFixed(1),
+        matchedTerms: r.matchedTerms,
+        sections: r.matchedTerms, // Use matchedTerms as sections for compatibility
+        metadata: {
+          changeType: r.changeType,
+          startLine: r.startLine,
+          endLine: r.endLine,
+          githubUrl: r.githubUrl,
+        },
       })),
     },
     null,

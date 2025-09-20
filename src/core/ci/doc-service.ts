@@ -10,6 +10,9 @@ export interface DocAnalysisResult {
   matchedTerms?: string[];
   changeType: "added" | "modified" | "deleted";
   lineNumbers?: number[];
+  startLine?: number;
+  endLine?: number;
+  githubUrl?: string;
 }
 
 export interface DocAnalysisOptions {
@@ -85,6 +88,36 @@ export const ensureDocumentsIndexed = async (
 };
 
 /**
+ * Generate GitHub URL for a file location
+ */
+const generateGitHubUrl = (
+  filePath: string,
+  startLine?: number,
+  endLine?: number,
+): string | undefined => {
+  // Get GitHub repository info from environment variables (set in CI)
+  const repository = process.env.GITHUB_REPOSITORY; // "owner/repo" format
+  const branch =
+    process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || "main";
+
+  if (!repository) {
+    // Not in GitHub Actions environment
+    return undefined;
+  }
+
+  let url = `https://github.com/${repository}/blob/${branch}/${filePath}`;
+
+  // Add line anchors if available
+  if (startLine && endLine) {
+    url += `#L${startLine}-L${endLine}`;
+  } else if (startLine) {
+    url += `#L${startLine}`;
+  }
+
+  return url;
+};
+
+/**
  * Analyze documentation from code changes
  */
 export const analyzeDocuments = async (
@@ -93,11 +126,7 @@ export const analyzeDocuments = async (
   db: DatabaseService,
 ): Promise<DocAnalysisResult[]> => {
   const threshold = options.threshold ?? 0.7;
-  const documentPaths = options.documentPaths ?? [
-    "docs/**/*.md",
-    "README.md",
-    "*.md",
-  ];
+  const documentPaths = options.documentPaths ?? ["docs/**/*.md", "README.md"];
 
   // Ensure documents are indexed
   await ensureDocumentsIndexed(documentPaths, db);
@@ -133,7 +162,10 @@ export const analyzeDocuments = async (
 
       // Process results
       for (const result of results) {
-        const docPath = result.metadata?.path as string | undefined;
+        // Support both filePath (local files) and path (GitHub files)
+        const docPath = (result.metadata?.filePath || result.metadata?.path) as
+          | string
+          | undefined;
         if (!docPath) continue;
 
         // Check if this is a documentation file
@@ -159,11 +191,24 @@ export const analyzeDocuments = async (
             // Determine change type based on the most relevant change
             const relevantChange = findMostRelevantChange(changes, query);
 
+            // Extract line numbers from boundary metadata if available
+            const boundary = result.metadata?.boundary as
+              | {
+                  startLine?: number;
+                  endLine?: number;
+                }
+              | undefined;
+            const startLine = boundary?.startLine;
+            const endLine = boundary?.endLine;
+
             analysisMap.set(docPath, {
               file: docPath,
               similarity,
               matchedTerms: [query],
               changeType: relevantChange?.type ?? "modified",
+              startLine,
+              endLine,
+              githubUrl: generateGitHubUrl(docPath, startLine, endLine),
             });
           } else if (existingAnalysis) {
             // Add matched term if not already present
