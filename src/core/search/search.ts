@@ -141,6 +141,13 @@ export interface SearchStats {
   maxScore: number;
   minScore: number;
   sourceTypes: Record<string, number>;
+  medianScore: number;
+  scoreStandardDeviation: number;
+  scoreDistribution: {
+    high: number; // >= 0.8
+    medium: number; // 0.5 - 0.8
+    low: number; // < 0.5
+  };
 }
 
 /**
@@ -326,13 +333,45 @@ export function calculateSearchStats(
       averageScore: 0,
       maxScore: 0,
       minScore: 0,
+      medianScore: 0,
+      scoreStandardDeviation: 0,
       sourceTypes: {},
+      scoreDistribution: {
+        high: 0,
+        medium: 0,
+        low: 0,
+      },
     };
   }
 
   const scores = results.map((r) => r.score);
-  const sourceTypes: Record<string, number> = {};
+  const sortedScores = [...scores].sort((a, b) => a - b);
 
+  // Calculate median
+  const mid = Math.floor(sortedScores.length / 2);
+  const medianScore =
+    sortedScores.length % 2 !== 0
+      ? (sortedScores[mid] ?? 0)
+      : ((sortedScores[mid - 1] ?? 0) + (sortedScores[mid] ?? 0)) / 2;
+
+  // Calculate average
+  const averageScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+  // Calculate standard deviation
+  const variance =
+    scores.reduce((sum, score) => sum + (score - averageScore) ** 2, 0) /
+    scores.length;
+  const scoreStandardDeviation = Math.sqrt(variance);
+
+  // Calculate score distribution
+  const scoreDistribution = {
+    high: scores.filter((s) => s >= 0.8).length,
+    medium: scores.filter((s) => s >= 0.5 && s < 0.8).length,
+    low: scores.filter((s) => s < 0.5).length,
+  };
+
+  // Count source types
+  const sourceTypes: Record<string, number> = {};
   for (const result of results) {
     const type = (result.metadata?.sourceType as string) || "unknown";
     sourceTypes[type] = (sourceTypes[type] || 0) + 1;
@@ -340,9 +379,12 @@ export function calculateSearchStats(
 
   return {
     totalResults: results.length,
-    averageScore: scores.reduce((a, b) => a + b, 0) / scores.length,
+    averageScore,
     maxScore: Math.max(...scores),
     minScore: Math.min(...scores),
+    medianScore,
+    scoreStandardDeviation,
     sourceTypes,
+    scoreDistribution,
   };
 }
