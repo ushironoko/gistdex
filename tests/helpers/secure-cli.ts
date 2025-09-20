@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -53,22 +53,39 @@ export function runCLISecure(
   }
 
   try {
-    const result = execSync(
-      `node "${cliPath}" ${sanitizedArgs.map((arg) => `"${arg}"`).join(" ")}`,
-      {
-        cwd: options?.cwd || process.cwd(),
-        env: {
-          ...process.env,
-          NODE_ENV: "production",
-          NODE_NO_WARNINGS: "1",
-          VITEST: undefined,
-        },
-        encoding: "utf8",
-        timeout: options?.timeout || 30000,
+    const result = spawnSync("node", [cliPath, ...sanitizedArgs], {
+      cwd: options?.cwd || process.cwd(),
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        NODE_NO_WARNINGS: "1",
+        VITEST: undefined,
       },
-    );
+      encoding: "utf8",
+      timeout: options?.timeout || 30000,
+    });
 
-    return { stdout: result.toString(), stderr: "", code: 0 };
+    if (result.error) {
+      throw result.error;
+    }
+
+    if (result.status !== 0) {
+      const error = new Error("Command failed") as Error & {
+        stdout?: string;
+        stderr?: string;
+        status?: number;
+      };
+      error.stdout = result.stdout || undefined;
+      error.stderr = result.stderr || undefined;
+      error.status = result.status || undefined;
+      throw error;
+    }
+
+    return {
+      stdout: result.stdout || "",
+      stderr: result.stderr || "",
+      code: 0,
+    };
   } catch (error) {
     const execError = error as {
       stdout?: Buffer | string;
@@ -112,22 +129,35 @@ export function runCLIInDirectory(
   const sanitizedArgs = sanitizeArgs(args);
 
   try {
-    const result = execSync(
-      `node "${cliPath}" ${sanitizedArgs.map((arg) => `"${arg}"`).join(" ")}`,
-      {
-        cwd: tempDir,
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          NODE_ENV: "production",
-          NODE_NO_WARNINGS: "1",
-          VITEST: undefined,
-        },
-        timeout: options?.timeout || 30000,
+    const result = spawnSync("node", [cliPath, ...sanitizedArgs], {
+      cwd: tempDir,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        NODE_NO_WARNINGS: "1",
+        VITEST: undefined,
       },
-    );
+      timeout: options?.timeout || 30000,
+    });
 
-    return result.toString();
+    if (result.error) {
+      throw result.error;
+    }
+
+    if (result.status !== 0) {
+      const error = new Error("Command failed") as Error & {
+        stdout?: string;
+        stderr?: string;
+        status?: number;
+      };
+      error.stdout = result.stdout || undefined;
+      error.stderr = result.stderr || undefined;
+      error.status = result.status || undefined;
+      throw error;
+    }
+
+    return result.stdout || "";
   } catch (error) {
     const execError = error as {
       stdout?: Buffer | string;

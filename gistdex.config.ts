@@ -8,4 +8,16 @@ export default defineGistdexConfig({
       dimension: 768,
     },
   },
+  ci: {
+    doc: {
+      enabled: true,
+      threshold: 0.7,
+      documentPaths: [
+        "docs/guide/*.md",
+        "docs/reference/*.md",
+        "docs/index.md",
+        "README.md",
+      ],
+    },
+  },
 });

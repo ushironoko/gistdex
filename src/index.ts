@@ -6,6 +6,19 @@
 
 // Chunking functions
 export { chunkTextWithCST } from "./core/chunk/chunking.js";
+// CI/CD API
+export {
+  analyzeDocumentImpact,
+  type DocumentImpactOptions,
+  type DocumentImpactResult,
+  postDocumentImpactToGitHub,
+} from "./core/ci/api.js";
+// CI/CD formatters (for custom formatting)
+export {
+  formatGitHubComment,
+  formatJSON,
+  formatMarkdown,
+} from "./core/ci/formatters.js";
 export { defineGistdexConfig } from "./core/config/config-helpers.js";
 // Configuration
 export {
@@ -41,7 +54,6 @@ export {
   withCustomRegistry,
   withRegistry,
 } from "./core/vector-db/adapters/registry-operations.js";
-
 // Built-in adapters (for direct use or reference)
 export { createSQLiteAdapter } from "./core/vector-db/adapters/sqlite-adapter.js";
 // Types for vector database
@@ -54,7 +66,6 @@ export type {
   VectorDocument,
   VectorSearchResult,
 } from "./core/vector-db/adapters/types.js";
-
 // Error types
 export {
   DatabaseNotInitializedError,

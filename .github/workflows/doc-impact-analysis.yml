@@ -1,0 +1,95 @@
+name: Documentation Impact Analysis
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      # Source code changes that might affect documentation
+      - 'src/**/*.ts'
+      - 'src/**/*.js'
+      - '!src/**/*.test.ts'
+      - '!src/**/*.spec.ts'
+      - '!src/**/*.d.ts'
+      # Documentation changes to ensure they stay indexed
+      - 'docs/**/*.md'
+      - 'README.md'
+      # Configuration changes that affect CI behavior
+      - 'gistdex.config.ts'
+      - '.github/workflows/doc-impact-analysis.yml'
+
+jobs:
+  analyze-docs:
+    name: Analyze Documentation Impact
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for diff analysis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Cache Gistdex database
+        uses: actions/cache@v4
+        with:
+          path: ./gistdex.db
+          key: ${{ runner.os }}-gistdex-db-${{ hashFiles('docs/**/*.md', 'README.md') }}
+          restore-keys: |
+            ${{ runner.os }}-gistdex-db-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run documentation impact analysis
+        id: doc-analysis
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+        run: |
+          # Threshold and paths are configured in gistdex.config.ts
+          pnpm exec tsx scripts/ci/run-doc-analysis.ts \
+            --diff "origin/${{ github.base_ref }}...HEAD" \
+            --output doc-impact.json
+
+      - name: Post PR comment
+        if: always() && steps.doc-analysis.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          pnpm exec tsx scripts/ci/post-github-comment.ts doc-impact.json
+
+      - name: Upload analysis results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-impact-analysis
+          path: doc-impact.json
+          retention-days: 7
+          if-no-files-found: warn

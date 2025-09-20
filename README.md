@@ -26,6 +26,9 @@ npx @ushironoko/gistdex@latest index --files "src/**/*.ts"
 
 # Search
 npx @ushironoko/gistdex@latest query "how to implement authentication"
+
+# CI: Analyze documentation impact from code changes
+npx @ushironoko/gistdex@latest ci:doc --diff "main..HEAD" --threshold 0.7
 ```
 
 ## Claude Integration
@@ -50,6 +53,62 @@ claude mcp add gistdex -- npx @ushironoko/gistdex --mcp
 - **TypeScript Config** - Type-safe configuration with intellisense
 - **Auto Chunk Optimization** - File type-based and CST-based chunk optimize
 - **Agent in the Loop MCP** - The agent runs its own query feedback loop to move towards its goal.
+- **CI Documentation Analysis** - Analyze documentation impact from code changes in pull requests
+
+## CI Documentation Analysis
+
+Automatically detect which documentation files may need updates when code changes are made. Perfect for maintaining documentation accuracy in CI/CD pipelines.
+
+### Usage
+
+```bash
+# Analyze documentation impact from code changes
+npx @ushironoko/gistdex@latest ci:doc --diff "main..HEAD"
+
+# With custom threshold (0-1, default 0.7)
+npx @ushironoko/gistdex@latest ci:doc --diff "main..HEAD" --threshold 0.5
+
+# Specify documentation paths
+npx @ushironoko/gistdex@latest ci:doc --diff "main..HEAD" --paths "docs/**/*.md,README.md"
+
+# Output as JSON for CI integration
+npx @ushironoko/gistdex@latest ci:doc --diff "main..HEAD" --format json
+```
+
+### GitHub Actions Integration
+
+Add to your workflow:
+
+```yaml
+name: Documentation Impact Analysis
+
+on:
+  pull_request:
+    paths:
+      - 'src/**/*.ts'
+      - 'src/**/*.js'
+
+jobs:
+  analyze-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.2.0'
+
+      - name: Run documentation analysis
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+        run: |
+          npx @ushironoko/gistdex@latest ci:doc \
+            --diff "origin/${{ github.base_ref }}...HEAD" \
+            --threshold 0.5
+```
 
 ### Development Setup
 
