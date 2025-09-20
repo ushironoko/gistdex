@@ -53,6 +53,9 @@ export interface SemanticSearchOptions {
   sourceType?: string;
   rerank?: boolean;
   rerankBoostFactor?: number;
+  minScore?: number;
+  maxResults?: number;
+  deduplicate?: boolean;
 }
 
 export async function semanticSearch(
@@ -60,7 +63,15 @@ export async function semanticSearch(
   options: SemanticSearchOptions = {},
   service?: DatabaseService,
 ): Promise<VectorSearchResult[]> {
-  const { k = 5, sourceType, rerank = true, rerankBoostFactor = 0.1 } = options;
+  const {
+    k = 5,
+    sourceType,
+    rerank = true,
+    rerankBoostFactor = 0.1,
+    minScore = 0,
+    maxResults,
+    deduplicate = false,
+  } = options;
 
   try {
     const queryEmbedding = await generateEmbedding(query);
@@ -71,16 +82,39 @@ export async function semanticSearch(
       throw new Error("Database service is required");
     }
 
-    const results = await dbService.searchItems({
+    let results = await dbService.searchItems({
       embedding: queryEmbedding,
-      k,
+      k: maxResults || k,
       sourceType,
     });
 
+    // Apply minimum score filtering
+    if (minScore > 0) {
+      results = results.filter((r) => r.score >= minScore);
+    }
+
+    // Apply deduplication if requested
+    if (deduplicate) {
+      const seen = new Set<string>();
+      results = results.filter((r) => {
+        const contentHash = r.content.substring(0, 100); // Simple hash
+        if (seen.has(contentHash)) {
+          return false;
+        }
+        seen.add(contentHash);
+        return true;
+      });
+    }
+
     if (rerank) {
-      return rerankResults(query, results, {
+      results = rerankResults(query, results, {
         boostFactor: rerankBoostFactor,
       });
+    }
+
+    // Apply max results limit after all filtering
+    if (maxResults && results.length > maxResults) {
+      results = results.slice(0, maxResults);
     }
 
     return results;
@@ -93,6 +127,8 @@ export async function semanticSearch(
 
 export interface HybridSearchOptions extends SemanticSearchOptions {
   keywordWeight?: number;
+  fuzzyMatch?: boolean;
+  boostExactMatch?: boolean;
 }
 
 export async function hybridSearch(
@@ -100,7 +136,12 @@ export async function hybridSearch(
   options: HybridSearchOptions = {},
   service?: DatabaseService,
 ): Promise<VectorSearchResult[]> {
-  const { keywordWeight = 0.3, ...semanticOptions } = options;
+  const {
+    keywordWeight = 0.3,
+    fuzzyMatch = false,
+    boostExactMatch = false,
+    ...semanticOptions
+  } = options;
 
   const semanticResults = await semanticSearch(
     query,
@@ -116,15 +157,37 @@ export async function hybridSearch(
   const hybridResults = semanticResults.map((result) => {
     const contentLower = result.content.toLowerCase();
 
-    const exactMatchCount = queryWords.filter((word) =>
+    // Count exact matches
+    let matchCount = queryWords.filter((word) =>
       contentLower.includes(word),
     ).length;
 
+    // Apply fuzzy matching if enabled
+    if (fuzzyMatch) {
+      const fuzzyMatches = queryWords.filter((word) => {
+        // Simple fuzzy match: check if 80% of the word chars are present
+        const wordChars = word.split("");
+        const matchedChars = wordChars.filter((c) =>
+          contentLower.includes(c),
+        ).length;
+        return matchedChars >= wordChars.length * 0.8;
+      }).length;
+      matchCount = Math.max(matchCount, fuzzyMatches * 0.7);
+    }
+
+    // Boost for exact phrase match
+    let exactBoost = 0;
+    if (boostExactMatch && contentLower.includes(query.toLowerCase())) {
+      exactBoost = 0.3;
+    }
+
     const wordMatchScore =
-      queryWords.length > 0 ? exactMatchCount / queryWords.length : 0;
+      queryWords.length > 0 ? matchCount / queryWords.length : 0;
 
     const hybridScore =
-      result.score * (1 - keywordWeight) + wordMatchScore * keywordWeight;
+      result.score * (1 - keywordWeight) +
+      wordMatchScore * keywordWeight +
+      exactBoost;
 
     return {
       ...result,
