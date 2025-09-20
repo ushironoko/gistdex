@@ -165,7 +165,7 @@ const main = async (): Promise<void> => {
     exit(1);
   }
 
-  if (!issueNumber || isNaN(Number(issueNumber))) {
+  if (!issueNumber || Number.isNaN(Number(issueNumber))) {
     console.error(
       "Error: Valid GITHUB_ISSUE_NUMBER environment variable is required",
     );
