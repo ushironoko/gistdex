@@ -6,15 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Core Development Commands
 
-- `pnpm test` - Run all tests using Vitest
+- `pnpm test` - Run unit tests using Vitest
+- `pnpm run test:unit` - Run unit tests (same as `pnpm test`)
+- `pnpm run test:integration` - Run integration tests and cleanup test directories
+- `pnpm run test:integration:build` - Build then run integration tests
+- `pnpm run test:all` - Run all tests (unit + integration with build)
 - `pnpm run test:watch` - Run tests in watch mode for TDD
 - `pnpm run test:coverage` - Run tests with coverage report
 - `pnpm run lint` - Run Biome linter (auto-fixes issues)
 - `pnpm run format` - Format code with Biome
-- `pnpm run tsc` - Type check without emitting files
+- `pnpm run tsc` - Type check without emitting files using tsgo
 - `pnpm run dev` - Compile TypeScript in watch mode
 - `pnpm run build` - Build TypeScript to JavaScript
 - `pnpm start` - Run compiled CLI from dist/
+- `pnpm run run-all` - Complete check: format, lint, typecheck, unit test, build, and docs build
+
+### Documentation Commands
+
+- `pnpm run docs:dev` - Start VitePress documentation server in development mode
+- `pnpm run docs:build` - Build static documentation site with VitePress
+- `pnpm run docs:preview` - Preview built documentation site
 
 ### CLI Commands
 
@@ -43,6 +54,11 @@ The project provides a CLI tool with the following commands:
 - `npx gistdex version` - Show CLI version (also `--version` or `-v`)
 - `npx gistdex help` - Display help message
 - `npx gistdex --mcp` or `-m` - Start MCP (Model Context Protocol) server for LLM integration
+
+#### CI/CD Commands
+
+- `npx gistdex ci-doc` - Analyze documentation for CI/CD pipeline
+- `npx gistdex ci-github-comment` - Post analysis results as GitHub PR comment
 
 #### Examples of Multiple File Indexing
 
@@ -111,6 +127,7 @@ MCP tools available:
 - `gistdex_index` - Index content from various sources
 - `gistdex_list` - List indexed items with statistics
 - `gistdex_write_structured_result` - Save agent-generated structured analysis and findings
+- `gistdex_read_cached` - Read cached queries and structured knowledge from .gistdex/cache directory
 
 #### Agent Search Architecture
 
@@ -262,6 +279,7 @@ The system uses a **functional composition pattern** for vector databases, elimi
   - `index-tool.ts` - Content indexing tool
   - `list-tool.ts` - List indexed items tool
   - `write-structured-tool.ts` - Save structured knowledge tool
+  - `read-cached-tool.ts` - Read cached queries and knowledge tool
 - **utils/** - MCP utilities
   - `tool-handler.ts` - Factory for creating type-safe tool handlers
   - `metadata-generator.ts` - Analysis metadata generation
@@ -282,7 +300,8 @@ The system uses a **functional composition pattern** for vector databases, elimi
 - **commands/list.ts** - List indexed items command
 - **commands/info.ts** - Show adapter information command
 - **commands/version.ts** - Show CLI version command
-- **commands/help.ts** - Display help message command
+- **commands/ci-doc.ts** - CI documentation analysis command
+- **commands/ci-github-comment.ts** - GitHub PR comment posting command
 - **utils/command-handler.ts** - Command handler abstraction for common DB operations
 - **utils/config-helper.ts** - Configuration helper for loading DB config
 
@@ -320,7 +339,7 @@ Tests are colocated with source files using `.test.ts` suffix. Run tests with co
 ### MCP Server Integration (v0.5.0+)
 
 - Added Model Context Protocol (MCP) server for LLM integration
-- Four MCP tools: `gistdex_index`, `gistdex_query`, `gistdex_list`, `gistdex_agent_query`
+- Six MCP tools: `gistdex_search`, `gistdex_query_simple`, `gistdex_index`, `gistdex_list`, `gistdex_write_structured_result`, `gistdex_read_cached`
 - Common tool handler factory to eliminate code duplication
 - CLI supports `--mcp` flag to start server
 - Configurable via `.mcp.json` with `cwd` field for database location
@@ -503,7 +522,8 @@ gistdex/
 │   │   │   ├── list.ts     # List indexed items
 │   │   │   ├── info.ts     # Show adapter info
 │   │   │   ├── version.ts  # Show CLI version
-│   │   │   └── help.ts     # Show help message
+│   │   │   ├── ci-doc.ts   # CI documentation analysis
+│   │   │   └── ci-github-comment.ts # GitHub PR comment
 │   │   └── utils/     # CLI utilities
 │   │       ├── command-handler.ts  # Command abstraction
 │   │       ├── config-helper.ts    # Config loading
@@ -513,9 +533,12 @@ gistdex/
 │   ├── mcp/           # MCP server implementation
 │   │   ├── server.ts  # MCP server with StdioServerTransport
 │   │   ├── tools/     # MCP tool handlers
+│   │   │   ├── agent-query-tool.ts # Agent-based search via MCP
 │   │   │   ├── index-tool.ts  # Index content via MCP
 │   │   │   ├── query-tool.ts  # Search via MCP
-│   │   │   └── list-tool.ts   # List items via MCP
+│   │   │   ├── list-tool.ts   # List items via MCP
+│   │   │   ├── write-structured-tool.ts # Save structured knowledge
+│   │   │   └── read-cached-tool.ts # Read cached content
 │   │   ├── utils/     # MCP utilities
 │   │   │   └── tool-handler.ts # Tool handler factory
 │   │   └── schemas/   # Validation schemas
