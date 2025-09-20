@@ -79,15 +79,15 @@ export const postToGitHubPR = async (content: string): Promise<void> => {
   }
 
   try {
-    // First, try to find existing comment
+    // Check if we should edit or create
     const existingCommentId = await findExistingComment(context);
 
     if (existingCommentId) {
-      // Update existing comment
+      // Update existing comment using API (gh pr comment doesn't support update)
       await updateComment(context, existingCommentId, content);
       console.log(`Updated existing comment: #${existingCommentId}`);
     } else {
-      // Create new comment
+      // Create new comment using simpler gh pr comment
       await createComment(context, content);
       console.log("Created new comment");
     }
@@ -107,6 +107,7 @@ const findExistingComment = async (
   context: GitHubContext,
 ): Promise<number | null> => {
   try {
+    // Directly use API to get issue comments (simpler than PR comments)
     const response = executeGHCommand(
       [
         "api",
@@ -140,19 +141,10 @@ const createComment = async (
   context: GitHubContext,
   content: string,
 ): Promise<void> => {
-  const body = JSON.stringify({ body: content });
-
+  // Use gh pr comment for simpler interface
   executeGHCommand(
-    [
-      "api",
-      `repos/${context.owner}/${context.repo}/issues/${context.prNumber}/comments`,
-      "--method",
-      "POST",
-      "--input",
-      "-",
-    ],
+    ["pr", "comment", String(context.prNumber), "--body", content],
     {
-      input: body,
       env: { GH_TOKEN: context.token },
     },
   );

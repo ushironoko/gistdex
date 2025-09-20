@@ -91,7 +91,6 @@ export async function analyzeDocumentImpact(
         return formatMarkdown(results, threshold);
       case "github-comment":
         return formatGitHubComment(results, threshold);
-      case "json":
       default:
         return results;
     }
