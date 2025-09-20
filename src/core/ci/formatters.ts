@@ -1,15 +1,5 @@
 import type { DocAnalysisResult } from "./doc-service.js";
 
-export interface SimilarityCheckResult {
-  hasIssues: boolean;
-  duplicates?: Array<{
-    file1: string;
-    file2: string;
-    similarity: number;
-  }>;
-  message?: string;
-}
-
 /**
  * Format results as Markdown
  */
@@ -54,7 +44,6 @@ export const formatMarkdown = (
 export const formatGitHubComment = (
   results: DocAnalysisResult[],
   threshold: number,
-  similarityCheck?: SimilarityCheckResult,
 ): string => {
   if (results.length === 0) {
     return `## 📚 Documentation Impact Analysis
@@ -106,37 +95,6 @@ All documentation appears to be unaffected by the code changes.`;
   lines.push("---");
   lines.push("");
 
-  // Add similarity check results
-  if (similarityCheck) {
-    lines.push("### 🔍 Code Similarity Check");
-    lines.push("");
-
-    if (!similarityCheck.hasIssues) {
-      lines.push("✅ **No code duplication issues detected**");
-    } else if (
-      similarityCheck.duplicates &&
-      similarityCheck.duplicates.length > 0
-    ) {
-      lines.push("⚠️ **Potential code duplication detected:**");
-      lines.push("");
-      for (const dup of similarityCheck.duplicates) {
-        const simPercent = (dup.similarity * 100).toFixed(1);
-        lines.push(
-          `- \`${dup.file1}\` ↔ \`${dup.file2}\` (${simPercent}% similar)`,
-        );
-      }
-    }
-
-    if (similarityCheck.message) {
-      lines.push("");
-      lines.push(`> ${similarityCheck.message}`);
-    }
-
-    lines.push("");
-    lines.push("---");
-    lines.push("");
-  }
-
   lines.push(
     `📊 **Summary**: ${results.length} documentation file${results.length === 1 ? "" : "s"} may need review`,
   );
@@ -156,7 +114,17 @@ const formatGitHubResultLine = (result: DocAnalysisResult): string => {
   const similarity = (result.similarity * 100).toFixed(1);
   const changeIcon = getChangeTypeIcon(result.changeType);
 
-  let line = `- ${changeIcon} **\`${result.file}\`** _(${similarity}% similarity)_`;
+  // Format file name with optional line numbers link
+  let fileDisplay = `\`${result.file}\``;
+  if (result.githubUrl && result.startLine && result.endLine) {
+    // Add clickable line number range
+    fileDisplay += ` [(L${result.startLine}-L${result.endLine})](${result.githubUrl})`;
+  } else if (result.githubUrl && result.startLine) {
+    // Single line reference
+    fileDisplay += ` [(L${result.startLine})](${result.githubUrl})`;
+  }
+
+  let line = `- ${changeIcon} **${fileDisplay}** _(${similarity}% similarity)_`;
 
   if (result.matchedTerms && result.matchedTerms.length > 0) {
     const terms = result.matchedTerms
