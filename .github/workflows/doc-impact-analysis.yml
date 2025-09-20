@@ -77,7 +77,7 @@ jobs:
             --output doc-impact.json
 
       - name: Post PR comment
-        if: steps.doc-analysis.outputs.has_impact == 'true'
+        if: always() && steps.doc-analysis.outcome == 'success'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
