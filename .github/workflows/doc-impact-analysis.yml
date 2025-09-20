@@ -55,29 +55,11 @@ jobs:
         env:
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
         run: |
-          set -euo pipefail
-
-          BASE_BRANCH="${{ github.base_ref }}"
-          OUTPUT_FILE="doc-impact.json"
-
-          # Run the analysis
-          if npx gistdex ci:doc \
-            --diff "origin/${BASE_BRANCH}...HEAD" \
+          tsx scripts/ci/run-doc-analysis.ts \
+            --diff "origin/${{ github.base_ref }}...HEAD" \
             --paths "docs/**/*.md,README.md,*.md" \
             --threshold 0.5 \
-            --format json \
-            > "${OUTPUT_FILE}"; then
-
-            # Validate output
-            if [ -s "${OUTPUT_FILE}" ] && jq empty "${OUTPUT_FILE}" 2>/dev/null; then
-              echo "has_impact=$(jq 'length > 0' "${OUTPUT_FILE}")" >> $GITHUB_OUTPUT
-            else
-              echo "has_impact=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "has_impact=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+            --output doc-impact.json
 
       - name: Post PR comment
         if: steps.doc-analysis.outputs.has_impact == 'true'
@@ -86,7 +68,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          tsx src/cli/commands/ci-github-comment.ts doc-impact.json
+          tsx scripts/ci/post-github-comment.ts doc-impact.json
 
       - name: Upload analysis results
         if: always()
