@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { SimilarityCheckResult } from "./formatters.js";
 
@@ -76,10 +76,24 @@ const checkSimilarityToolAvailable = (): boolean => {
  */
 const getChangedFiles = (diffRange: string): string[] => {
   try {
-    const output = execSync(
-      `git diff ${diffRange} --name-only --diff-filter=AM`,
+    // Validate diffRange to prevent command injection
+    if (!isValidGitRef(diffRange)) {
+      console.error("Invalid git reference:", diffRange);
+      return [];
+    }
+
+    // Use spawnSync with array arguments to prevent command injection
+    const result = spawnSync(
+      "git",
+      ["diff", diffRange, "--name-only", "--diff-filter=AM"],
       { encoding: "utf-8" },
     );
+
+    if (result.error || result.status !== 0) {
+      return [];
+    }
+
+    const output = result.stdout;
 
     return output
       .trim()
@@ -112,10 +126,23 @@ const runSimilarityCheck = async (
 
   try {
     // Run similarity check using similarity-ts or similar tool
-    // This is a simplified implementation - actual tool usage may vary
-    const command = `npx --no-install similarity-ts check ${files.join(" ")} --threshold ${threshold}`;
+    // Use spawnSync with array arguments to prevent command injection
+    const args = [
+      "--no-install",
+      "similarity-ts",
+      "check",
+      ...files,
+      "--threshold",
+      threshold.toString(),
+    ];
 
-    const output = execSync(command, { encoding: "utf-8" });
+    const result = spawnSync("npx", args, { encoding: "utf-8" });
+
+    if (result.error || result.status !== 0) {
+      throw new Error("Similarity check failed");
+    }
+
+    const output = result.stdout;
 
     // Parse the output (format depends on the actual tool)
     const lines = output.trim().split("\n");
@@ -150,10 +177,25 @@ export const simpleSimilarityCheck = (
   diffRange: string,
 ): SimilarityCheckResult => {
   try {
-    // Get statistics about changed files
-    const output = execSync(`git diff ${diffRange} --stat`, {
+    // Validate diffRange to prevent command injection
+    if (!isValidGitRef(diffRange)) {
+      console.error("Invalid git reference:", diffRange);
+      return {
+        hasIssues: false,
+        message: "Invalid git reference provided",
+      };
+    }
+
+    // Use spawnSync with array arguments to prevent command injection
+    const result = spawnSync("git", ["diff", diffRange, "--stat"], {
       encoding: "utf-8",
     });
+
+    if (result.error || result.status !== 0) {
+      throw new Error("Git diff failed");
+    }
+
+    const output = result.stdout;
 
     const lines = output.trim().split("\n");
     const fileStats: Map<string, { added: number; deleted: number }> =
@@ -230,4 +272,16 @@ export const simpleSimilarityCheck = (
       message: "Could not perform similarity check",
     };
   }
+};
+
+/**
+ * Validate git reference to prevent command injection
+ * Accepts formats like: HEAD, HEAD~1, origin/main, commit-hash, branch-name
+ */
+const isValidGitRef = (ref: string): boolean => {
+  // Allow common git reference patterns
+  // This regex allows alphanumeric, /, -, _, ~, ^, and . characters
+  // which covers most valid git references while preventing shell injection
+  const gitRefPattern = /^[a-zA-Z0-9/_\-~^.]+$/;
+  return gitRefPattern.test(ref);
 };
