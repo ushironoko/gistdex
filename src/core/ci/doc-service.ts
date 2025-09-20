@@ -40,7 +40,7 @@ export const ensureDocumentsIndexed = async (
   }
 
   if (files.length === 0) {
-    console.log("No documentation files found matching patterns:", patterns);
+    console.error("No documentation files found matching patterns:", patterns);
     return;
   }
 
@@ -56,7 +56,7 @@ export const ensureDocumentsIndexed = async (
   const toIndex = files.filter((f) => !indexedPaths.has(f));
 
   if (toIndex.length > 0) {
-    console.log(`📝 Indexing ${toIndex.length} documentation files...`);
+    console.error(`📝 Indexing ${toIndex.length} documentation files...`);
 
     // Index files with appropriate settings
     const results = await indexFiles(
@@ -76,11 +76,11 @@ export const ensureDocumentsIndexed = async (
       );
     }
 
-    console.log(
+    console.error(
       `✅ Indexed ${results.itemsIndexed} items from ${toIndex.length} files`,
     );
   } else {
-    console.log(`✅ All ${files.length} documentation files already indexed`);
+    console.error(`✅ All ${files.length} documentation files already indexed`);
   }
 };
 
@@ -106,13 +106,13 @@ export const analyzeDocuments = async (
   const { changes, searchQueries } = await analyzeDiff(diffRange);
 
   if (changes.length === 0) {
-    console.log("No changes detected in the specified range");
+    console.error("No changes detected in the specified range");
     return [];
   }
 
   if (options.verbose) {
-    console.log(`📊 Analyzing ${changes.length} changed files`);
-    console.log(`🔍 Generated ${searchQueries.length} search queries`);
+    console.error(`📊 Analyzing ${changes.length} changed files`);
+    console.error(`🔍 Generated ${searchQueries.length} search queries`);
   }
 
   // Collect all analyzed documents
@@ -186,7 +186,7 @@ export const analyzeDocuments = async (
   );
 
   if (options.verbose) {
-    console.log(`📚 Found ${results.length} related documentation files`);
+    console.error(`📚 Found ${results.length} related documentation files`);
   }
 
   return results;
