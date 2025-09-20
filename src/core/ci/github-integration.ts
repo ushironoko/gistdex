@@ -79,18 +79,14 @@ export const postToGitHubPR = async (content: string): Promise<void> => {
   }
 
   try {
-    // Check if we should edit or create
-    const existingCommentId = await findExistingComment(context);
-
-    if (existingCommentId) {
-      // Update existing comment using API (gh pr comment doesn't support update)
-      await updateComment(context, existingCommentId, content);
-      console.log(`Updated existing comment: #${existingCommentId}`);
-    } else {
-      // Create new comment using simpler gh pr comment
-      await createComment(context, content);
-      console.log("Created new comment");
-    }
+    // Always create new comment using gh pr comment
+    executeGHCommand(
+      ["pr", "comment", String(context.prNumber), "--body", content],
+      {
+        env: { GH_TOKEN: context.token },
+      },
+    );
+    console.log("Created new comment on PR");
   } catch (error) {
     throw new Error(
       `Failed to post to GitHub PR: ${
@@ -98,80 +94,4 @@ export const postToGitHubPR = async (content: string): Promise<void> => {
       }`,
     );
   }
-};
-
-/**
- * Find existing Gistdex comment on the PR
- */
-const findExistingComment = async (
-  context: GitHubContext,
-): Promise<number | null> => {
-  try {
-    // Directly use API to get issue comments (simpler than PR comments)
-    const response = executeGHCommand(
-      [
-        "api",
-        `repos/${context.owner}/${context.repo}/issues/${context.prNumber}/comments`,
-      ],
-      {
-        env: { GH_TOKEN: context.token },
-      },
-    );
-
-    const comments = JSON.parse(response) as Array<{
-      id: number;
-      body: string;
-    }>;
-
-    // Find comment with Gistdex marker
-    const gistdexComment = comments.find((comment) =>
-      comment.body.includes("Documentation Impact Analysis"),
-    );
-
-    return gistdexComment?.id ?? null;
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Create new comment on PR
- */
-const createComment = async (
-  context: GitHubContext,
-  content: string,
-): Promise<void> => {
-  // Use gh pr comment for simpler interface
-  executeGHCommand(
-    ["pr", "comment", String(context.prNumber), "--body", content],
-    {
-      env: { GH_TOKEN: context.token },
-    },
-  );
-};
-
-/**
- * Update existing comment
- */
-const updateComment = async (
-  context: GitHubContext,
-  commentId: number,
-  content: string,
-): Promise<void> => {
-  const body = JSON.stringify({ body: content });
-
-  executeGHCommand(
-    [
-      "api",
-      `repos/${context.owner}/${context.repo}/issues/comments/${commentId}`,
-      "--method",
-      "PATCH",
-      "--input",
-      "-",
-    ],
-    {
-      input: body,
-      env: { GH_TOKEN: context.token },
-    },
-  );
 };
