@@ -13,6 +13,7 @@ jobs:
   analyze-docs:
     name: Analyze Documentation Impact
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
 
     permissions:
       contents: read
@@ -27,10 +28,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24.2.0'
+          node-version-file: '.node-version'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -38,103 +53,139 @@ jobs:
       - name: Build project
         run: pnpm build
 
-      - name: Set up Google API Key
-        run: echo "GOOGLE_GENERATIVE_AI_API_KEY=${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}" >> $GITHUB_ENV
-
       - name: Run documentation impact analysis
         id: doc-analysis
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
         run: |
-          # Get the base branch (usually main or master)
-          BASE_BRANCH="${{ github.base_ref }}"
+          set -euo pipefail
 
-          # Run the analysis comparing with base branch
-          npx gistdex ci:doc \
+          BASE_BRANCH="${{ github.base_ref }}"
+          OUTPUT_FILE="doc-impact.json"
+
+          # Run the analysis with error handling
+          if npx gistdex ci:doc \
             --diff "origin/${BASE_BRANCH}...HEAD" \
             --paths "docs/**/*.md,README.md,*.md" \
             --threshold 0.5 \
             --format json \
-            > doc-impact.json
+            > "${OUTPUT_FILE}" 2>&1; then
 
-          # Store the result for the next step
-          echo "has_impact=$(jq 'length > 0' doc-impact.json)" >> $GITHUB_OUTPUT
+            # Check if file exists and has content
+            if [ -s "${OUTPUT_FILE}" ]; then
+              # Validate JSON format
+              if jq empty "${OUTPUT_FILE}" 2>/dev/null; then
+                echo "has_impact=$(jq 'length > 0' "${OUTPUT_FILE}")" >> $GITHUB_OUTPUT
+                echo "analysis_status=success" >> $GITHUB_OUTPUT
+              else
+                echo "Error: Invalid JSON output" >&2
+                echo "has_impact=false" >> $GITHUB_OUTPUT
+                echo "analysis_status=invalid_json" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "Warning: No output generated" >&2
+              echo "has_impact=false" >> $GITHUB_OUTPUT
+              echo "analysis_status=no_output" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Error: Analysis command failed" >&2
+            echo "has_impact=false" >> $GITHUB_OUTPUT
+            echo "analysis_status=failed" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Comment on PR
+      - name: Create PR comment
         if: steps.doc-analysis.outputs.has_impact == 'true'
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const results = JSON.parse(fs.readFileSync('doc-impact.json', 'utf8'));
+            const fs = require('fs').promises;
 
-            if (results.length === 0) return;
+            try {
+              const content = await fs.readFile('doc-impact.json', 'utf8');
+              const results = JSON.parse(content);
 
-            // Group results by change type
-            const byType = results.reduce((acc, r) => {
-              acc[r.changeType] = acc[r.changeType] || [];
-              acc[r.changeType].push(r);
-              return acc;
-            }, {});
+              if (!Array.isArray(results) || results.length === 0) {
+                console.log('No documentation impacts found');
+                return;
+              }
 
-            let comment = '## 📚 Documentation Impact Analysis\n\n';
-            comment += `This PR may affect ${results.length} documentation file(s). Please review and update them if necessary.\n\n`;
+              // Build comment body
+              let comment = '## 📚 Documentation Impact Analysis\n\n';
+              comment += `This PR may affect ${results.length} documentation file(s).\n\n`;
 
-            // Display results by change type
-            for (const [type, docs] of Object.entries(byType)) {
-              const emoji = {
+              // Group by change type
+              const byType = {};
+              for (const result of results) {
+                const type = result.changeType || 'modified';
+                if (!byType[type]) byType[type] = [];
+                byType[type].push(result);
+              }
+
+              // Format results
+              const typeEmojis = {
                 'added': '🆕',
                 'modified': '📝',
                 'deleted': '🗑️'
-              }[type] || '📄';
+              };
 
-              comment += `### ${emoji} ${type.charAt(0).toUpperCase() + type.slice(1)} Code\n\n`;
+              for (const [type, docs] of Object.entries(byType)) {
+                const emoji = typeEmojis[type] || '📄';
+                comment += `### ${emoji} ${type.charAt(0).toUpperCase() + type.slice(1)} Code\n\n`;
 
-              docs.forEach(doc => {
-                const similarity = (doc.similarity * 100).toFixed(1);
-                comment += `- **${doc.file}** (${similarity}% relevance)\n`;
+                for (const doc of docs) {
+                  const similarity = ((doc.similarity || 0) * 100).toFixed(1);
+                  comment += `- **${doc.file}** (${similarity}% relevance)\n`;
 
-                if (doc.matchedTerms && doc.matchedTerms.length > 0) {
-                  comment += `  - Related terms: \`${doc.matchedTerms.slice(0, 5).join('`, `')}\`\n`;
+                  if (doc.matchedTerms && doc.matchedTerms.length > 0) {
+                    const terms = doc.matchedTerms.slice(0, 5).map(t => `\`${t}\``).join(', ');
+                    comment += `  - Related: ${terms}\n`;
+                  }
                 }
-              });
+                comment += '\n';
+              }
 
-              comment += '\n';
-            }
+              comment += '---\n';
+              comment += '_Generated by Gistdex CI Documentation Analysis_';
 
-            comment += '---\n';
-            comment += '_Generated by [Gistdex Documentation Impact Analysis](https://github.com/ushironoko/gistdex)_';
-
-            // Post or update comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.find(c =>
-              c.user.type === 'Bot' &&
-              c.body.includes('Documentation Impact Analysis')
-            );
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: comment
-              });
-            } else {
-              await github.rest.issues.createComment({
+              // Find existing comment
+              const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: comment
               });
+
+              const botComment = comments.find(c =>
+                c.user?.type === 'Bot' &&
+                c.body?.includes('Documentation Impact Analysis')
+              );
+
+              if (botComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: comment
+                });
+                console.log('Updated existing comment');
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: comment
+                });
+                console.log('Created new comment');
+              }
+            } catch (error) {
+              console.error('Failed to process results:', error);
+              core.setFailed(error.message);
             }
 
       - name: Upload analysis results
-        if: always()
+        if: always() && steps.doc-analysis.outputs.analysis_status != 'failed'
         uses: actions/upload-artifact@v4
         with:
           name: doc-impact-analysis
           path: doc-impact.json
           retention-days: 7
+          if-no-files-found: warn
