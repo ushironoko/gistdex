@@ -148,6 +148,30 @@ export const formatJSON = (
   threshold: number,
   diffRange?: string,
 ): string => {
+  // Normalize file paths for GitHub Actions environment
+  const normalizeFilePath = (filePath: string): string => {
+    // Remove GitHub Actions workspace path prefix
+    const workspacePrefixes = [
+      "/home/runner/work/gistdex/gistdex/",
+      process.env.GITHUB_WORKSPACE ? `${process.env.GITHUB_WORKSPACE}/` : "",
+    ].filter(Boolean);
+
+    for (const prefix of workspacePrefixes) {
+      if (filePath.startsWith(prefix)) {
+        return filePath.substring(prefix.length);
+      }
+    }
+
+    // If already a relative path, return as is
+    if (!filePath.startsWith("/")) {
+      return filePath;
+    }
+
+    // For other absolute paths, try to extract relative portion
+    const match = filePath.match(/(?:.*\/)?gistdex\/(.*)/);
+    return match?.[1] ?? filePath;
+  };
+
   return JSON.stringify(
     {
       timestamp: new Date().toISOString(),
@@ -155,8 +179,20 @@ export const formatJSON = (
       threshold,
       impactCount: results.length,
       results: results.map((r) => ({
-        ...r,
+        file: normalizeFilePath(r.file),
+        score: r.similarity, // Keep original score field for compatibility
+        similarity: r.similarity, // Add similarity field for post-github-comment.ts
+        matchedChunks: r.matchedTerms?.length ?? 0, // Provide default value
+        totalChunks: r.matchedTerms?.length ?? 0, // Provide default value (same as matched for now)
         similarityPercent: (r.similarity * 100).toFixed(1),
+        matchedTerms: r.matchedTerms,
+        sections: r.matchedTerms, // Use matchedTerms as sections for compatibility
+        metadata: {
+          changeType: r.changeType,
+          startLine: r.startLine,
+          endLine: r.endLine,
+          githubUrl: r.githubUrl,
+        },
       })),
     },
     null,
