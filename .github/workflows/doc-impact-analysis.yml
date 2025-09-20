@@ -55,10 +55,9 @@ jobs:
         env:
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
         run: |
+          # Threshold and paths are configured in gistdex.config.ts
           pnpm exec tsx scripts/ci/run-doc-analysis.ts \
             --diff "origin/${{ github.base_ref }}...HEAD" \
-            --paths "docs/**/*.md,README.md,*.md" \
-            --threshold 0.5 \
             --output doc-impact.json
 
       - name: Post PR comment
