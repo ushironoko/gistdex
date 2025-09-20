@@ -108,14 +108,43 @@ All documentation appears to be unaffected by the code changes.`;
 };
 
 /**
+ * Normalize file paths for GitHub Actions environment
+ */
+const normalizeFilePath = (filePath: string): string => {
+  // Remove GitHub Actions workspace path prefix
+  const workspacePrefixes = [
+    "/home/runner/work/gistdex/gistdex/",
+    process.env.GITHUB_WORKSPACE ? `${process.env.GITHUB_WORKSPACE}/` : "",
+  ].filter(Boolean);
+
+  for (const prefix of workspacePrefixes) {
+    if (filePath.startsWith(prefix)) {
+      return filePath.substring(prefix.length);
+    }
+  }
+
+  // If already a relative path, return as is
+  if (!filePath.startsWith("/")) {
+    return filePath;
+  }
+
+  // For other absolute paths, try to extract relative portion
+  const match = filePath.match(/(?:.*\/)?gistdex\/(.*)/);
+  return match?.[1] ?? filePath;
+};
+
+/**
  * Format a single result line for GitHub
  */
 const formatGitHubResultLine = (result: DocAnalysisResult): string => {
   const similarity = (result.similarity * 100).toFixed(1);
   const changeIcon = getChangeTypeIcon(result.changeType);
 
+  // Normalize file path
+  const normalizedFile = normalizeFilePath(result.file);
+
   // Format file name with optional line numbers link
-  let fileDisplay = `\`${result.file}\``;
+  let fileDisplay = `\`${normalizedFile}\``;
   if (result.githubUrl && result.startLine && result.endLine) {
     // Add clickable line number range
     fileDisplay += ` [(L${result.startLine}-L${result.endLine})](${result.githubUrl})`;
@@ -148,30 +177,6 @@ export const formatJSON = (
   threshold: number,
   diffRange?: string,
 ): string => {
-  // Normalize file paths for GitHub Actions environment
-  const normalizeFilePath = (filePath: string): string => {
-    // Remove GitHub Actions workspace path prefix
-    const workspacePrefixes = [
-      "/home/runner/work/gistdex/gistdex/",
-      process.env.GITHUB_WORKSPACE ? `${process.env.GITHUB_WORKSPACE}/` : "",
-    ].filter(Boolean);
-
-    for (const prefix of workspacePrefixes) {
-      if (filePath.startsWith(prefix)) {
-        return filePath.substring(prefix.length);
-      }
-    }
-
-    // If already a relative path, return as is
-    if (!filePath.startsWith("/")) {
-      return filePath;
-    }
-
-    // For other absolute paths, try to extract relative portion
-    const match = filePath.match(/(?:.*\/)?gistdex\/(.*)/);
-    return match?.[1] ?? filePath;
-  };
-
   return JSON.stringify(
     {
       timestamp: new Date().toISOString(),
