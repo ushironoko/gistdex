@@ -31,73 +31,23 @@ async function postGitHubComment(
 
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`;
 
-  // Get existing comments to check for updates
-  const listResponse = await fetch(apiUrl, {
+  // Always create a new comment (no checking for existing comments)
+  const createResponse = await fetch(apiUrl, {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github.v3+json",
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({ body: comment }),
   });
 
-  if (!listResponse.ok) {
+  if (!createResponse.ok) {
     throw new Error(
-      `Failed to fetch comments: ${listResponse.status} ${listResponse.statusText}`,
+      `Failed to create comment: ${createResponse.status} ${createResponse.statusText}`,
     );
   }
-
-  const comments = await listResponse.json();
-
-  // Find existing bot comment
-  interface GitHubComment {
-    id: number;
-    user?: { type?: string };
-    body?: string;
-  }
-
-  const botComment = (comments as GitHubComment[]).find(
-    (c) =>
-      c.user?.type === "Bot" &&
-      c.body?.includes("Documentation Impact Analysis"),
-  );
-
-  if (botComment) {
-    // Update existing comment
-    const updateUrl = `https://api.github.com/repos/${owner}/${repo}/issues/comments/${botComment.id}`;
-    const updateResponse = await fetch(updateUrl, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ body: comment }),
-    });
-
-    if (!updateResponse.ok) {
-      throw new Error(
-        `Failed to update comment: ${updateResponse.status} ${updateResponse.statusText}`,
-      );
-    }
-    console.error("Updated existing comment");
-  } else {
-    // Create new comment
-    const createResponse = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ body: comment }),
-    });
-
-    if (!createResponse.ok) {
-      throw new Error(
-        `Failed to create comment: ${createResponse.status} ${createResponse.statusText}`,
-      );
-    }
-    console.error("Created new comment");
-  }
+  console.error("Created new comment");
 }
 
 async function main() {

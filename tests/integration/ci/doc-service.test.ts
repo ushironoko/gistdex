@@ -319,5 +319,47 @@ export function getUserProfile(userId: string) {
         process.chdir(originalCwd);
       }
     });
+
+    it("should generate GitHub URLs with ?plain=1 for markdown files", async () => {
+      const originalCwd = process.cwd();
+      process.chdir(testRepoPath);
+
+      try {
+        // Set GitHub environment variables for URL generation
+        process.env.GITHUB_REPOSITORY = "test-owner/test-repo";
+        process.env.GITHUB_SHA = "abc123def456";
+
+        const results = await analyzeDocuments(
+          "HEAD~1..HEAD",
+          {
+            threshold: 0.3,
+            documentPaths: ["*.md", "docs/*.md"],
+          },
+          db,
+        );
+
+        // Filter for markdown files
+        const markdownResults = results.filter((r) => r.file.endsWith(".md"));
+
+        if (markdownResults.length > 0) {
+          for (const result of markdownResults) {
+            if (result.githubUrl) {
+              // Check that markdown files have ?plain=1 parameter
+              expect(result.githubUrl).toContain("?plain=1");
+
+              // Check that line anchors come after the parameter
+              if (result.startLine) {
+                expect(result.githubUrl).toMatch(/\?plain=1#L\d+/);
+              }
+            }
+          }
+        }
+      } finally {
+        // Clean up environment variables
+        delete process.env.GITHUB_REPOSITORY;
+        delete process.env.GITHUB_SHA;
+        process.chdir(originalCwd);
+      }
+    });
   });
 });

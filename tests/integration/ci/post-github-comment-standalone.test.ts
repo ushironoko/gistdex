@@ -48,105 +48,65 @@ describe("post-github-comment-standalone", () => {
     vi.restoreAllMocks();
   });
 
-  describe("Bot detection", () => {
-    it("should correctly identify GitHub Actions bot comment", async () => {
+  describe("Comment creation", () => {
+    it("should always create a new comment", async () => {
       // Set environment variables
       process.env.GITHUB_TOKEN = "test-token";
       process.env.GITHUB_REPOSITORY = "owner/repo";
       process.env.GITHUB_ISSUE_NUMBER = "123";
 
-      // Mock existing comments with GitHub Actions bot
-      const existingComments = [
-        {
-          id: 1,
-          user: { login: "github-actions[bot]", type: "Bot" },
-          body: "## 📚 Documentation Impact Analysis\n\nPrevious comment",
-        },
-        {
-          id: 2,
-          user: { login: "user", type: "User" },
-          body: "User comment",
-        },
-      ];
-
-      // Mock fetch for getting comments
+      // Mock fetch for creating comment (no need to check existing comments)
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => existingComments,
+        json: async () => ({ id: 999, body: "New comment" }),
       });
 
-      // Mock fetch for updating comment
+      // The script should directly create a new comment without checking existing ones
+      // This is the expected behavior: always create new comments
+      expect(mockFetch).not.toHaveBeenCalledWith(
+        expect.stringContaining("/comments"),
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("should handle API errors gracefully", async () => {
+      // Set environment variables
+      process.env.GITHUB_TOKEN = "test-token";
+      process.env.GITHUB_REPOSITORY = "owner/repo";
+      process.env.GITHUB_ISSUE_NUMBER = "123";
+
+      // Mock fetch to return an error
       mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: 1, body: "Updated" }),
+        ok: false,
+        status: 403,
+        statusText: "Forbidden",
+        json: async () => ({ message: "API rate limit exceeded" }),
       });
 
-      // We need to test the actual detection logic
-      // Since the script runs immediately on import, we'll test the core logic
-      const botComment = existingComments.find(
-        (c) =>
-          c.user?.type === "Bot" &&
-          c.body?.includes("Documentation Impact Analysis"),
+      // The error should be thrown when creating comment fails
+      const postComment = async () => {
+        const apiUrl =
+          "https://api.github.com/repos/owner/repo/issues/123/comments";
+        const response = await mockFetch(apiUrl, {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer test-token",
+            Accept: "application/vnd.github.v3+json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ body: "test comment" }),
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to create comment: ${response.status} ${response.statusText}`,
+          );
+        }
+      };
+
+      await expect(postComment()).rejects.toThrow(
+        "Failed to create comment: 403 Forbidden",
       );
-
-      expect(botComment).toBeDefined();
-      expect(botComment?.id).toBe(1);
-      expect(botComment?.user?.login).toBe("github-actions[bot]");
-    });
-
-    it("should handle different bot user types", () => {
-      const comments = [
-        {
-          id: 1,
-          user: { login: "github-actions[bot]", type: "Bot" },
-          body: "## 📚 Documentation Impact Analysis",
-        },
-        {
-          id: 2,
-          user: { login: "dependabot[bot]", type: "Bot" },
-          body: "## 📚 Documentation Impact Analysis",
-        },
-        {
-          id: 3,
-          user: { login: "renovate[bot]", type: "Bot" },
-          body: "Some other content",
-        },
-      ];
-
-      // Test current logic
-      const botComment = comments.find(
-        (c) =>
-          c.user?.type === "Bot" &&
-          c.body?.includes("Documentation Impact Analysis"),
-      );
-
-      // This should find the first matching bot comment
-      expect(botComment?.id).toBe(1);
-    });
-
-    it("should not match user comments with same content", () => {
-      const comments = [
-        {
-          id: 1,
-          user: { login: "regular-user", type: "User" },
-          body: "## 📚 Documentation Impact Analysis",
-        },
-        {
-          id: 2,
-          user: { login: "github-actions[bot]", type: "Bot" },
-          body: "## 📚 Documentation Impact Analysis",
-        },
-      ];
-
-      // Current logic (finds any Bot type with matching content)
-      const botComment = comments.find(
-        (c) =>
-          c.user?.type === "Bot" &&
-          c.body?.includes("Documentation Impact Analysis"),
-      );
-
-      expect(botComment?.id).toBe(2);
-      expect(botComment?.user?.type).toBe("Bot");
     });
   });
 

@@ -137,11 +137,19 @@ const generateGitHubUrl = (
     normalizedPath = filePath.replace(/^\//, "");
   }
 
+  // For markdown files, add ?plain=1 to show raw text view instead of rendered markdown
+  const isMarkdown = normalizedPath.endsWith(".md");
   let url = `https://github.com/${repository}/blob/${branch}/${normalizedPath}`;
+
+  if (isMarkdown) {
+    url += "?plain=1";
+  }
 
   // Add line anchors if available
   if (startLine && endLine) {
-    url += `#L${startLine}-L${endLine}`;
+    url += isMarkdown
+      ? `#L${startLine}-L${endLine}`
+      : `#L${startLine}-L${endLine}`;
   } else if (startLine) {
     url += `#L${startLine}`;
   }
