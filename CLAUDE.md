@@ -57,7 +57,68 @@ The project provides a CLI tool with the following commands:
 
 #### CI/CD Commands
 
-- `npx gistdex ci-doc` - Analyze documentation for CI/CD pipeline
+- `npx gistdex ci:doc` - Analyze documentation impact from code changes in CI/CD pipeline
+  - `--diff <range>` - Git diff range to analyze (default: HEAD~1)
+  - `--threshold <value>` - Similarity threshold 0-1 (default: 0.7)
+  - `--paths <patterns>` - Comma-separated document glob patterns (default: "docs/**/*.md,README.md")
+  - `--format <type>` - Output format: json or github-comment (default: json)
+  - `--github-pr` - Post results directly to GitHub PR as a comment
+  - `--verbose` - Enable detailed debug output
+
+##### CI Documentation Analysis Examples
+
+```bash
+# Basic analysis with default settings
+npx gistdex ci:doc
+
+# Analyze changes between main and current branch
+npx gistdex ci:doc --diff main..HEAD
+
+# Generate GitHub PR comment format
+npx gistdex ci:doc --format github-comment
+
+# Post directly to GitHub PR (requires GITHUB_TOKEN)
+npx gistdex ci:doc --github-pr --format github-comment
+
+# Custom document paths and threshold
+npx gistdex ci:doc --paths "docs/**/*.md,api/**/*.md,*.md" --threshold 0.8
+
+# Verbose output for debugging
+npx gistdex ci:doc --verbose --diff HEAD~5
+```
+
+##### GitHub Actions Integration
+
+```yaml
+# .github/workflows/doc-analysis.yml
+name: Documentation Impact Analysis
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for git diff
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Analyze Documentation Impact
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx @ushironoko/gistdex ci:doc \
+            --diff ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} \
+            --github-pr \
+            --format github-comment
+```
 
 #### Examples of Multiple File Indexing
 
@@ -206,6 +267,35 @@ This approach provides:
 - Precise search (small chunks for better matching)
 - Complete retrieval (full content available with --full flag)
 
+### CI/CD Documentation Impact Analysis
+
+The system provides automated documentation impact analysis for code changes:
+
+1. **Multi-language Symbol Extraction**: Supports 14 programming languages via tree-sitter
+   - TypeScript, JavaScript, Python, Rust, Go, Java, C++, C#, Ruby, PHP, Swift, Kotlin, Scala, Elixir
+   - Automatically extracts functions, classes, methods, and other symbols from git diffs
+
+2. **Intelligent Query Generation**: Creates search queries from:
+   - Extracted symbols (functions, classes, variables)
+   - File paths and names
+   - Relevant code content
+   - Camel case and snake case variations
+
+3. **Flexible Document Matching**:
+   - Supports arbitrary glob patterns for document paths
+   - Converts absolute paths to relative for consistent matching
+   - Configurable similarity thresholds
+
+4. **GitHub Integration**:
+   - Generates GitHub URLs with line numbers for precise references
+   - Posts formatted comments directly to pull requests
+   - Supports GitHub Actions environment variables
+
+5. **Output Formats**:
+   - **JSON**: Structured data for further processing
+   - **GitHub Comment**: Markdown formatted with impact levels (High/Medium/Low)
+   - Includes matched search terms for transparency
+
 ### Pluggable Vector Database Architecture
 
 The system uses a **functional composition pattern** for vector databases, eliminating global state and ensuring proper resource management:
@@ -263,6 +353,12 @@ The system uses a **functional composition pattern** for vector databases, elimi
   - `indexer-auto-optimize.ts` - Automatic chunk optimization
 - **config/** - Configuration management
   - `config.ts` - Configuration loading with functional composition
+- **ci/** - CI/CD integration features
+  - `doc-service.ts` - Documentation impact analysis service
+  - `diff-analyzer.ts` - Git diff analysis with multi-language symbol extraction using tree-sitter
+  - `formatters.ts` - Output formatters (JSON, GitHub PR comment)
+  - `api.ts` - External API for documentation analysis
+  - `post-github-comment.ts` - GitHub PR comment posting utility
 - **utils/** - Utility functions
   - `env-loader.ts` - Environment variable loading
   - `ranking.ts` - Result re-ranking algorithms
@@ -560,6 +656,12 @@ gistdex/
 │   │   ├── search.ts              # Search implementation
 │   │   ├── indexer.ts             # Content indexing
 │   │   ├── security.ts            # Security utilities
+│   │   ├── ci/                    # CI/CD integration
+│   │   │   ├── doc-service.ts     # Documentation analysis
+│   │   │   ├── diff-analyzer.ts   # Git diff & symbol extraction
+│   │   │   ├── formatters.ts      # Output formatters
+│   │   │   ├── api.ts            # External API
+│   │   │   └── post-github-comment.ts # PR comment posting
 │   │   └── utils/                 # Core utilities
 │   │       ├── env-loader.ts      # Environment variable loader
 │   │       ├── ranking.ts         # Search result ranking
