@@ -66,6 +66,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build project
+        run: pnpm run build
+
       - name: Run documentation impact analysis
         id: doc-analysis
         env:
@@ -83,7 +86,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          pnpm exec tsx scripts/ci/post-github-comment.ts doc-impact.json
+          pnpm exec tsx scripts/ci/post-github-comment-standalone.ts doc-impact.json
 
       - name: Upload analysis results
         if: always()

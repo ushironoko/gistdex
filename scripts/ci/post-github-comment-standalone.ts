@@ -28,9 +28,28 @@ async function main() {
 
     // Read and parse the analysis results
     const content = readFileSync(inputFile, "utf-8");
-    const results = JSON.parse(content) as DocumentImpactResult[];
+    const parsed = JSON.parse(content);
 
-    if (!Array.isArray(results) || results.length === 0) {
+    // Handle both formats: direct array or object with results field
+    let results: DocumentImpactResult[];
+    let threshold = 0.7; // default threshold
+
+    if (Array.isArray(parsed)) {
+      results = parsed as DocumentImpactResult[];
+    } else if (parsed && typeof parsed === "object" && "results" in parsed) {
+      // Extract results from the formatted output
+      results = parsed.results as DocumentImpactResult[];
+      if (parsed.threshold) {
+        threshold = parsed.threshold;
+      }
+    } else {
+      console.log(
+        "Invalid format or no documentation impact detected. Skipping comment.",
+      );
+      exit(0);
+    }
+
+    if (!results || results.length === 0) {
       console.log("No documentation impact detected. Skipping comment.");
       exit(0);
     }
@@ -52,6 +71,7 @@ async function main() {
       token,
       repository,
       issueNumber: parseInt(issueNumber, 10),
+      threshold,
     });
 
     console.log(`Successfully posted comment to PR #${issueNumber}`);

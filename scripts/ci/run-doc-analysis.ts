@@ -56,7 +56,12 @@ async function main() {
     let hasImpact = false;
     try {
       const result = JSON.parse(capturedOutput);
-      hasImpact = Array.isArray(result) && result.length > 0;
+      // Check if we have impact results (support both array and object format)
+      if (Array.isArray(result)) {
+        hasImpact = result.length > 0;
+      } else if (result && typeof result === "object" && "results" in result) {
+        hasImpact = result.results && result.results.length > 0;
+      }
     } catch (parseError) {
       console.error("Failed to parse analysis output:", parseError);
       hasImpact = false;
