@@ -10,10 +10,7 @@ import { parseArgs } from "node:util";
 
 // In a separate package, this would be:
 // import { analyzeDocumentImpact } from "@ushironoko/gistdex";
-import {
-  analyzeDocumentImpact,
-  type DocumentImpactResult,
-} from "../../dist/index.js";
+import { analyzeDocumentImpact } from "../../dist/index.js";
 
 interface ParsedArgs {
   diff?: string;

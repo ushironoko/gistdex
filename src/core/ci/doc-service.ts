@@ -192,14 +192,30 @@ export const analyzeDocuments = async (
             const relevantChange = findMostRelevantChange(changes, query);
 
             // Extract line numbers from boundary metadata if available
+            // Try to get line numbers from boundary metadata
             const boundary = result.metadata?.boundary as
               | {
                   startLine?: number;
                   endLine?: number;
                 }
               | undefined;
-            const startLine = boundary?.startLine;
-            const endLine = boundary?.endLine;
+
+            // Also check if line numbers are directly in metadata
+            const startLine =
+              boundary?.startLine ||
+              (result.metadata?.startLine as number | undefined);
+            const endLine =
+              boundary?.endLine ||
+              (result.metadata?.endLine as number | undefined);
+
+            // Debug logging
+            if (options.verbose && !startLine) {
+              console.error(`Debug: No line numbers found for ${docPath}`);
+              console.error(
+                `  metadata:`,
+                JSON.stringify(result.metadata, null, 2),
+              );
+            }
 
             analysisMap.set(docPath, {
               file: docPath,
