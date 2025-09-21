@@ -77,6 +77,64 @@ describe("formatters", () => {
       expect(output).toContain("`term3`");
       expect(output).toContain("+2 more");
     });
+
+    it("should include line numbers and GitHub URL when available", () => {
+      const results: DocAnalysisResult[] = [
+        {
+          file: "docs/api.md",
+          similarity: 0.95,
+          changeType: "modified",
+          startLine: 15,
+          endLine: 45,
+          githubUrl:
+            "https://github.com/owner/repo/blob/main/docs/api.md#L15-L45",
+        },
+      ];
+      const output = formatGitHubComment(results, 0.5);
+
+      // Should include clickable line number range
+      expect(output).toContain(
+        "[(L15-L45)](https://github.com/owner/repo/blob/main/docs/api.md#L15-L45)",
+      );
+      expect(output).toContain("`docs/api.md`");
+    });
+
+    it("should include single line number when only startLine is provided", () => {
+      const results: DocAnalysisResult[] = [
+        {
+          file: "README.md",
+          similarity: 0.85,
+          changeType: "added",
+          startLine: 100,
+          githubUrl: "https://github.com/owner/repo/blob/main/README.md#L100",
+        },
+      ];
+      const output = formatGitHubComment(results, 0.5);
+
+      // Should include clickable single line number
+      expect(output).toContain(
+        "[(L100)](https://github.com/owner/repo/blob/main/README.md#L100)",
+      );
+      expect(output).toContain("`README.md`");
+    });
+
+    it("should not include line number links when GitHub URL is missing", () => {
+      const results: DocAnalysisResult[] = [
+        {
+          file: "local-file.md",
+          similarity: 0.8,
+          changeType: "modified",
+          startLine: 25,
+          endLine: 50,
+          // No githubUrl provided
+        },
+      ];
+      const output = formatGitHubComment(results, 0.5);
+
+      // Should not include line number links without URL
+      expect(output).not.toContain("[(L");
+      expect(output).toContain("`local-file.md`");
+    });
   });
 
   describe("formatJSON", () => {

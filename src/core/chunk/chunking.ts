@@ -118,13 +118,14 @@ function handleMarkdownBoundaryChunking(
     maxChunkSize: options.size || 1000,
     overlap: options.overlap || 100,
   });
-  return boundaryChunks.map((chunk, index) => {
+
+  const result = boundaryChunks.map((chunk, index) => {
     const { startLine, endLine } = calculateLineNumbers(
       text,
       chunk.startOffset,
       chunk.endOffset,
     );
-    return {
+    const chunkWithMeta = {
       content: chunk.content,
       index,
       start: chunk.startOffset,
@@ -135,7 +136,10 @@ function handleMarkdownBoundaryChunking(
         endLine,
       },
     };
+    return chunkWithMeta;
   });
+
+  return result;
 }
 
 /**
