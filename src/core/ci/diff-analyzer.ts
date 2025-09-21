@@ -137,7 +137,7 @@ const extractRelevantContent = (diff: string): string => {
             // Remove prefix if it exists (space for context, +/- for changes)
             const match = contextLine.match(/^[ +-](.*)$/);
             const cleanContextLine = match ? match[1] : contextLine;
-            if (cleanContextLine && cleanContextLine.trim()) {
+            if (cleanContextLine?.trim()) {
               relevantLines.push(cleanContextLine);
               collectedIndices.add(i);
             }
