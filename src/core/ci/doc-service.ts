@@ -105,7 +105,21 @@ const generateGitHubUrl = (
     return undefined;
   }
 
-  let url = `https://github.com/${repository}/blob/${branch}/${filePath}`;
+  // Normalize file path - remove GitHub Actions workspace prefix
+  let normalizedPath = filePath;
+  if (process.env.GITHUB_WORKSPACE) {
+    const workspace = process.env.GITHUB_WORKSPACE;
+    if (filePath.startsWith(workspace)) {
+      normalizedPath = filePath.substring(workspace.length + 1); // +1 for the trailing slash
+    }
+  } else {
+    // Fallback: Remove common CI prefixes
+    normalizedPath = filePath
+      .replace(/^\/home\/runner\/work\/[^/]+\/[^/]+\//, "")
+      .replace(/^\//, "");
+  }
+
+  let url = `https://github.com/${repository}/blob/${branch}/${normalizedPath}`;
 
   // Add line anchors if available
   if (startLine && endLine) {
