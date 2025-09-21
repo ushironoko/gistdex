@@ -1,84 +1,118 @@
 #!/usr/bin/env tsx
 
 /**
- * Standalone version of post-github-comment.ts that uses the public API
- * This demonstrates how the script would work if gistdex-ci was a separate package
+ * Simplified version that reads the formatted comment from stdin
+ * and posts it to GitHub PR
  */
 
-import { readFileSync } from "node:fs";
-import { argv, env, exit } from "node:process";
+import { env, exit, stdin } from "node:process";
 
-// In a separate package, this would be:
-// import { postDocumentImpactToGitHub, type DocumentImpactResult } from "@ushironoko/gistdex";
-import {
-  type DocumentImpactResult,
-  postDocumentImpactToGitHub,
-} from "../../dist/index.js";
+async function readFromStdin(): Promise<string> {
+  let data = "";
+  stdin.setEncoding("utf8");
+
+  for await (const chunk of stdin) {
+    data += chunk;
+  }
+
+  return data.trim();
+}
+
+async function postGitHubComment(
+  comment: string,
+  token: string,
+  repository: string,
+  issueNumber: number,
+): Promise<void> {
+  const [owner, repo] = repository.split("/");
+  if (!owner || !repo) {
+    throw new Error(`Invalid repository format: ${repository}`);
+  }
+
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`;
+
+  // Get existing comments to check for updates
+  const listResponse = await fetch(apiUrl, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3+json",
+    },
+  });
+
+  if (!listResponse.ok) {
+    throw new Error(
+      `Failed to fetch comments: ${listResponse.status} ${listResponse.statusText}`,
+    );
+  }
+
+  const comments = await listResponse.json();
+
+  // Find existing bot comment
+  interface GitHubComment {
+    id: number;
+    user?: { type?: string };
+    body?: string;
+  }
+
+  const botComment = (comments as GitHubComment[]).find(
+    (c) =>
+      c.user?.type === "Bot" &&
+      c.body?.includes("Documentation Impact Analysis"),
+  );
+
+  if (botComment) {
+    // Update existing comment
+    const updateUrl = `https://api.github.com/repos/${owner}/${repo}/issues/comments/${botComment.id}`;
+    const updateResponse = await fetch(updateUrl, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ body: comment }),
+    });
+
+    if (!updateResponse.ok) {
+      throw new Error(
+        `Failed to update comment: ${updateResponse.status} ${updateResponse.statusText}`,
+      );
+    }
+    console.error("Updated existing comment");
+  } else {
+    // Create new comment
+    const createResponse = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ body: comment }),
+    });
+
+    if (!createResponse.ok) {
+      throw new Error(
+        `Failed to create comment: ${createResponse.status} ${createResponse.statusText}`,
+      );
+    }
+    console.error("Created new comment");
+  }
+}
 
 async function main() {
   try {
-    // Get input file from command line
-    const inputFile = argv[2];
-    if (!inputFile) {
-      console.error(
-        "Usage: tsx post-github-comment-standalone.ts <input-file>",
-      );
+    // Read comment from stdin (piped from run-doc-analysis-standalone.ts)
+    const comment = await readFromStdin();
+
+    if (!comment) {
+      console.error("No comment content received from stdin");
       exit(1);
     }
 
-    // Read and parse the analysis results
-    const content = readFileSync(inputFile, "utf-8");
-    const parsed = JSON.parse(content);
-
-    // Handle both formats: direct array or object with results field
-    let results: DocumentImpactResult[];
-    let threshold = 0.7; // default threshold
-
-    if (Array.isArray(parsed)) {
-      results = parsed as DocumentImpactResult[];
-    } else if (parsed && typeof parsed === "object" && "results" in parsed) {
-      // Extract results from the formatted output
-      // Map the results to flatten metadata fields for API compatibility
-      results = parsed.results.map(
-        (r: {
-          file: string;
-          similarity?: number;
-          score?: number;
-          matchedTerms?: string[];
-          sections?: string[];
-          changeType?: string;
-          startLine?: number;
-          endLine?: number;
-          githubUrl?: string;
-          metadata?: {
-            changeType?: string;
-            startLine?: number;
-            endLine?: number;
-            githubUrl?: string;
-          };
-        }) => ({
-          file: r.file,
-          similarity: r.similarity ?? r.score ?? 0,
-          matchedTerms: r.matchedTerms ?? r.sections,
-          changeType: r.metadata?.changeType ?? r.changeType ?? "modified",
-          startLine: r.metadata?.startLine ?? r.startLine,
-          endLine: r.metadata?.endLine ?? r.endLine,
-          githubUrl: r.metadata?.githubUrl ?? r.githubUrl,
-        }),
-      ) as DocumentImpactResult[];
-
-      if (parsed.threshold) {
-        threshold = parsed.threshold;
-      }
-    } else {
-      console.log(
-        "Invalid format or no documentation impact detected. Skipping comment.",
-      );
-      exit(0);
-    }
-
-    if (!results || results.length === 0) {
-      console.log("No documentation impact detected. Skipping comment.");
+    // Check if we should skip (no impact detected)
+    if (comment.includes("No documentation impact detected")) {
+      console.error("No documentation impact detected. Skipping comment.");
       exit(0);
     }
 
@@ -94,15 +128,15 @@ async function main() {
       exit(1);
     }
 
-    // Post the comment using the public API
-    await postDocumentImpactToGitHub(results, {
+    // Post the comment to GitHub
+    await postGitHubComment(
+      comment,
       token,
       repository,
-      issueNumber: parseInt(issueNumber, 10),
-      threshold,
-    });
+      parseInt(issueNumber, 10),
+    );
 
-    console.log(`Successfully posted comment to PR #${issueNumber}`);
+    console.error(`Successfully posted comment to PR #${issueNumber}`);
     exit(0);
   } catch (error) {
     console.error("Error posting GitHub comment:", error);

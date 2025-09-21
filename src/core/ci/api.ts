@@ -6,11 +6,7 @@
 import { createConfigOperations } from "../config/config-operations.js";
 import { createDatabaseService } from "../database/database-service.js";
 import { analyzeDocuments } from "./doc-service.js";
-import {
-  formatGitHubComment,
-  formatJSON,
-  formatMarkdown,
-} from "./formatters.js";
+import { formatGitHubComment, formatJSON } from "./formatters.js";
 import { postToGitHubPR } from "./github-integration.js";
 
 export interface DocumentImpactOptions {
@@ -20,8 +16,8 @@ export interface DocumentImpactOptions {
   threshold?: number;
   /** Document paths/patterns to analyze */
   paths?: string[];
-  /** Output format */
-  format?: "json" | "markdown" | "github-comment";
+  /** Output format - json for data exchange, github-comment for direct posting */
+  format?: "json" | "github-comment";
   /** Database configuration */
   database?: {
     provider?: string;
@@ -90,16 +86,11 @@ export async function analyzeDocumentImpact(
     );
 
     // Format results based on requested format
-    switch (format) {
-      case "markdown":
-        return formatMarkdown(results, threshold);
-      case "github-comment":
-        return formatGitHubComment(results, threshold);
-      case "json":
-        return formatJSON(results, threshold, diffRange);
-      default:
-        return results;
+    if (format === "github-comment") {
+      return formatGitHubComment(results, threshold);
     }
+    // json is the default
+    return formatJSON(results, threshold, diffRange);
   } finally {
     await dbService.close();
   }
@@ -145,8 +136,4 @@ export async function postDocumentImpactToGitHub(
 // Re-export types
 export type { DocAnalysisResult } from "./doc-service.js";
 // Re-export formatters for external use
-export {
-  formatGitHubComment,
-  formatJSON,
-  formatMarkdown,
-} from "./formatters.js";
+export { formatGitHubComment, formatJSON } from "./formatters.js";

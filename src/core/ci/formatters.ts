@@ -1,44 +1,6 @@
 import type { DocAnalysisResult } from "./doc-service.js";
 
 /**
- * Format results as Markdown
- */
-export const formatMarkdown = (
-  results: DocAnalysisResult[],
-  threshold: number,
-): string => {
-  if (results.length === 0) {
-    return "## 📚 Documentation Impact Analysis\n\n✅ No documentation impact detected";
-  }
-
-  const lines: string[] = [
-    "## 📚 Documentation Impact Analysis",
-    "",
-    `Found ${results.length} documentation file${results.length === 1 ? "" : "s"} with potential impact:`,
-    "",
-  ];
-
-  // Sort by similarity (highest first)
-  const sorted = [...results].sort((a, b) => b.similarity - a.similarity);
-
-  for (const result of sorted) {
-    const similarity = (result.similarity * 100).toFixed(1);
-    const icon = getImpactIcon(result.similarity);
-
-    lines.push(`${icon} \`${result.file}\` (similarity: ${similarity}%)`);
-
-    if (result.matchedTerms && result.matchedTerms.length > 0) {
-      lines.push(`   - Matched: ${result.matchedTerms.slice(0, 5).join(", ")}`);
-    }
-  }
-
-  lines.push("");
-  lines.push(`> Threshold: ${(threshold * 100).toFixed(0)}%`);
-
-  return lines.join("\n");
-};
-
-/**
  * Format results for GitHub PR comment
  */
 export const formatGitHubComment = (
@@ -222,15 +184,6 @@ export const formatJSON = (
     null,
     2,
   );
-};
-
-/**
- * Get impact level icon based on similarity score
- */
-const getImpactIcon = (similarity: number): string => {
-  if (similarity >= 0.8) return "🔴";
-  if (similarity >= 0.5) return "🟡";
-  return "🟢";
 };
 
 /**

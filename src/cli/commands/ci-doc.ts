@@ -1,9 +1,5 @@
 import { analyzeDocuments } from "../../core/ci/doc-service.js";
-import {
-  formatGitHubComment,
-  formatJSON,
-  formatMarkdown,
-} from "../../core/ci/formatters.js";
+import { formatGitHubComment, formatJSON } from "../../core/ci/formatters.js";
 import { postToGitHubPR } from "../../core/ci/github-integration.js";
 import { createConfigOperations } from "../../core/config/config-operations.js";
 import type { CommandContext } from "../utils/command-handler.js";
@@ -32,10 +28,7 @@ export const handleCIDoc = createReadOnlyCommandHandler<CIDocContext>(
     const threshold = args.threshold
       ? Number.parseFloat(args.threshold)
       : (ciConfig?.threshold ?? 0.7);
-    const format = (args.format ?? "markdown") as
-      | "markdown"
-      | "json"
-      | "github-comment";
+    const format = (args.format ?? "json") as "json" | "github-comment";
     const diffRange = args.diff ?? "HEAD~1";
 
     // Parse document paths
@@ -71,16 +64,11 @@ export const handleCIDoc = createReadOnlyCommandHandler<CIDocContext>(
 
     // Format results
     let output: string;
-    switch (format) {
-      case "json":
-        output = formatJSON(results, threshold, diffRange);
-        break;
-      case "github-comment":
-        output = formatGitHubComment(results, threshold);
-        break;
-      default:
-        output = formatMarkdown(results, threshold);
-        break;
+    if (format === "github-comment") {
+      output = formatGitHubComment(results, threshold);
+    } else {
+      // json is the default
+      output = formatJSON(results, threshold, diffRange);
     }
 
     // Handle GitHub PR integration

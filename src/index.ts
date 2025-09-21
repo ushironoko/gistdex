@@ -17,7 +17,6 @@ export {
 export {
   formatGitHubComment,
   formatJSON,
-  formatMarkdown,
 } from "./core/ci/formatters.js";
 export { defineGistdexConfig } from "./core/config/config-helpers.js";
 // Configuration

@@ -5,7 +5,7 @@
  * This demonstrates how the script would work if gistdex-ci was a separate package
  */
 
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 // In a separate package, this would be:
@@ -16,7 +16,6 @@ interface ParsedArgs {
   diff?: string;
   paths?: string;
   threshold?: string;
-  output?: string;
 }
 
 async function main() {
@@ -27,48 +26,38 @@ async function main() {
         diff: { type: "string" },
         paths: { type: "string" },
         threshold: { type: "string" },
-        output: { type: "string" },
       },
     }) as { values: ParsedArgs };
-
-    const outputFile = values.output || "doc-impact.json";
 
     // Parse paths if provided
     const paths = values.paths
       ? values.paths.split(",").map((p) => p.trim())
       : undefined;
 
-    // Run the document impact analysis using public API
-    const results = await analyzeDocumentImpact({
+    // Run the document impact analysis using public API with github-comment format
+    const comment = await analyzeDocumentImpact({
       diff: values.diff,
       paths,
       threshold: values.threshold ? parseFloat(values.threshold) : undefined,
-      format: "json",
+      format: "github-comment",
     });
 
-    // Parse the JSON string result (formatJSON returns a string)
-    const parsedResults =
-      typeof results === "string" ? JSON.parse(results) : results;
+    // Check if there's any impact by looking for the no impact message
+    const hasImpact =
+      typeof comment === "string"
+        ? !comment.includes("No documentation impact detected")
+        : true;
 
-    // Write results to file (keep the full format for compatibility)
-    writeFileSync(
-      outputFile,
-      typeof results === "string" ? results : JSON.stringify(results, null, 2),
-    );
-
-    // Check if there's any impact
-    const hasImpact = parsedResults.results
-      ? parsedResults.results.length > 0
-      : parsedResults.length > 0;
+    // Write the comment to stdout for the next step
+    console.log(comment);
 
     // Set GitHub Actions output
     if (process.env.GITHUB_OUTPUT) {
       appendFileSync(process.env.GITHUB_OUTPUT, `has_impact=${hasImpact}\n`);
     }
 
-    // Log result for debugging
+    // Log result for debugging (to stderr so it doesn't mix with stdout)
     console.error(`Analysis complete. Has impact: ${hasImpact}`);
-    console.error(`Results written to: ${outputFile}`);
 
     process.exit(0);
   } catch (error) {
