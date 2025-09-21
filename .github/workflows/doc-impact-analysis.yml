@@ -77,7 +77,7 @@ jobs:
           # Threshold and paths are configured in gistdex.config.ts
           # Output is now directly in GitHub comment format
           pnpm exec tsx scripts/ci/run-doc-analysis-standalone.ts \
-            --diff "origin/${{ github.base_ref }}...HEAD" > doc-impact-comment.md
+            --diff "origin/${{ github.base_ref }}...HEAD" > doc-impact-comment.md || echo "Analysis failed" > doc-impact-comment.md
 
       - name: Post PR comment
         if: always() && steps.doc-analysis.outcome == 'success'
@@ -86,8 +86,12 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # Pipe the comment from the previous step
-          cat doc-impact-comment.md | pnpm exec tsx scripts/ci/post-github-comment-standalone.ts
+          # Check if the file has content before piping
+          if [ -s doc-impact-comment.md ]; then
+            cat doc-impact-comment.md | pnpm exec tsx scripts/ci/post-github-comment-standalone.ts
+          else
+            echo "No comment content generated, skipping PR comment"
+          fi
 
       - name: Upload analysis results
         if: always()

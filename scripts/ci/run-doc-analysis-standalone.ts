@@ -42,13 +42,17 @@ async function main() {
       format: "github-comment",
     });
 
+    // Check if we got a valid comment
+    if (!comment || typeof comment !== "string") {
+      console.error("Error: No valid comment generated");
+      process.exit(1);
+    }
+
     // Check if there's any impact by looking for the no impact message
-    const hasImpact =
-      typeof comment === "string"
-        ? !comment.includes("No documentation impact detected")
-        : true;
+    const hasImpact = !comment.includes("No documentation impact detected");
 
     // Write the comment to stdout for the next step
+    // IMPORTANT: Only use console.log for the actual comment output
     console.log(comment);
 
     // Set GitHub Actions output
