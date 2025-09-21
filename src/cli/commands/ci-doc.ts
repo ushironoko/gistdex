@@ -1,15 +1,9 @@
-import { analyzeDocuments } from "../../core/ci/doc-service.js";
 import {
-  formatGitHubComment,
-  formatJSON,
-  formatMarkdown,
-  type SimilarityCheckResult,
-} from "../../core/ci/formatters.js";
+  analyzeDocumentImpact,
+  type DocumentImpactOptions,
+} from "../../core/ci/api.js";
+import { formatGitHubComment } from "../../core/ci/formatters.js";
 import { postToGitHubPR } from "../../core/ci/github-integration.js";
-import {
-  checkCodeSimilarity,
-  simpleSimilarityCheck,
-} from "../../core/ci/similarity-checker.js";
 import { createConfigOperations } from "../../core/config/config-operations.js";
 import type { CommandContext } from "../utils/command-handler.js";
 import { createReadOnlyCommandHandler } from "../utils/command-handler.js";
@@ -23,105 +17,84 @@ export interface CIDocContext extends CommandContext {
     "github-pr"?: boolean;
     verbose?: boolean;
     provider?: string;
-    db?: string;
+    "db-path"?: string;
   };
 }
 
 export const handleCIDoc = createReadOnlyCommandHandler<CIDocContext>(
-  async (db, ctx) => {
+  async (_db, ctx) => {
     const args = ctx.values;
-    // Get configuration
-    const configOps = createConfigOperations();
-    const config = await configOps.load();
-    const ciConfig = config.ci?.doc;
-    const threshold = args.threshold
-      ? Number.parseFloat(args.threshold)
-      : (ciConfig?.threshold ?? 0.7);
-    const format = (args.format ?? "markdown") as
-      | "markdown"
-      | "json"
-      | "github-comment";
-    const diffRange = args.diff ?? "HEAD~1";
 
-    // Parse document paths
-    let documentPaths: string[];
+    // Convert CLI arguments to DocumentImpactOptions
+    const options: DocumentImpactOptions = {
+      diff: args.diff ?? "HEAD~1",
+      threshold: args.threshold ? Number.parseFloat(args.threshold) : undefined,
+      format: (args.format ?? "json") as "json" | "github-comment",
+      verbose: args.verbose,
+    };
+
+    // Parse document paths if provided
     if (args.paths) {
-      documentPaths = args.paths.split(",").map((p) => p.trim());
-    } else if (ciConfig?.documentPaths) {
-      documentPaths = ciConfig.documentPaths;
-    } else {
-      documentPaths = ["docs/**/*.md", "README.md", "*.md"];
+      options.paths = args.paths.split(",").map((p) => p.trim());
     }
 
-    // Log configuration if verbose
-    if (args.verbose) {
-      console.log("📋 Configuration:");
-      console.log(`  - Diff range: ${diffRange}`);
-      console.log(`  - Threshold: ${threshold}`);
-      console.log(`  - Document paths: ${documentPaths.join(", ")}`);
-      console.log(`  - Format: ${format}`);
-      console.log("");
-    }
-
-    // Analyze documents
-    const results = await analyzeDocuments(
-      diffRange,
-      {
-        threshold,
-        documentPaths,
-        verbose: args.verbose,
-      },
-      db,
-    );
-
-    // Run similarity check (always enabled for CI)
-    let similarityCheck: SimilarityCheckResult | undefined;
-    try {
-      similarityCheck = await checkCodeSimilarity(diffRange, 0.8);
-
-      // Fallback to simple check if tool not available
-      if (
-        !similarityCheck.hasIssues &&
-        similarityCheck.message === "Similarity check tool not available"
-      ) {
-        similarityCheck = simpleSimilarityCheck(diffRange);
-      }
-    } catch (error) {
-      console.error("Similarity check failed:", error);
-      similarityCheck = {
-        hasIssues: false,
-        message: "Similarity check could not be performed",
+    // Add database override options if provided
+    if (args.provider || args["db-path"]) {
+      options.database = {
+        provider: args.provider,
+        path: args["db-path"],
       };
     }
 
-    // Format results
-    let output: string;
-    switch (format) {
-      case "json":
-        output = formatJSON(results, threshold, diffRange);
-        break;
-      case "github-comment":
-        output = formatGitHubComment(results, threshold, similarityCheck);
-        break;
-      default:
-        output = formatMarkdown(results, threshold);
-        break;
-    }
+    // Log configuration if verbose (before analysis for better UX)
+    if (args.verbose) {
+      const config = await createConfigOperations().load();
+      const ciConfig = config.ci?.doc;
+      const finalThreshold = options.threshold ?? ciConfig?.threshold ?? 0.7;
+      const finalPaths = options.paths ??
+        ciConfig?.documentPaths ?? ["docs/**/*.md", "README.md", "*.md"];
 
-    // Handle GitHub PR integration
-    if (args["github-pr"]) {
-      try {
-        await postToGitHubPR(output);
-        console.log("✅ Posted analysis to GitHub PR");
-      } catch (error) {
-        console.error("❌ Failed to post to GitHub PR:", error);
-        // Still output the results even if posting fails
+      console.log("📋 Configuration:");
+      console.log(`  - Diff range: ${options.diff}`);
+      console.log(`  - Threshold: ${finalThreshold}`);
+      console.log(`  - Document paths: ${finalPaths.join(", ")}`);
+      console.log(`  - Format: ${options.format}`);
+      if (options.database) {
+        console.log(
+          `  - Database provider: ${options.database.provider ?? "default"}`,
+        );
+        console.log(`  - Database path: ${options.database.path ?? "default"}`);
       }
+      console.log("");
     }
 
-    // Output results
-    console.log(output);
+    try {
+      // Use the API to analyze documents
+      const result = await analyzeDocumentImpact(options);
 
-    // Return void for command handler
+      // Handle GitHub PR integration
+      if (args["github-pr"]) {
+        try {
+          // If result is string (formatted), use it directly
+          const comment =
+            typeof result === "string"
+              ? result
+              : formatGitHubComment(result, options.threshold ?? 0.7);
+          await postToGitHubPR(comment);
+          console.log("✅ Posted analysis to GitHub PR");
+        } catch (error) {
+          console.error("❌ Failed to post to GitHub PR:", error);
+          // Still output the results even if posting fails
+        }
+      }
+
+      // Output results
+      console.log(
+        typeof result === "string" ? result : JSON.stringify(result, null, 2),
+      );
+    } catch (error) {
+      console.error("❌ Analysis failed:", error);
+      process.exit(1);
+    }
   },
 );

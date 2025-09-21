@@ -6,16 +6,8 @@
 import { createConfigOperations } from "../config/config-operations.js";
 import { createDatabaseService } from "../database/database-service.js";
 import { analyzeDocuments } from "./doc-service.js";
-import {
-  formatGitHubComment,
-  formatMarkdown,
-  type SimilarityCheckResult,
-} from "./formatters.js";
+import { formatGitHubComment, formatJSON } from "./formatters.js";
 import { postToGitHubPR } from "./github-integration.js";
-import {
-  checkCodeSimilarity,
-  simpleSimilarityCheck,
-} from "./similarity-checker.js";
 
 export interface DocumentImpactOptions {
   /** Git diff range (e.g., "main..HEAD", "HEAD~1") */
@@ -24,8 +16,8 @@ export interface DocumentImpactOptions {
   threshold?: number;
   /** Document paths/patterns to analyze */
   paths?: string[];
-  /** Output format */
-  format?: "json" | "markdown" | "github-comment";
+  /** Output format - json for data exchange, github-comment for direct posting */
+  format?: "json" | "github-comment";
   /** Database configuration */
   database?: {
     provider?: string;
@@ -33,10 +25,6 @@ export interface DocumentImpactOptions {
   };
   /** Verbose output */
   verbose?: boolean;
-  /** Include code similarity check */
-  checkSimilarity?: boolean;
-  /** Similarity check threshold (0-1) */
-  similarityThreshold?: number;
 }
 
 // Use the actual type from doc-service
@@ -97,34 +85,12 @@ export async function analyzeDocumentImpact(
       dbService,
     );
 
-    // Check code similarity if requested
-    let similarityCheck: SimilarityCheckResult | undefined;
-    if (options.checkSimilarity) {
-      const simThreshold = options.similarityThreshold ?? 0.8;
-      similarityCheck = await checkCodeSimilarity(diffRange, simThreshold);
-
-      // Fallback to simple check if main check fails
-      if (
-        !similarityCheck.hasIssues &&
-        similarityCheck.message === "Similarity check tool not available"
-      ) {
-        similarityCheck = simpleSimilarityCheck(diffRange);
-      }
-    }
-
     // Format results based on requested format
-    switch (format) {
-      case "markdown":
-        return formatMarkdown(results, threshold);
-      case "github-comment":
-        return formatGitHubComment(results, threshold, similarityCheck);
-      default:
-        // For JSON format, include similarity check results if available
-        if (similarityCheck) {
-          return results; // Keep it simple, similarity is handled in formatters
-        }
-        return results;
+    if (format === "github-comment") {
+      return formatGitHubComment(results, threshold);
     }
+    // json is the default
+    return formatJSON(results, threshold, diffRange);
   } finally {
     await dbService.close();
   }
@@ -170,9 +136,4 @@ export async function postDocumentImpactToGitHub(
 // Re-export types
 export type { DocAnalysisResult } from "./doc-service.js";
 // Re-export formatters for external use
-export { formatGitHubComment, formatMarkdown } from "./formatters.js";
-
-// Helper function for JSON formatting
-export const formatJSON = (results: DocumentImpactResult[]): string => {
-  return JSON.stringify(results, null, 2);
-};
+export { formatGitHubComment, formatJSON } from "./formatters.js";

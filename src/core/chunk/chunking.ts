@@ -10,6 +10,7 @@ import {
   isMarkdownFile,
   isTreeSitterSupported,
 } from "./file-extensions.js";
+import { calculateLineNumbers } from "./line-utils.js";
 
 export interface ChunkOptions {
   size?: number;
@@ -29,6 +30,8 @@ export interface ChunkWithMetadata {
     level?: number;
     name?: string;
     title?: string;
+    startLine?: number;
+    endLine?: number;
   };
 }
 
@@ -115,13 +118,28 @@ function handleMarkdownBoundaryChunking(
     maxChunkSize: options.size || 1000,
     overlap: options.overlap || 100,
   });
-  return boundaryChunks.map((chunk, index) => ({
-    content: chunk.content,
-    index,
-    start: chunk.startOffset,
-    end: chunk.endOffset,
-    boundary: chunk.boundary,
-  }));
+
+  const result = boundaryChunks.map((chunk, index) => {
+    const { startLine, endLine } = calculateLineNumbers(
+      text,
+      chunk.startOffset,
+      chunk.endOffset,
+    );
+    const chunkWithMeta = {
+      content: chunk.content,
+      index,
+      start: chunk.startOffset,
+      end: chunk.endOffset,
+      boundary: {
+        ...chunk.boundary,
+        startLine,
+        endLine,
+      },
+    };
+    return chunkWithMeta;
+  });
+
+  return result;
 }
 
 /**
@@ -136,13 +154,24 @@ function handleCodeBoundaryChunking(
     maxChunkSize: options.size || 1000,
     overlap: options.overlap || 100,
   });
-  return boundaryChunks.map((chunk, index) => ({
-    content: chunk.content,
-    index,
-    start: chunk.startOffset,
-    end: chunk.endOffset,
-    boundary: chunk.boundary,
-  }));
+  return boundaryChunks.map((chunk, index) => {
+    const { startLine, endLine } = calculateLineNumbers(
+      text,
+      chunk.startOffset,
+      chunk.endOffset,
+    );
+    return {
+      content: chunk.content,
+      index,
+      start: chunk.startOffset,
+      end: chunk.endOffset,
+      boundary: {
+        ...chunk.boundary,
+        startLine,
+        endLine,
+      },
+    };
+  });
 }
 
 /**
@@ -233,13 +262,24 @@ export async function chunkTextWithCSTAndMetadata(
         },
         chunkCodeByBoundary,
       );
-      return boundaryChunks.map((chunk, index) => ({
-        content: chunk.content,
-        index,
-        start: chunk.startOffset,
-        end: chunk.endOffset,
-        boundary: chunk.boundary,
-      }));
+      return boundaryChunks.map((chunk, index) => {
+        const { startLine, endLine } = calculateLineNumbers(
+          text,
+          chunk.startOffset,
+          chunk.endOffset,
+        );
+        return {
+          content: chunk.content,
+          index,
+          start: chunk.startOffset,
+          end: chunk.endOffset,
+          boundary: {
+            ...chunk.boundary,
+            startLine,
+            endLine,
+          },
+        };
+      });
     }
   }
 

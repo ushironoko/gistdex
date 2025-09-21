@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DocAnalysisResult } from "./doc-service.js";
-import {
-  formatGitHubComment,
-  formatJSON,
-  formatMarkdown,
-} from "./formatters.js";
+import { formatGitHubComment, formatJSON } from "./formatters.js";
 
 describe("formatters", () => {
   const createMockResults = (count: number): DocAnalysisResult[] => {
@@ -19,53 +15,6 @@ describe("formatters", () => {
     }
     return results;
   };
-
-  describe("formatMarkdown", () => {
-    it("should format empty results", () => {
-      const output = formatMarkdown([], 0.7);
-      expect(output).toContain("No documentation impact detected");
-    });
-
-    it("should format results with similarity scores", () => {
-      const results = createMockResults(2);
-      const output = formatMarkdown(results, 0.7);
-
-      expect(output).toContain("Documentation Impact Analysis");
-      expect(output).toContain("docs/file0.md");
-      expect(output).toContain("90.0%");
-      expect(output).toContain("docs/file1.md");
-      expect(output).toContain("80.0%");
-      expect(output).toContain("Threshold: 70%");
-    });
-
-    it("should include matched terms", () => {
-      const results: DocAnalysisResult[] = [
-        {
-          file: "README.md",
-          similarity: 0.85,
-          matchedTerms: ["authenticate", "getUserProfile"],
-          changeType: "deleted",
-        },
-      ];
-      const output = formatMarkdown(results, 0.5);
-
-      expect(output).toContain("authenticate");
-      expect(output).toContain("getUserProfile");
-    });
-
-    it("should use correct impact icons", () => {
-      const results: DocAnalysisResult[] = [
-        { file: "high.md", similarity: 0.85, changeType: "modified" },
-        { file: "medium.md", similarity: 0.6, changeType: "modified" },
-        { file: "low.md", similarity: 0.3, changeType: "modified" },
-      ];
-      const output = formatMarkdown(results, 0.3);
-
-      expect(output).toContain("🔴"); // High impact
-      expect(output).toContain("🟡"); // Medium impact
-      expect(output).toContain("🟢"); // Low impact
-    });
-  });
 
   describe("formatGitHubComment", () => {
     it("should format empty results with friendly message", () => {
@@ -118,7 +67,15 @@ describe("formatters", () => {
           file: "test.md",
           similarity: 0.9,
           changeType: "modified",
-          matchedTerms: ["term1", "term2", "term3", "term4", "term5"],
+          matchedTerms: [
+            "term1",
+            "term2",
+            "term3",
+            "term4",
+            "term5",
+            "term6",
+            "term7",
+          ],
         },
       ];
       const output = formatGitHubComment(results, 0.5);
@@ -126,7 +83,67 @@ describe("formatters", () => {
       expect(output).toContain("`term1`");
       expect(output).toContain("`term2`");
       expect(output).toContain("`term3`");
-      expect(output).toContain("+2 more");
+      expect(output).toContain("`term4`");
+      expect(output).toContain("`term5`");
+      expect(output).toContain("...and 2 more");
+    });
+
+    it("should include line numbers and GitHub URL when available", () => {
+      const results: DocAnalysisResult[] = [
+        {
+          file: "docs/api.md",
+          similarity: 0.95,
+          changeType: "modified",
+          startLine: 15,
+          endLine: 45,
+          githubUrl:
+            "https://github.com/owner/repo/blob/main/docs/api.md#L15-L45",
+        },
+      ];
+      const output = formatGitHubComment(results, 0.5);
+
+      // Should include clickable line number range
+      expect(output).toContain(
+        "[(L15-L45)](https://github.com/owner/repo/blob/main/docs/api.md#L15-L45)",
+      );
+      expect(output).toContain("`docs/api.md`");
+    });
+
+    it("should include single line number when only startLine is provided", () => {
+      const results: DocAnalysisResult[] = [
+        {
+          file: "README.md",
+          similarity: 0.85,
+          changeType: "added",
+          startLine: 100,
+          githubUrl: "https://github.com/owner/repo/blob/main/README.md#L100",
+        },
+      ];
+      const output = formatGitHubComment(results, 0.5);
+
+      // Should include clickable single line number
+      expect(output).toContain(
+        "[(L100)](https://github.com/owner/repo/blob/main/README.md#L100)",
+      );
+      expect(output).toContain("`README.md`");
+    });
+
+    it("should not include line number links when GitHub URL is missing", () => {
+      const results: DocAnalysisResult[] = [
+        {
+          file: "local-file.md",
+          similarity: 0.8,
+          changeType: "modified",
+          startLine: 25,
+          endLine: 50,
+          // No githubUrl provided
+        },
+      ];
+      const output = formatGitHubComment(results, 0.5);
+
+      // Should not include line number links without URL
+      expect(output).not.toContain("[(L");
+      expect(output).toContain("`local-file.md`");
     });
   });
 

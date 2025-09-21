@@ -2,7 +2,7 @@ name: Documentation Impact Analysis
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       # Source code changes that might affect documentation
       - 'src/**/*.ts'
@@ -66,15 +66,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build project
+        run: pnpm run build
+
       - name: Run documentation impact analysis
         id: doc-analysis
         env:
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
         run: |
           # Threshold and paths are configured in gistdex.config.ts
-          pnpm exec tsx scripts/ci/run-doc-analysis.ts \
-            --diff "origin/${{ github.base_ref }}...HEAD" \
-            --output doc-impact.json
+          # Output is now directly in GitHub comment format
+          pnpm exec tsx scripts/ci/run-doc-analysis-standalone.ts \
+            --diff "origin/${{ github.base_ref }}...HEAD" > doc-impact-comment.md || echo "Analysis failed" > doc-impact-comment.md
 
       - name: Post PR comment
         if: always() && steps.doc-analysis.outcome == 'success'
@@ -83,13 +86,14 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          pnpm exec tsx scripts/ci/post-github-comment.ts doc-impact.json
+          # Always post comment, even if it's "no impact"
+          cat doc-impact-comment.md | pnpm exec tsx scripts/ci/post-github-comment-standalone.ts
 
       - name: Upload analysis results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: doc-impact-analysis
-          path: doc-impact.json
+          path: doc-impact-comment.md
           retention-days: 7
           if-no-files-found: warn

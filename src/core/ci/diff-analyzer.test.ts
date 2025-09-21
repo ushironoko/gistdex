@@ -152,7 +152,7 @@ export function newFunction() {
   });
 
   describe("extractSymbols", () => {
-    it("should extract TypeScript functions", () => {
+    it("should extract TypeScript functions", async () => {
       const content = `
         export function myFunction() {}
         export async function asyncFunc() {}
@@ -161,7 +161,7 @@ export function newFunction() {
         export const exportedArrow = async () => {};
       `;
 
-      const symbols = extractSymbols(content, "test.ts");
+      const symbols = await extractSymbols(content, "test.ts");
 
       expect(symbols).toContain("myFunction");
       expect(symbols).toContain("asyncFunc");
@@ -170,21 +170,21 @@ export function newFunction() {
       expect(symbols).toContain("exportedArrow");
     });
 
-    it("should extract TypeScript classes and interfaces", () => {
+    it("should extract TypeScript classes and interfaces", async () => {
       const content = `
         export class MyClass {}
         interface MyInterface {}
         export type MyType = string;
       `;
 
-      const symbols = extractSymbols(content, "test.ts");
+      const symbols = await extractSymbols(content, "test.ts");
 
       expect(symbols).toContain("MyClass");
       expect(symbols).toContain("MyInterface");
       expect(symbols).toContain("MyType");
     });
 
-    it("should extract Python functions and classes", () => {
+    it("should extract Python functions and classes", async () => {
       const content = `
 def my_function():
     pass
@@ -194,22 +194,169 @@ class MyClass:
         pass
       `;
 
-      const symbols = extractSymbols(content, "test.py");
+      const symbols = await extractSymbols(content, "test.py");
 
       expect(symbols).toContain("my_function");
       expect(symbols).toContain("MyClass");
       expect(symbols).toContain("method");
     });
 
-    it("should remove duplicate symbols", () => {
+    it("should remove duplicate symbols", async () => {
       const content = `
         function duplicate() {}
         function duplicate() {}
       `;
 
-      const symbols = extractSymbols(content, "test.js");
+      const symbols = await extractSymbols(content, "test.js");
 
       expect(symbols.filter((s) => s === "duplicate").length).toBe(1);
+    });
+
+    it("should extract Go functions and types", async () => {
+      const content = `
+package main
+
+func main() {
+    fmt.Println("Hello")
+}
+
+func processData(data string) error {
+    return nil
+}
+
+type Config struct {
+    Name string
+}
+
+type Handler interface {
+    Handle()
+}
+      `;
+
+      const symbols = await extractSymbols(content, "main.go");
+
+      expect(symbols).toContain("main");
+      expect(symbols).toContain("processData");
+      expect(symbols).toContain("Config");
+      expect(symbols).toContain("Handler");
+    });
+
+    it("should extract Rust functions and structs", async () => {
+      const content = `
+pub fn main() {
+    println!("Hello");
+}
+
+pub async fn process_data(data: &str) -> Result<()> {
+    Ok(())
+}
+
+pub struct Config {
+    name: String,
+}
+
+pub enum Status {
+    Active,
+    Inactive,
+}
+
+pub trait Handler {
+    fn handle(&self);
+}
+      `;
+
+      const symbols = await extractSymbols(content, "main.rs");
+
+      expect(symbols).toContain("main");
+      expect(symbols).toContain("process_data");
+      expect(symbols).toContain("Config");
+      expect(symbols).toContain("Status");
+      expect(symbols).toContain("Handler");
+    });
+
+    it("should extract Java classes and methods", async () => {
+      const content = `
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello");
+    }
+
+    private void processData(String data) {
+        // Process
+    }
+}
+
+public interface Handler {
+    void handle();
+}
+      `;
+
+      const symbols = await extractSymbols(content, "Main.java");
+
+      expect(symbols).toContain("Main");
+      expect(symbols).toContain("main");
+      expect(symbols).toContain("processData");
+      expect(symbols).toContain("Handler");
+    });
+
+    it("should extract Ruby classes and methods", async () => {
+      const content = `
+class User
+  def initialize(name)
+    @name = name
+  end
+
+  def greet
+    puts "Hello"
+  end
+end
+
+module Authentication
+  def authenticate
+    true
+  end
+end
+      `;
+
+      const symbols = await extractSymbols(content, "user.rb");
+
+      expect(symbols).toContain("User");
+      expect(symbols).toContain("initialize");
+      expect(symbols).toContain("greet");
+      expect(symbols).toContain("Authentication");
+      expect(symbols).toContain("authenticate");
+    });
+
+    it("should extract C functions and structs", async () => {
+      const content = `
+#include <stdio.h>
+
+void hello() {
+    printf("Hello\\n");
+}
+
+int main() {
+    hello();
+    return 0;
+}
+
+struct Point {
+    int x;
+    int y;
+};
+
+enum Status {
+    ACTIVE,
+    INACTIVE
+};
+      `;
+
+      const symbols = await extractSymbols(content, "main.c");
+
+      expect(symbols).toContain("hello");
+      expect(symbols).toContain("main");
+      expect(symbols).toContain("Point");
+      expect(symbols).toContain("Status");
     });
   });
 
@@ -247,7 +394,7 @@ class MyClass:
 
       const queries = generateSearchQueries(changes);
 
-      expect(queries.length).toBeLessThanOrEqual(20);
+      expect(queries.length).toBeLessThanOrEqual(30); // Updated to match implementation limit
     });
 
     it("should handle camelCase to space conversion", () => {

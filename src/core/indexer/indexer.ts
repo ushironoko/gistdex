@@ -160,7 +160,7 @@ export async function indexFile(
     };
 
     // Apply optimal chunk settings automatically if not specified
-    let finalOptions = options;
+    let finalOptions = { ...options };
     if (!options.chunkSize && !options.chunkOverlap) {
       const optimalSettings = getOptimalChunkSettings(filePath);
       finalOptions = {

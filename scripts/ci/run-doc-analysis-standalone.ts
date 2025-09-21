@@ -5,21 +5,17 @@
  * This demonstrates how the script would work if gistdex-ci was a separate package
  */
 
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
 // In a separate package, this would be:
 // import { analyzeDocumentImpact } from "@ushironoko/gistdex";
-import {
-  analyzeDocumentImpact,
-  type DocumentImpactResult,
-} from "../../dist/index.js";
+import { analyzeDocumentImpact } from "../../dist/index.js";
 
 interface ParsedArgs {
   diff?: string;
   paths?: string;
   threshold?: string;
-  output?: string;
 }
 
 async function main() {
@@ -30,45 +26,42 @@ async function main() {
         diff: { type: "string" },
         paths: { type: "string" },
         threshold: { type: "string" },
-        output: { type: "string" },
       },
     }) as { values: ParsedArgs };
-
-    const outputFile = values.output || "doc-impact.json";
 
     // Parse paths if provided
     const paths = values.paths
       ? values.paths.split(",").map((p) => p.trim())
       : undefined;
 
-    // Run the document impact analysis using public API
-    const results = await analyzeDocumentImpact({
+    // Run the document impact analysis using public API with github-comment format
+    const comment = await analyzeDocumentImpact({
       diff: values.diff,
       paths,
       threshold: values.threshold ? parseFloat(values.threshold) : undefined,
-      format: "json",
+      format: "github-comment",
     });
 
-    // Ensure results are in array format
-    const resultsArray = Array.isArray(results)
-      ? results
-      : (JSON.parse(results as string) as DocumentImpactResult[]);
+    // Check if we got a valid comment
+    if (!comment || typeof comment !== "string") {
+      console.error("Error: No valid comment generated");
+      process.exit(1);
+    }
 
-    // Write results to file
-    const jsonOutput = JSON.stringify(resultsArray, null, 2);
-    writeFileSync(outputFile, jsonOutput);
+    // Check if there's any impact by looking for the no impact message
+    const hasImpact = !comment.includes("No documentation impact detected");
 
-    // Check if there's any impact
-    const hasImpact = resultsArray.length > 0;
+    // Write the comment to stdout for the next step
+    // IMPORTANT: Only use console.log for the actual comment output
+    console.log(comment);
 
     // Set GitHub Actions output
     if (process.env.GITHUB_OUTPUT) {
       appendFileSync(process.env.GITHUB_OUTPUT, `has_impact=${hasImpact}\n`);
     }
 
-    // Log result for debugging
+    // Log result for debugging (to stderr so it doesn't mix with stdout)
     console.error(`Analysis complete. Has impact: ${hasImpact}`);
-    console.error(`Results written to: ${outputFile}`);
 
     process.exit(0);
   } catch (error) {

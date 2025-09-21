@@ -1,39 +1,67 @@
 #!/usr/bin/env tsx
 
 /**
- * Standalone version of post-github-comment.ts that uses the public API
- * This demonstrates how the script would work if gistdex-ci was a separate package
+ * Simplified version that reads the formatted comment from stdin
+ * and posts it to GitHub PR
  */
 
-import { readFileSync } from "node:fs";
-import { argv, env, exit } from "node:process";
+import { env, exit, stdin } from "node:process";
 
-// In a separate package, this would be:
-// import { postDocumentImpactToGitHub, type DocumentImpactResult } from "@ushironoko/gistdex";
-import {
-  type DocumentImpactResult,
-  postDocumentImpactToGitHub,
-} from "../../dist/index.js";
+async function readFromStdin(): Promise<string> {
+  let data = "";
+  stdin.setEncoding("utf8");
+
+  for await (const chunk of stdin) {
+    data += chunk;
+  }
+
+  return data.trim();
+}
+
+async function postGitHubComment(
+  comment: string,
+  token: string,
+  repository: string,
+  issueNumber: number,
+): Promise<void> {
+  const [owner, repo] = repository.split("/");
+  if (!owner || !repo) {
+    throw new Error(`Invalid repository format: ${repository}`);
+  }
+
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`;
+
+  // Always create a new comment (no checking for existing comments)
+  const createResponse = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github.v3+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ body: comment }),
+  });
+
+  if (!createResponse.ok) {
+    throw new Error(
+      `Failed to create comment: ${createResponse.status} ${createResponse.statusText}`,
+    );
+  }
+  console.error("Created new comment");
+}
 
 async function main() {
   try {
-    // Get input file from command line
-    const inputFile = argv[2];
-    if (!inputFile) {
-      console.error(
-        "Usage: tsx post-github-comment-standalone.ts <input-file>",
-      );
+    // Read comment from stdin (piped from run-doc-analysis-standalone.ts)
+    const comment = await readFromStdin();
+
+    if (!comment) {
+      console.error("No comment content received from stdin");
       exit(1);
     }
 
-    // Read and parse the analysis results
-    const content = readFileSync(inputFile, "utf-8");
-    const results = JSON.parse(content) as DocumentImpactResult[];
-
-    if (!Array.isArray(results) || results.length === 0) {
-      console.log("No documentation impact detected. Skipping comment.");
-      exit(0);
-    }
+    // Always post comment, even if no impact detected
+    // This provides transparency about the analysis results
 
     // Get environment variables
     const token = env.GITHUB_TOKEN;
@@ -47,14 +75,15 @@ async function main() {
       exit(1);
     }
 
-    // Post the comment using the public API
-    await postDocumentImpactToGitHub(results, {
+    // Post the comment to GitHub
+    await postGitHubComment(
+      comment,
       token,
       repository,
-      issueNumber: parseInt(issueNumber, 10),
-    });
+      parseInt(issueNumber, 10),
+    );
 
-    console.log(`Successfully posted comment to PR #${issueNumber}`);
+    console.error(`Successfully posted comment to PR #${issueNumber}`);
     exit(0);
   } catch (error) {
     console.error("Error posting GitHub comment:", error);

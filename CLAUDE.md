@@ -58,7 +58,6 @@ The project provides a CLI tool with the following commands:
 #### CI/CD Commands
 
 - `npx gistdex ci-doc` - Analyze documentation for CI/CD pipeline
-- `npx gistdex ci-github-comment` - Post analysis results as GitHub PR comment
 
 #### Examples of Multiple File Indexing
 

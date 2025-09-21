@@ -251,12 +251,11 @@ const ciDocCommand = define({
     paths: {
       type: "string" as const,
       description:
-        "Comma-separated document paths (default: docs/**/*.md,README.md,*.md)",
+        "Comma-separated document paths (default: docs/**/*.md,README.md)",
     },
     format: {
       type: "string" as const,
-      description:
-        "Output format: markdown, json, github-comment (default: markdown)",
+      description: "Output format: json, github-comment (default: json)",
     },
     "github-pr": {
       type: "boolean" as const,
