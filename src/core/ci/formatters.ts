@@ -112,12 +112,24 @@ All documentation appears to be unaffected by the code changes.`;
  */
 const normalizeFilePath = (filePath: string): string => {
   // Remove GitHub Actions workspace path prefix
-  const workspacePrefixes = [
-    "/home/runner/work/gistdex/gistdex/",
-    process.env.GITHUB_WORKSPACE ? `${process.env.GITHUB_WORKSPACE}/` : "",
-  ].filter(Boolean);
+  const workspacePrefixes: string[] = [];
 
-  for (const prefix of workspacePrefixes) {
+  // Get repository name from GITHUB_REPOSITORY env var
+  const repository = process.env.GITHUB_REPOSITORY;
+  if (repository) {
+    const repoName = repository.split("/")[1];
+    if (repoName) {
+      // Add the standard GitHub Actions workspace path
+      workspacePrefixes.push(`/home/runner/work/${repoName}/${repoName}/`);
+    }
+  }
+
+  // Add GITHUB_WORKSPACE if available
+  if (process.env.GITHUB_WORKSPACE) {
+    workspacePrefixes.push(`${process.env.GITHUB_WORKSPACE}/`);
+  }
+
+  for (const prefix of workspacePrefixes.filter(Boolean)) {
     if (filePath.startsWith(prefix)) {
       return filePath.substring(prefix.length);
     }
@@ -128,9 +140,16 @@ const normalizeFilePath = (filePath: string): string => {
     return filePath;
   }
 
-  // For other absolute paths, try to extract relative portion
-  const match = filePath.match(/(?:.*\/)?gistdex\/(.*)/);
-  return match?.[1] ?? filePath;
+  // For other absolute paths, try to extract relative portion based on repository name
+  if (repository) {
+    const repoName = repository.split("/")[1];
+    if (repoName) {
+      const match = filePath.match(new RegExp(`(?:.*/)?${repoName}/(.*)`));
+      return match?.[1] ?? filePath;
+    }
+  }
+
+  return filePath;
 };
 
 /**

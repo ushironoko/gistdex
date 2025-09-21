@@ -107,16 +107,30 @@ const generateGitHubUrl = (
 
   // Normalize file path - remove GitHub Actions workspace prefix
   let normalizedPath = filePath;
+
+  // Try to use GITHUB_WORKSPACE first
   if (process.env.GITHUB_WORKSPACE) {
     const workspace = process.env.GITHUB_WORKSPACE;
     if (filePath.startsWith(workspace)) {
       normalizedPath = filePath.substring(workspace.length + 1); // +1 for the trailing slash
     }
+  } else if (repository) {
+    // Fallback: Remove common CI prefixes based on repository name
+    const repoName = repository.split("/")[1];
+    if (repoName) {
+      const prefix = `/home/runner/work/${repoName}/${repoName}/`;
+      if (filePath.startsWith(prefix)) {
+        normalizedPath = filePath.substring(prefix.length);
+      } else {
+        // Generic fallback
+        normalizedPath = filePath
+          .replace(/^\/home\/runner\/work\/[^/]+\/[^/]+\//, "")
+          .replace(/^\//, "");
+      }
+    }
   } else {
-    // Fallback: Remove common CI prefixes
-    normalizedPath = filePath
-      .replace(/^\/home\/runner\/work\/[^/]+\/[^/]+\//, "")
-      .replace(/^\//, "");
+    // Last fallback: just remove leading slash if absolute path
+    normalizedPath = filePath.replace(/^\//, "");
   }
 
   let url = `https://github.com/${repository}/blob/${branch}/${normalizedPath}`;
