@@ -262,13 +262,24 @@ export async function chunkTextWithCSTAndMetadata(
         },
         chunkCodeByBoundary,
       );
-      return boundaryChunks.map((chunk, index) => ({
-        content: chunk.content,
-        index,
-        start: chunk.startOffset,
-        end: chunk.endOffset,
-        boundary: chunk.boundary,
-      }));
+      return boundaryChunks.map((chunk, index) => {
+        const { startLine, endLine } = calculateLineNumbers(
+          text,
+          chunk.startOffset,
+          chunk.endOffset,
+        );
+        return {
+          content: chunk.content,
+          index,
+          start: chunk.startOffset,
+          end: chunk.endOffset,
+          boundary: {
+            ...chunk.boundary,
+            startLine,
+            endLine,
+          },
+        };
+      });
     }
   }
 

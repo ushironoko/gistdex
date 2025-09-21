@@ -86,12 +86,8 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # Check if the file has content before piping
-          if [ -s doc-impact-comment.md ]; then
-            cat doc-impact-comment.md | pnpm exec tsx scripts/ci/post-github-comment-standalone.ts
-          else
-            echo "No comment content generated, skipping PR comment"
-          fi
+          # Always post comment, even if it's "no impact"
+          cat doc-impact-comment.md | pnpm exec tsx scripts/ci/post-github-comment-standalone.ts
 
       - name: Upload analysis results
         if: always()

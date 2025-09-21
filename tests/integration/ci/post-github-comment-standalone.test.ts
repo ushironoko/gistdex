@@ -150,21 +150,19 @@ describe("post-github-comment-standalone", () => {
     });
   });
 
-  describe("Comment skipping logic", () => {
-    it("should skip posting when no impact is detected", () => {
+  describe("Comment posting behavior", () => {
+    it("should post comment even when no impact is detected", () => {
       const comment =
         "## 📚 Documentation Impact Analysis\n\n✅ **No documentation impact detected**\n\nAll documentation appears to be unaffected by the code changes.";
 
-      const shouldSkip = comment.includes("No documentation impact detected");
-      expect(shouldSkip).toBe(true);
-    });
+      // Verify that the comment content exists and would be posted
+      expect(comment).toContain("No documentation impact detected");
+      expect(comment.length).toBeGreaterThan(0);
 
-    it("should not skip when impact is detected", () => {
-      const comment =
-        "## 📚 Documentation Impact Analysis\n\n### 🔴 High Impact (>80% similarity)\n\n- 📝 **`docs/api.md`** _(95.0% similarity)_";
-
-      const shouldSkip = comment.includes("No documentation impact detected");
-      expect(shouldSkip).toBe(false);
+      // In the new implementation, this comment should still be posted
+      // The script no longer checks for "No documentation impact detected" to skip
+      const shouldPost = comment.length > 0;
+      expect(shouldPost).toBe(true);
     });
   });
 

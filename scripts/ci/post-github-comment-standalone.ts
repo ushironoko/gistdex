@@ -110,11 +110,8 @@ async function main() {
       exit(1);
     }
 
-    // Check if we should skip (no impact detected)
-    if (comment.includes("No documentation impact detected")) {
-      console.error("No documentation impact detected. Skipping comment.");
-      exit(0);
-    }
+    // Always post comment, even if no impact detected
+    // This provides transparency about the analysis results
 
     // Get environment variables
     const token = env.GITHUB_TOKEN;
