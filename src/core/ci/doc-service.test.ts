@@ -191,7 +191,7 @@ describe("doc-service", () => {
       expect(results[0]).toMatchObject({
         file: "docs/api.md",
         githubUrl:
-          "https://github.com/owner/repo/blob/abc123/docs/api.md#L25-L75",
+          "https://github.com/owner/repo/blob/abc123/docs/api.md?plain=1#L25-L75",
       });
     });
 
@@ -225,7 +225,8 @@ describe("doc-service", () => {
       expect(results[0]).toMatchObject({
         file: "README.md",
         startLine: 42,
-        githubUrl: "https://github.com/owner/repo/blob/def456/README.md#L42",
+        githubUrl:
+          "https://github.com/owner/repo/blob/def456/README.md?plain=1#L42",
       });
     });
 
