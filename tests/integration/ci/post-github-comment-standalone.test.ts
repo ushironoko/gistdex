@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Readable } from "node:stream";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
-global.fetch = mockFetch as any;
+// @ts-expect-error - Mocking global fetch
+global.fetch = mockFetch;
 
 // Mock process.stdin
 const originalStdin = process.stdin;
@@ -79,10 +80,6 @@ describe("post-github-comment-standalone", () => {
         ok: true,
         json: async () => ({ id: 1, body: "Updated" }),
       });
-
-      // Import and run the script
-      const mockComment =
-        "## 📚 Documentation Impact Analysis\n\n### Updated content";
 
       // We need to test the actual detection logic
       // Since the script runs immediately on import, we'll test the core logic

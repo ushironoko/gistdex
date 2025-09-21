@@ -64,12 +64,12 @@ export const ensureDocumentsIndexed = async (
     // Index files with appropriate settings
     const results = await indexFiles(
       toIndex,
+      {}, // metadata
       {
         chunkSize: 1000,
         chunkOverlap: 200,
         preserveBoundaries: true,
-      },
-      {},
+      }, // options
       db,
     );
 
@@ -97,8 +97,12 @@ const generateGitHubUrl = (
 ): string | undefined => {
   // Get GitHub repository info from environment variables (set in CI)
   const repository = process.env.GITHUB_REPOSITORY; // "owner/repo" format
+  // Use SHA if available (more specific), otherwise use branch names
   const branch =
-    process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || "main";
+    process.env.GITHUB_SHA ||
+    process.env.GITHUB_HEAD_REF ||
+    process.env.GITHUB_REF_NAME ||
+    "main";
 
   if (!repository) {
     // Not in GitHub Actions environment
@@ -194,17 +198,27 @@ export const analyzeDocuments = async (
         const docPath = (result.metadata?.filePath || result.metadata?.path) as
           | string
           | undefined;
+
         if (!docPath) continue;
 
         // Check if this is a documentation file
         const isDoc = documentPaths.some((pattern) => {
-          const regex = new RegExp(
-            pattern
-              .replace(/\*\*/g, ".*")
-              .replace(/\*/g, "[^/]*")
-              .replace(/\?/g, "[^/]"),
-          );
-          return regex.test(docPath);
+          // Simple glob matching - for simplicity, use micromatch-style patterns
+          if (pattern === "*.md") {
+            return docPath.endsWith(".md") && !docPath.includes("/");
+          }
+          if (pattern === "**/*.md") {
+            return docPath.endsWith(".md");
+          }
+          if (pattern === "README.md") {
+            return docPath === "README.md";
+          }
+          // For "docs/**/*.md" pattern - match docs/ with any path ending in .md
+          if (pattern.startsWith("docs/") && pattern.includes("**/*.md")) {
+            return docPath.startsWith("docs/") && docPath.endsWith(".md");
+          }
+          // Fallback to simple contains
+          return docPath.includes(pattern.replace(/\*/g, ""));
         });
 
         if (!isDoc) continue;

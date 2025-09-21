@@ -1,13 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DatabaseService } from "../database/database-service.js";
 import type { VectorSearchResult } from "../vector-db/adapters/types.js";
-import { analyzeDocuments, type DocAnalysisResult } from "./doc-service.js";
+import { analyzeDocuments } from "./doc-service.js";
 
 // Mock the analyzeDiff function
 vi.mock("./diff-analyzer.js", () => ({
   analyzeDiff: vi.fn().mockResolvedValue({
     changes: [
-      { file: "src/index.ts", type: "modified", additions: 10, deletions: 5 },
+      {
+        file: "src/index.ts",
+        type: "modified",
+        additions: 10,
+        deletions: 5,
+        symbols: ["index", "export"],
+        content: "export function index() {}",
+      },
     ],
     searchQueries: ["index", "export"],
   }),
@@ -34,23 +41,40 @@ vi.mock("node:fs/promises", () => ({
   }),
 }));
 
+// Mock hybridSearch function
+vi.mock("../search/search.js", () => ({
+  hybridSearch: vi.fn().mockResolvedValue([]),
+}));
+
+// Import the mocked hybridSearch function to access it in tests
+import { hybridSearch } from "../search/search.js";
+
 describe("doc-service", () => {
   let mockDb: DatabaseService;
 
   beforeEach(() => {
+    // Clear all mocks
+    vi.clearAllMocks();
+
     // Create a mock database service
     mockDb = {
       initialize: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
       countItems: vi.fn().mockResolvedValue(0),
-      search: vi.fn().mockResolvedValue([]),
-      hybridSearch: vi.fn().mockResolvedValue([]),
-      insertItems: vi.fn().mockResolvedValue(undefined),
-      deleteBySource: vi.fn().mockResolvedValue(undefined),
-      listSources: vi.fn().mockResolvedValue([]),
-      listItems: vi.fn().mockResolvedValue([]), // Added missing method
-      getAdapter: vi.fn(),
-    } as unknown as DatabaseService;
+      saveItem: vi.fn().mockResolvedValue("mock-id"),
+      saveItems: vi.fn().mockResolvedValue(["mock-id-1", "mock-id-2"]),
+      searchItems: vi.fn().mockResolvedValue([]),
+      listItems: vi.fn().mockResolvedValue([]),
+      getStats: vi.fn().mockResolvedValue({
+        totalItems: 0,
+        bySourceType: {},
+      }),
+      getAdapterInfo: vi.fn().mockResolvedValue({
+        name: "mock",
+        description: "Mock adapter",
+        version: "1.0.0",
+      }),
+    } as DatabaseService;
 
     // Clear environment variables
     delete process.env.GITHUB_REPOSITORY;
@@ -79,11 +103,14 @@ describe("doc-service", () => {
         },
       ];
 
-      vi.mocked(mockDb.hybridSearch).mockResolvedValue(searchResults);
+      // Mock hybridSearch to return results for the first query and empty for the second
+      vi.mocked(hybridSearch)
+        .mockResolvedValueOnce(searchResults) // First query "index"
+        .mockResolvedValueOnce([]); // Second query "export"
 
       const results = await analyzeDocuments(
         "HEAD~1",
-        { documentPaths: ["docs/**/*.md"], threshold: 0.7 },
+        { documentPaths: ["docs/**/*.md"], threshold: 0.7, verbose: true },
         mockDb,
       );
 
@@ -111,7 +138,9 @@ describe("doc-service", () => {
         },
       ];
 
-      vi.mocked(mockDb.hybridSearch).mockResolvedValue(searchResults);
+      vi.mocked(hybridSearch)
+        .mockResolvedValueOnce(searchResults)
+        .mockResolvedValueOnce([]); // Second query
 
       const results = await analyzeDocuments(
         "HEAD~1",
@@ -148,7 +177,9 @@ describe("doc-service", () => {
         },
       ];
 
-      vi.mocked(mockDb.hybridSearch).mockResolvedValue(searchResults);
+      vi.mocked(hybridSearch)
+        .mockResolvedValueOnce(searchResults)
+        .mockResolvedValueOnce([]); // Second query
 
       const results = await analyzeDocuments(
         "HEAD~1",
@@ -180,7 +211,9 @@ describe("doc-service", () => {
         },
       ];
 
-      vi.mocked(mockDb.hybridSearch).mockResolvedValue(searchResults);
+      vi.mocked(hybridSearch)
+        .mockResolvedValueOnce(searchResults)
+        .mockResolvedValueOnce([]); // Second query
 
       const results = await analyzeDocuments(
         "HEAD~1",
@@ -208,7 +241,9 @@ describe("doc-service", () => {
         },
       ];
 
-      vi.mocked(mockDb.hybridSearch).mockResolvedValue(searchResults);
+      vi.mocked(hybridSearch)
+        .mockResolvedValueOnce(searchResults)
+        .mockResolvedValueOnce([]); // Second query
 
       const results = await analyzeDocuments(
         "HEAD~1",
@@ -221,9 +256,9 @@ describe("doc-service", () => {
         file: "docs/guide.md",
         similarity: 0.75,
       });
-      expect(results[0].startLine).toBeUndefined();
-      expect(results[0].endLine).toBeUndefined();
-      expect(results[0].githubUrl).toBeUndefined();
+      expect(results[0]?.startLine).toBeUndefined();
+      expect(results[0]?.endLine).toBeUndefined();
+      expect(results[0]?.githubUrl).toBeUndefined();
     });
 
     it("should deduplicate results for the same file", async () => {
@@ -248,7 +283,7 @@ describe("doc-service", () => {
         },
       ];
 
-      vi.mocked(mockDb.hybridSearch)
+      vi.mocked(hybridSearch)
         .mockResolvedValueOnce(searchResults) // First query
         .mockResolvedValueOnce([]); // Second query
 
@@ -269,7 +304,9 @@ describe("doc-service", () => {
     });
 
     it("should handle empty search results", async () => {
-      vi.mocked(mockDb.hybridSearch).mockResolvedValue([]);
+      vi.mocked(hybridSearch)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]); // Second query
 
       const results = await analyzeDocuments(
         "HEAD~1",
@@ -296,7 +333,9 @@ describe("doc-service", () => {
         },
       ];
 
-      vi.mocked(mockDb.hybridSearch).mockResolvedValue(searchResults);
+      vi.mocked(hybridSearch)
+        .mockResolvedValueOnce(searchResults)
+        .mockResolvedValueOnce([]); // Second query
 
       const results = await analyzeDocuments(
         "HEAD~1",
@@ -305,7 +344,7 @@ describe("doc-service", () => {
       );
 
       expect(results).toHaveLength(1);
-      expect(results[0].file).toBe("docs/high.md");
+      expect(results[0]?.file).toBe("docs/high.md");
     });
   });
 });

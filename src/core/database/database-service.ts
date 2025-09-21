@@ -22,7 +22,13 @@ export interface ItemMetadata {
     level?: number;
     name?: string;
     title?: string;
+    startLine?: number;
+    endLine?: number;
   };
+
+  // Line number information (can be direct or in boundary)
+  startLine?: number;
+  endLine?: number;
 
   // Document information
   title?: string;

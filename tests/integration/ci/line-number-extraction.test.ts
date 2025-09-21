@@ -1,12 +1,15 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import { rm } from "node:fs/promises";
-import { createDatabaseService } from "../../../src/core/database/database-service.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  createDatabaseService,
+  type DatabaseService,
+} from "../../../src/core/database/database-service.js";
 import { indexFiles } from "../../../src/core/indexer/indexer.js";
 import { hybridSearch } from "../../../src/core/search/search.js";
 
 describe("Line number extraction integration test", () => {
   const testDbPath = "./test-line-numbers.db";
-  let db: any;
+  let db: DatabaseService;
 
   beforeEach(async () => {
     // Clean up previous test database
@@ -67,7 +70,14 @@ Final section.`;
 
       // Check if any results have line number metadata
       const hasLineNumbers = searchResults.some((result) => {
-        const boundary = result.metadata?.boundary;
+        const boundary = result.metadata?.boundary as
+          | {
+              startLine?: number;
+              endLine?: number;
+              type?: string;
+              level?: number;
+            }
+          | undefined;
         const directStartLine = result.metadata?.startLine;
         const directEndLine = result.metadata?.endLine;
 
@@ -79,7 +89,7 @@ Final section.`;
         });
 
         return (
-          (boundary && boundary.startLine && boundary.endLine) ||
+          (boundary?.startLine && boundary?.endLine) ||
           (directStartLine && directEndLine)
         );
       });
@@ -90,16 +100,20 @@ Final section.`;
       // Check specific metadata structure
       if (searchResults.length > 0) {
         const firstResult = searchResults[0];
-        const metadata = firstResult.metadata;
+        const metadata = firstResult?.metadata;
 
         console.log("First result full metadata:", metadata);
 
         // Check for boundary structure
         if (metadata?.boundary) {
-          expect(metadata.boundary).toHaveProperty("startLine");
-          expect(metadata.boundary).toHaveProperty("endLine");
-          expect(typeof metadata.boundary.startLine).toBe("number");
-          expect(typeof metadata.boundary.endLine).toBe("number");
+          const boundary = metadata.boundary as {
+            startLine?: number;
+            endLine?: number;
+          };
+          expect(boundary).toHaveProperty("startLine");
+          expect(boundary).toHaveProperty("endLine");
+          expect(typeof boundary.startLine).toBe("number");
+          expect(typeof boundary.endLine).toBe("number");
         }
       }
     } finally {
@@ -163,9 +177,14 @@ export { example, MyClass };`;
       );
 
       // Check for line numbers
-      const hasLineNumbers = searchResults.some((result: any) => {
-        const boundary = result.metadata?.boundary;
-        return boundary && boundary.startLine && boundary.endLine;
+      const hasLineNumbers = searchResults.some((result) => {
+        const boundary = result.metadata?.boundary as
+          | {
+              startLine?: number;
+              endLine?: number;
+            }
+          | undefined;
+        return boundary?.startLine && boundary?.endLine;
       });
 
       expect(hasLineNumbers).toBe(true);
