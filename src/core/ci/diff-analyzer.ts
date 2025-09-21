@@ -92,13 +92,67 @@ const extractRelevantContent = (diff: string): string => {
   const lines = diff.split("\n");
   const relevantLines: string[] = [];
 
-  for (const line of lines) {
+  // Include context lines around changes for better understanding
+  const contextLines = 3;
+  const addedIndices = new Set<number>();
+  const removedIndices = new Set<number>();
+
+  // First pass: identify changed lines
+  lines.forEach((line, index) => {
     if (line.startsWith("+") && !line.startsWith("+++")) {
-      // Added lines
-      relevantLines.push(line.slice(1));
+      addedIndices.add(index);
     } else if (line.startsWith("-") && !line.startsWith("---")) {
-      // Removed lines
-      relevantLines.push(line.slice(1));
+      removedIndices.add(index);
+    }
+  });
+
+  // Second pass: collect changed lines and their context
+  const collectedIndices = new Set<number>();
+
+  lines.forEach((line, index) => {
+    if (addedIndices.has(index) || removedIndices.has(index)) {
+      // Add the changed line
+      if (!collectedIndices.has(index)) {
+        const cleanLine = line.slice(1); // Remove +/- prefix
+        relevantLines.push(cleanLine);
+        collectedIndices.add(index);
+      }
+
+      // Add context lines around the change
+      for (
+        let i = Math.max(0, index - contextLines);
+        i <= Math.min(lines.length - 1, index + contextLines);
+        i++
+      ) {
+        if (!collectedIndices.has(i) && i < lines.length) {
+          const contextLine = lines[i];
+          // Skip diff headers and unchanged context
+          if (
+            contextLine &&
+            !contextLine.startsWith("@@") &&
+            !contextLine.startsWith("+++") &&
+            !contextLine.startsWith("---") &&
+            !contextLine.startsWith("diff ")
+          ) {
+            // Remove prefix if it exists (space for context, +/- for changes)
+            const match = contextLine.match(/^[ +-](.*)$/);
+            const cleanContextLine = match ? match[1] : contextLine;
+            if (cleanContextLine && cleanContextLine.trim()) {
+              relevantLines.push(cleanContextLine);
+              collectedIndices.add(i);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // If no changes found (might be a new file), try to extract the entire content
+  if (relevantLines.length === 0) {
+    for (const line of lines) {
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        relevantLines.push(line.slice(1));
+      }
     }
   }
 
@@ -393,13 +447,26 @@ export const generateSearchQueries = (changes: DiffChange[]): string[] => {
   const queries: string[] = [];
 
   for (const change of changes) {
-    // Add file name based queries
-    const fileName = change.file
-      .split("/")
-      .pop()
-      ?.replace(/\.[^.]+$/, "");
-    if (fileName) {
-      queries.push(fileName);
+    // Add full file path components as queries
+    const pathParts = change.file.split("/");
+    for (const part of pathParts) {
+      const cleanPart = part.replace(/\.[^.]+$/, ""); // Remove extension
+      if (cleanPart && cleanPart.length > 2) {
+        queries.push(cleanPart);
+
+        // Also add space-separated version for compound names
+        const spaceSeparated = cleanPart
+          .replace(/[-_]/g, " ")
+          .replace(/([A-Z])/g, " $1")
+          .trim()
+          .toLowerCase();
+        if (
+          spaceSeparated !== cleanPart.toLowerCase() &&
+          spaceSeparated.length > 2
+        ) {
+          queries.push(spaceSeparated);
+        }
+      }
     }
 
     // Add symbol-based queries
@@ -411,23 +478,56 @@ export const generateSearchQueries = (changes: DiffChange[]): string[] => {
         .replace(/([A-Z])/g, " $1")
         .trim()
         .toLowerCase();
-      if (words !== symbol.toLowerCase()) {
+      if (words !== symbol.toLowerCase() && words.length > 2) {
         queries.push(words);
+      }
+
+      // Also add snake_case and kebab-case variations
+      const snakeOrKebab = symbol.replace(/[-_]/g, " ").toLowerCase();
+      if (snakeOrKebab !== symbol.toLowerCase() && snakeOrKebab !== words) {
+        queries.push(snakeOrKebab);
       }
     }
 
-    // Extract meaningful phrases from content (limited)
+    // Extract meaningful phrases from content (expanded)
     const contentWords = change.content
       .split(/\s+/)
-      .filter((word) => word.length > 3 && /^[a-zA-Z]+$/.test(word))
-      .slice(0, 10);
+      .filter((word) => {
+        // More lenient filtering - include shorter words and some special chars
+        const cleanWord = word.replace(/[^a-zA-Z0-9_-]/g, "");
+        return cleanWord.length > 2 && /^[a-zA-Z]/.test(cleanWord);
+      })
+      .slice(0, 20); // Increase word limit
 
-    // Create phrases from content words
+    // Create various phrase combinations
     if (contentWords.length >= 2) {
-      queries.push(contentWords.slice(0, 3).join(" "));
+      // 2-word phrases
+      for (let i = 0; i < Math.min(contentWords.length - 1, 5); i++) {
+        queries.push(`${contentWords[i]} ${contentWords[i + 1]}`);
+      }
+
+      // 3-word phrases
+      if (contentWords.length >= 3) {
+        for (let i = 0; i < Math.min(contentWords.length - 2, 3); i++) {
+          queries.push(
+            `${contentWords[i]} ${contentWords[i + 1]} ${contentWords[i + 2]}`,
+          );
+        }
+      }
+    }
+
+    // Add individual important words from content
+    for (const word of contentWords.slice(0, 10)) {
+      if (word.length > 3) {
+        queries.push(word.toLowerCase());
+      }
     }
   }
 
-  // Remove duplicates and limit number of queries
-  return [...new Set(queries)].slice(0, 20);
+  // Remove duplicates and empty strings, then limit
+  const uniqueQueries = [...new Set(queries)]
+    .filter((q) => q && q.trim().length > 0)
+    .slice(0, 30); // Increase limit from 20 to 30
+
+  return uniqueQueries;
 };

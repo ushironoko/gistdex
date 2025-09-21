@@ -183,6 +183,20 @@ export const analyzeDocuments = async (
   if (options.verbose) {
     console.error(`📊 Analyzing ${changes.length} changed files`);
     console.error(`🔍 Generated ${searchQueries.length} search queries`);
+
+    // Debug: Show what files were changed
+    console.error("Changed files:");
+    for (const change of changes) {
+      console.error(
+        `  - ${change.file} (${change.type}): ${change.symbols.length} symbols`,
+      );
+    }
+
+    // Debug: Show generated queries
+    console.error("Search queries:");
+    for (const query of searchQueries) {
+      console.error(`  - "${query}"`);
+    }
   }
 
   // Create glob matcher for document paths
@@ -190,6 +204,11 @@ export const analyzeDocuments = async (
 
   // Collect all analyzed documents
   const analysisMap = new Map<string, DocAnalysisResult>();
+
+  // Debug: Track search results
+  let totalSearchResults = 0;
+  let filteredByPath = 0;
+  let filteredByThreshold = 0;
 
   // Search for each query
   for (const query of searchQueries) {
@@ -204,6 +223,12 @@ export const analyzeDocuments = async (
         db,
       );
 
+      if (options.verbose && results.length > 0) {
+        console.error(`  Query "${query}" returned ${results.length} results`);
+      }
+
+      totalSearchResults += results.length;
+
       // Process results
       for (const result of results) {
         // Support both filePath (local files) and path (GitHub files)
@@ -211,52 +236,86 @@ export const analyzeDocuments = async (
 
         if (!docPath) continue;
 
-        // Check if this is a documentation file using glob matcher
-        const isDoc = isDocumentFile(docPath);
+        // Convert absolute path to relative for glob matching
+        // The glob patterns are relative (e.g., "docs/**/*.md")
+        // but indexed files may have absolute paths
+        let pathForMatching = docPath;
+        if (docPath.startsWith("/")) {
+          // Try to make it relative to current working directory
+          const cwd = process.cwd();
+          if (docPath.startsWith(cwd)) {
+            pathForMatching = docPath.substring(cwd.length + 1); // +1 for the trailing slash
+          }
+        }
 
-        if (!isDoc) continue;
+        // Check if this is a documentation file using glob matcher
+        const isDoc = isDocumentFile(pathForMatching);
+
+        if (!isDoc) {
+          filteredByPath++;
+          if (options.verbose) {
+            console.error(
+              `    Filtered out non-doc: ${docPath} (tested as: ${pathForMatching})`,
+            );
+          }
+          continue;
+        }
 
         // Calculate similarity score
         const similarity = result.score ?? 0;
 
-        if (similarity >= threshold) {
-          const existingAnalysis = analysisMap.get(docPath);
+        if (similarity < threshold) {
+          filteredByThreshold++;
+          if (options.verbose) {
+            console.error(
+              `    Filtered out by threshold: ${docPath} (${(similarity * 100).toFixed(1)}%)`,
+            );
+          }
+          continue;
+        }
 
-          if (!existingAnalysis || existingAnalysis.similarity < similarity) {
-            // Determine change type based on the most relevant change
-            const relevantChange = findMostRelevantChange(changes, query);
+        const existingAnalysis = analysisMap.get(docPath);
 
-            // Extract line numbers from boundary metadata if available
-            // Try to get line numbers from boundary metadata
-            const boundary = result.metadata?.boundary as
-              | {
-                  startLine?: number;
-                  endLine?: number;
-                }
-              | undefined;
+        if (!existingAnalysis || existingAnalysis.similarity < similarity) {
+          // Determine change type based on the most relevant change
+          const relevantChange = findMostRelevantChange(changes, query);
 
-            // Also check if line numbers are directly in metadata
-            const startLine =
-              boundary?.startLine ||
-              (result.metadata?.startLine as number | undefined);
-            const endLine =
-              boundary?.endLine ||
-              (result.metadata?.endLine as number | undefined);
+          // Extract line numbers from boundary metadata if available
+          // Try to get line numbers from boundary metadata
+          const boundary = result.metadata?.boundary as
+            | {
+                startLine?: number;
+                endLine?: number;
+              }
+            | undefined;
 
-            analysisMap.set(docPath, {
-              file: docPath,
-              similarity,
-              matchedTerms: [query],
-              changeType: relevantChange?.type ?? "modified",
-              startLine,
-              endLine,
-              githubUrl: generateGitHubUrl(docPath, startLine, endLine),
-            });
-          } else if (existingAnalysis) {
-            // Add matched term if not already present
-            if (!existingAnalysis.matchedTerms?.includes(query)) {
-              existingAnalysis.matchedTerms?.push(query);
-            }
+          // Also check if line numbers are directly in metadata
+          const startLine =
+            boundary?.startLine ||
+            (result.metadata?.startLine as number | undefined);
+          const endLine =
+            boundary?.endLine ||
+            (result.metadata?.endLine as number | undefined);
+
+          if (options.verbose) {
+            console.error(
+              `    ✅ Matched: ${docPath} (${(similarity * 100).toFixed(1)}%)`,
+            );
+          }
+
+          analysisMap.set(docPath, {
+            file: docPath,
+            similarity,
+            matchedTerms: [query],
+            changeType: relevantChange?.type ?? "modified",
+            startLine,
+            endLine,
+            githubUrl: generateGitHubUrl(docPath, startLine, endLine),
+          });
+        } else if (existingAnalysis) {
+          // Add matched term if not already present
+          if (!existingAnalysis.matchedTerms?.includes(query)) {
+            existingAnalysis.matchedTerms?.push(query);
           }
         }
       }
@@ -265,6 +324,13 @@ export const analyzeDocuments = async (
         console.warn(`Failed to search for query "${query}":`, error);
       }
     }
+  }
+
+  if (options.verbose) {
+    console.error(`\n📈 Search Statistics:`);
+    console.error(`  Total search results: ${totalSearchResults}`);
+    console.error(`  Filtered by path pattern: ${filteredByPath}`);
+    console.error(`  Filtered by threshold: ${filteredByThreshold}`);
   }
 
   // Convert map to array and sort by similarity

@@ -394,7 +394,7 @@ enum Status {
 
       const queries = generateSearchQueries(changes);
 
-      expect(queries.length).toBeLessThanOrEqual(20);
+      expect(queries.length).toBeLessThanOrEqual(30); // Updated to match implementation limit
     });
 
     it("should handle camelCase to space conversion", () => {
