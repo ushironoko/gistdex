@@ -49,17 +49,20 @@ async function main() {
       format: "json",
     });
 
-    // Ensure results are in array format
-    const resultsArray = Array.isArray(results)
-      ? results
-      : (JSON.parse(results as string) as DocumentImpactResult[]);
+    // Parse the JSON string result (formatJSON returns a string)
+    const parsedResults =
+      typeof results === "string" ? JSON.parse(results) : results;
 
-    // Write results to file
-    const jsonOutput = JSON.stringify(resultsArray, null, 2);
-    writeFileSync(outputFile, jsonOutput);
+    // Write results to file (keep the full format for compatibility)
+    writeFileSync(
+      outputFile,
+      typeof results === "string" ? results : JSON.stringify(results, null, 2),
+    );
 
     // Check if there's any impact
-    const hasImpact = resultsArray.length > 0;
+    const hasImpact = parsedResults.results
+      ? parsedResults.results.length > 0
+      : parsedResults.length > 0;
 
     // Set GitHub Actions output
     if (process.env.GITHUB_OUTPUT) {

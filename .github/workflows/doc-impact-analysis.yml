@@ -75,7 +75,7 @@ jobs:
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
         run: |
           # Threshold and paths are configured in gistdex.config.ts
-          pnpm exec tsx scripts/ci/run-doc-analysis.ts \
+          pnpm exec tsx scripts/ci/run-doc-analysis-standalone.ts \
             --diff "origin/${{ github.base_ref }}...HEAD" \
             --output doc-impact.json
 
