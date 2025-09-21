@@ -1,5 +1,6 @@
 import { glob } from "node:fs/promises";
 import type { DatabaseService } from "../database/database-service.js";
+import { createGlobMatcher } from "../indexer/glob-matcher.js";
 import { indexFiles } from "../indexer/indexer.js";
 import { hybridSearch } from "../search/search.js";
 import { analyzeDiff, type DiffChange } from "./diff-analyzer.js";
@@ -184,6 +185,9 @@ export const analyzeDocuments = async (
     console.error(`🔍 Generated ${searchQueries.length} search queries`);
   }
 
+  // Create glob matcher for document paths
+  const isDocumentFile = createGlobMatcher(documentPaths);
+
   // Collect all analyzed documents
   const analysisMap = new Map<string, DocAnalysisResult>();
 
@@ -203,31 +207,12 @@ export const analyzeDocuments = async (
       // Process results
       for (const result of results) {
         // Support both filePath (local files) and path (GitHub files)
-        const docPath = (result.metadata?.filePath || result.metadata?.path) as
-          | string
-          | undefined;
+        const docPath = result.metadata?.filePath || result.metadata?.path;
 
         if (!docPath) continue;
 
-        // Check if this is a documentation file
-        const isDoc = documentPaths.some((pattern) => {
-          // Simple glob matching - for simplicity, use micromatch-style patterns
-          if (pattern === "*.md") {
-            return docPath.endsWith(".md") && !docPath.includes("/");
-          }
-          if (pattern === "**/*.md") {
-            return docPath.endsWith(".md");
-          }
-          if (pattern === "README.md") {
-            return docPath === "README.md";
-          }
-          // For "docs/**/*.md" pattern - match docs/ with any path ending in .md
-          if (pattern.startsWith("docs/") && pattern.includes("**/*.md")) {
-            return docPath.startsWith("docs/") && docPath.endsWith(".md");
-          }
-          // Fallback to simple contains
-          return docPath.includes(pattern.replace(/\*/g, ""));
-        });
+        // Check if this is a documentation file using glob matcher
+        const isDoc = isDocumentFile(docPath);
 
         if (!isDoc) continue;
 

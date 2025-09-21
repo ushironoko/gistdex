@@ -251,7 +251,7 @@ const ciDocCommand = define({
     paths: {
       type: "string" as const,
       description:
-        "Comma-separated document paths (default: docs/**/*.md,README.md,*.md)",
+        "Comma-separated document paths (default: docs/**/*.md,README.md)",
     },
     format: {
       type: "string" as const,

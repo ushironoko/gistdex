@@ -136,19 +136,24 @@ const formatGitHubResultLine = (result: DocAnalysisResult): string => {
 
   let line = `- ${changeIcon} **${fileDisplay}** _(${similarity}% similarity)_`;
 
+  // Add matched terms with better formatting
   if (result.matchedTerms && result.matchedTerms.length > 0) {
-    const terms = result.matchedTerms
-      .slice(0, 3)
+    // Limit to first 5 terms for readability
+    const displayTerms = result.matchedTerms.slice(0, 5);
+    const formattedTerms = displayTerms
       .map((t: string) => `\`${t}\``)
       .join(", ");
-    line += `\n  - Matched: ${terms}`;
-    if (result.matchedTerms.length > 3) {
-      line += ` +${result.matchedTerms.length - 3} more`;
+    
+    line += `\n  📌 **Keywords:** ${formattedTerms}`;
+    
+    // Show count of additional terms if there are more
+    if (result.matchedTerms.length > 5) {
+      line += ` _...and ${result.matchedTerms.length - 5} more_`;
     }
   }
 
   return line;
-};
+};;
 
 /**
  * Format results as JSON
