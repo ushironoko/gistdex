@@ -208,15 +208,6 @@ export const analyzeDocuments = async (
               boundary?.endLine ||
               (result.metadata?.endLine as number | undefined);
 
-            // Debug logging
-            if (options.verbose && !startLine) {
-              console.error(`Debug: No line numbers found for ${docPath}`);
-              console.error(
-                `  metadata:`,
-                JSON.stringify(result.metadata, null, 2),
-              );
-            }
-
             analysisMap.set(docPath, {
               file: docPath,
               similarity,

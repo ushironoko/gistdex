@@ -38,7 +38,35 @@ async function main() {
       results = parsed as DocumentImpactResult[];
     } else if (parsed && typeof parsed === "object" && "results" in parsed) {
       // Extract results from the formatted output
-      results = parsed.results as DocumentImpactResult[];
+      // Map the results to flatten metadata fields for API compatibility
+      results = parsed.results.map(
+        (r: {
+          file: string;
+          similarity?: number;
+          score?: number;
+          matchedTerms?: string[];
+          sections?: string[];
+          changeType?: string;
+          startLine?: number;
+          endLine?: number;
+          githubUrl?: string;
+          metadata?: {
+            changeType?: string;
+            startLine?: number;
+            endLine?: number;
+            githubUrl?: string;
+          };
+        }) => ({
+          file: r.file,
+          similarity: r.similarity ?? r.score ?? 0,
+          matchedTerms: r.matchedTerms ?? r.sections,
+          changeType: r.metadata?.changeType ?? r.changeType ?? "modified",
+          startLine: r.metadata?.startLine ?? r.startLine,
+          endLine: r.metadata?.endLine ?? r.endLine,
+          githubUrl: r.metadata?.githubUrl ?? r.githubUrl,
+        }),
+      ) as DocumentImpactResult[];
+
       if (parsed.threshold) {
         threshold = parsed.threshold;
       }
