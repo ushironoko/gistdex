@@ -6,7 +6,11 @@
 import { createConfigOperations } from "../config/config-operations.js";
 import { createDatabaseService } from "../database/database-service.js";
 import { analyzeDocuments } from "./doc-service.js";
-import { formatGitHubComment, formatMarkdown } from "./formatters.js";
+import {
+  formatGitHubComment,
+  formatJSON,
+  formatMarkdown,
+} from "./formatters.js";
 import { postToGitHubPR } from "./github-integration.js";
 
 export interface DocumentImpactOptions {
@@ -91,6 +95,8 @@ export async function analyzeDocumentImpact(
         return formatMarkdown(results, threshold);
       case "github-comment":
         return formatGitHubComment(results, threshold);
+      case "json":
+        return formatJSON(results, threshold, diffRange);
       default:
         return results;
     }
@@ -139,9 +145,8 @@ export async function postDocumentImpactToGitHub(
 // Re-export types
 export type { DocAnalysisResult } from "./doc-service.js";
 // Re-export formatters for external use
-export { formatGitHubComment, formatMarkdown } from "./formatters.js";
-
-// Helper function for JSON formatting
-export const formatJSON = (results: DocumentImpactResult[]): string => {
-  return JSON.stringify(results, null, 2);
-};
+export {
+  formatGitHubComment,
+  formatJSON,
+  formatMarkdown,
+} from "./formatters.js";
