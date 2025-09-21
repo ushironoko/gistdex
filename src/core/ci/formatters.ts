@@ -143,9 +143,9 @@ const formatGitHubResultLine = (result: DocAnalysisResult): string => {
     const formattedTerms = displayTerms
       .map((t: string) => `\`${t}\``)
       .join(", ");
-    
+
     line += `\n  📌 **Keywords:** ${formattedTerms}`;
-    
+
     // Show count of additional terms if there are more
     if (result.matchedTerms.length > 5) {
       line += ` _...and ${result.matchedTerms.length - 5} more_`;
@@ -153,7 +153,7 @@ const formatGitHubResultLine = (result: DocAnalysisResult): string => {
   }
 
   return line;
-};;
+};
 
 /**
  * Format results as JSON

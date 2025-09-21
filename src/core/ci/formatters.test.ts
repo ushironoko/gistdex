@@ -67,7 +67,15 @@ describe("formatters", () => {
           file: "test.md",
           similarity: 0.9,
           changeType: "modified",
-          matchedTerms: ["term1", "term2", "term3", "term4", "term5"],
+          matchedTerms: [
+            "term1",
+            "term2",
+            "term3",
+            "term4",
+            "term5",
+            "term6",
+            "term7",
+          ],
         },
       ];
       const output = formatGitHubComment(results, 0.5);
@@ -75,7 +83,9 @@ describe("formatters", () => {
       expect(output).toContain("`term1`");
       expect(output).toContain("`term2`");
       expect(output).toContain("`term3`");
-      expect(output).toContain("+2 more");
+      expect(output).toContain("`term4`");
+      expect(output).toContain("`term5`");
+      expect(output).toContain("...and 2 more");
     });
 
     it("should include line numbers and GitHub URL when available", () => {
