@@ -1,5 +1,60 @@
 # Changelog
 
+## [1.5.0] - 2025-09-21
+
+- Merge pull request #115 from ushironoko/fix/ci-doc-analysis-improvements
+- fix
+- fix
+- fix
+- fix
+- fix test
+- handover
+- fix!
+- fix
+- fix
+- fix
+- fix
+- fix
+- fix
+- fix
+- fix
+- fix
+- fix line
+- fix run-doc-analysis scripts
+- fix post-github-comment scripts
+- handover
+- refactor(ci): extract normalizeFilePath as shared function
+- fix(ci): resolve NaN and path normalization issues in doc impact analysis
+- fix ci
+- feat(chunk): add line number tracking to chunks
+- fix(ci): correct metadata path references in doc-service
+- fix(ci): remove broken similarity-checker functionality
+- fix CLAUDE.md
+- Merge pull request #113 from ushironoko/feat/ci-doc-analysis
+- refactor(security): replace all execSync with spawnSync to prevent command injection
+- fix(ci): always post PR comment with analysis results
+- fix(security): resolve command injection vulnerabilities in similarity-checker
+- fix ci
+- simplify: remove comment update logic, always create new PR comments
+- refactor: simplify GitHub PR comment creation using gh pr comment
+- cached
+- simplify: use config defaults for CI doc analysis
+- fix: redirect console output to stderr in CI doc service
+- fix: use pnpm exec to run tsx in GitHub Actions
+- feat: add standalone CI scripts for package separation
+- feat: add public API for CI documentation impact analysis
+- feat: add modular CI scripts for GitHub Actions
+- refactor: simplify GitHub Actions workflow to use tsx directly
+- WIP
+- refactor: improve GitHub Actions workflow security and reliability
+- fix: remove pnpm version conflict in GitHub Actions workflow
+- add doc ci settings
+- .
+- test: skip failing CI doc-service tests temporarily
+- add serena
+- feat: add CI documentation impact analysis feature
+
+
 ## [1.4.3] - 2025-09-19
 
 - Merge pull request #112 from ushironoko/feat/mcp-cache-checking
