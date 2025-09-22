@@ -254,7 +254,8 @@ const ciDocCommand = define({
         "Comma-separated document paths (default: docs/**/*.md,README.md)",
     },
     format: {
-      type: "string" as const,
+      type: "enum" as const,
+      choices: ["json", "github-comment"] as const,
       description: "Output format: json, github-comment (default: json)",
     },
     "github-pr": {
