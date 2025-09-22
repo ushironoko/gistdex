@@ -13,7 +13,7 @@ export interface CIDocContext extends CommandContext {
     diff?: string;
     threshold?: string;
     paths?: string;
-    format?: string;
+    format?: "json" | "github-comment";
     "github-pr"?: boolean;
     verbose?: boolean;
     provider?: string;
@@ -29,7 +29,7 @@ export const handleCIDoc = createReadOnlyCommandHandler<CIDocContext>(
     const options: DocumentImpactOptions = {
       diff: args.diff ?? "HEAD~1",
       threshold: args.threshold ? Number.parseFloat(args.threshold) : undefined,
-      format: (args.format ?? "json") as "json" | "github-comment",
+      format: args.format ?? "github-comment",
       verbose: args.verbose,
     };
 
@@ -52,7 +52,7 @@ export const handleCIDoc = createReadOnlyCommandHandler<CIDocContext>(
       const ciConfig = config.ci?.doc;
       const finalThreshold = options.threshold ?? ciConfig?.threshold ?? 0.7;
       const finalPaths = options.paths ??
-        ciConfig?.documentPaths ?? ["docs/**/*.md", "README.md", "*.md"];
+        ciConfig?.documentPaths ?? ["docs/**/*.md", "README.md"];
 
       console.error("📋 Configuration:");
       console.error(`  - Diff range: ${options.diff}`);

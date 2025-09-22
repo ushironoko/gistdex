@@ -58,10 +58,9 @@ export async function analyzeDocumentImpact(
 
   // Merge options with defaults
   const threshold = options.threshold ?? ciConfig?.threshold ?? 0.7;
-  const format = options.format ?? "json";
+  const format = options.format ?? "github-comment";
   const diffRange = options.diff ?? "HEAD~1";
-  const documentPaths = options.paths ??
-    ciConfig?.documentPaths ?? ["docs/**/*.md", "README.md", "*.md"];
+  const documentPaths = options.paths ?? ciConfig?.documentPaths;
 
   // Create database service
   const dbService = createDatabaseService();

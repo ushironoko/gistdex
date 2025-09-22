@@ -61,5 +61,12 @@ export const getDefaultGistdexConfig = (): GistdexConfig => {
       rerankBoostFactor: 1.5,
       hybridKeywordWeight: 0.3,
     },
-  };
+    ci: {
+      doc: {
+        enabled: false,
+        threshold: 0.7,
+        documentPaths: ["docs/**/*.md", "README.md"],
+      },
+    },
+  } as const satisfies GistdexConfig;
 };
