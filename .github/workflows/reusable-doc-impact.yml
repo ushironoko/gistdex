@@ -120,18 +120,13 @@ jobs:
         if: inputs.use-local-build == true
         run: pnpm run build
 
-      # Initialize database if needed
-      - name: Initialize Gistdex database
+      # Note: Database will be created automatically during indexing if it doesn't exist
+      - name: Check database status
         run: |
-          if [ ! -f ./gistdex.db ]; then
-            echo "🔧 Initializing new Gistdex database..."
-            if [[ "${{ inputs.use-local-build }}" == "true" ]]; then
-              pnpm start init
-            else
-              pnpm dlx @ushironoko/gistdex@${{ inputs.gistdex-version }} init
-            fi
+          if [ -f ./gistdex.db ]; then
+            echo "📦 Using cached database"
           else
-            echo "✅ Using cached Gistdex database"
+            echo "🔧 Database will be created automatically during indexing"
           fi
 
       # Index documentation
