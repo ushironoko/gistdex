@@ -54,18 +54,20 @@ export const handleCIDoc = createReadOnlyCommandHandler<CIDocContext>(
       const finalPaths = options.paths ??
         ciConfig?.documentPaths ?? ["docs/**/*.md", "README.md", "*.md"];
 
-      console.log("📋 Configuration:");
-      console.log(`  - Diff range: ${options.diff}`);
-      console.log(`  - Threshold: ${finalThreshold}`);
-      console.log(`  - Document paths: ${finalPaths.join(", ")}`);
-      console.log(`  - Format: ${options.format}`);
+      console.error("📋 Configuration:");
+      console.error(`  - Diff range: ${options.diff}`);
+      console.error(`  - Threshold: ${finalThreshold}`);
+      console.error(`  - Document paths: ${finalPaths.join(", ")}`);
+      console.error(`  - Format: ${options.format}`);
       if (options.database) {
-        console.log(
+        console.error(
           `  - Database provider: ${options.database.provider ?? "default"}`,
         );
-        console.log(`  - Database path: ${options.database.path ?? "default"}`);
+        console.error(
+          `  - Database path: ${options.database.path ?? "default"}`,
+        );
       }
-      console.log("");
+      console.error("");
     }
 
     try {
@@ -81,7 +83,7 @@ export const handleCIDoc = createReadOnlyCommandHandler<CIDocContext>(
               ? result
               : formatGitHubComment(result, options.threshold ?? 0.7);
           await postToGitHubPR(comment);
-          console.log("✅ Posted analysis to GitHub PR");
+          console.error("✅ Posted analysis to GitHub PR");
         } catch (error) {
           console.error("❌ Failed to post to GitHub PR:", error);
           // Still output the results even if posting fails
