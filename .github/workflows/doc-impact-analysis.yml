@@ -27,7 +27,7 @@ jobs:
   analyze-docs:
     # Skip for draft PRs to save resources
     if: github.event.pull_request.draft == false
-    uses: ushironoko/gistdex/.github/workflows/reusable-doc-impact.yml@docs/add-ci-documentation
+    uses: ushironoko/gistdex/.github/workflows/reusable-doc-impact.yml@main
     with:
       doc-paths: "docs/**/*.md,README.md,CLAUDE.md"
       threshold: "0.7"
