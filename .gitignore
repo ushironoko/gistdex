@@ -28,3 +28,8 @@ docs/.vitepress/temp/
 data/tests/fixtures/*
 !data/tests/fixtures/.gitkeep
 data/test-*/
+
+# serena
+.serena/
+!.serena/memories/handover.md
+
