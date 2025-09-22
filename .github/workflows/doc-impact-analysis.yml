@@ -5,95 +5,31 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       # Source code changes that might affect documentation
-      - 'src/**/*.ts'
-      - 'src/**/*.js'
-      - '!src/**/*.test.ts'
-      - '!src/**/*.spec.ts'
-      - '!src/**/*.d.ts'
+      - "src/**/*.ts"
+      - "src/**/*.js"
+      - "!src/**/*.test.ts"
+      - "!src/**/*.spec.ts"
+      - "!src/**/*.d.ts"
       # Documentation changes to ensure they stay indexed
-      - 'docs/**/*.md'
-      - 'README.md'
+      - "docs/**/*.md"
+      - "README.md"
       # Configuration changes that affect CI behavior
-      - 'gistdex.config.ts'
-      - '.github/workflows/doc-impact-analysis.yml'
+      - "gistdex.config.ts"
+      - ".github/workflows/doc-impact-analysis.yml"
+      - ".github/workflows/reusable-doc-impact.yml"
 
 jobs:
   analyze-docs:
-    name: Analyze Documentation Impact
-    runs-on: ubuntu-latest
+    # Skip for draft PRs to save resources
     if: github.event.pull_request.draft == false
-
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history needed for diff analysis
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: '.node-version'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Cache Gistdex database
-        uses: actions/cache@v4
-        with:
-          path: ./gistdex.db
-          key: ${{ runner.os }}-gistdex-db-${{ hashFiles('docs/**/*.md', 'README.md') }}
-          restore-keys: |
-            ${{ runner.os }}-gistdex-db-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build project
-        run: pnpm run build
-
-      - name: Run documentation impact analysis
-        id: doc-analysis
-        env:
-          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_BASE_REF: ${{ github.base_ref }}
-        run: |
-          # Use pnpm dlx to run the latest published version of the CLI
-          # Save output to file for artifact upload (stdout only)
-          pnpm dlx @ushironoko/gistdex@latest ci:doc \
-            --diff "origin/${{ github.base_ref }}...HEAD" \
-            --format github-comment \
-            --github-pr | tee doc-impact-output.md || {
-            echo "❌ Documentation analysis failed"
-            exit 1
-          }
-
-      - name: Upload analysis results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: doc-impact-analysis
-          path: doc-impact-output.md
-          retention-days: 7
-          if-no-files-found: warn
+    uses: ./.github/workflows/reusable-doc-impact.yml
+    with:
+      doc-paths: "docs/**/*.md,README.md,CLAUDE.md"
+      threshold: "0.7"
+      node-version: "24.2.0"
+      gistdex-version: "latest"
+      post-pr-comment: true
+      add-label: false
+      label-name: "documentation-impact"
+    secrets:
+      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}

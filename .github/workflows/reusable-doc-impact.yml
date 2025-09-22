@@ -1,0 +1,252 @@
+# Reusable workflow for documentation impact analysis
+# This can be called from other repositories
+name: Reusable Documentation Impact Analysis
+
+on:
+  workflow_call:
+    inputs:
+      use-local-build:
+        description: "Build and use local version instead of published package"
+        required: false
+        default: false
+        type: boolean
+      diff-range:
+        description: "Git diff range to analyze"
+        required: false
+        default: "HEAD~1"
+        type: string
+      threshold:
+        description: "Similarity threshold (0-1)"
+        required: false
+        default: "0.7"
+        type: string
+      doc-paths:
+        description: "Comma-separated glob patterns for documents"
+        required: false
+        default: "docs/**/*.md,README.md"
+        type: string
+      node-version:
+        description: "Node.js version to use"
+        required: false
+        default: "24"
+        type: string
+      gistdex-version:
+        description: "Gistdex version to use"
+        required: false
+        default: "latest"
+        type: string
+      post-pr-comment:
+        description: "Post analysis results as PR comment"
+        required: false
+        default: true
+        type: boolean
+      add-label:
+        description: "Add label to PR if impacts detected"
+        required: false
+        default: true
+        type: boolean
+      label-name:
+        description: "Label name to add"
+        required: false
+        default: "documentation-impact"
+        type: string
+    secrets:
+      GOOGLE_GENERATIVE_AI_API_KEY:
+        description: "Google Generative AI API key"
+        required: true
+
+jobs:
+  analyze:
+    name: Analyze Documentation Impact
+    runs-on: ubuntu-latest
+    # Skip draft PRs if called from PR context
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write # For adding labels
+
+    steps:
+      # Checkout repository with full history
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      # Setup pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      # Get pnpm store directory
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      # Cache pnpm store
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-gistdex-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-gistdex-
+            ${{ runner.os }}-pnpm-store-
+
+      # Cache Gistdex database
+      - name: Cache Gistdex database
+        uses: actions/cache@v4
+        with:
+          path: ./gistdex.db
+          key: ${{ runner.os }}-gistdex-db-${{ hashFiles('docs/**/*.md', 'README.md', 'CLAUDE.md') }}
+          restore-keys: |
+            ${{ runner.os }}-gistdex-db-
+
+      # Install dependencies if using local build
+      - name: Install dependencies
+        if: inputs.use-local-build == true
+        run: pnpm install --frozen-lockfile
+
+      # Build project if using local build
+      - name: Build project
+        if: inputs.use-local-build == true
+        run: pnpm run build
+
+      # Initialize database if needed
+      - name: Initialize Gistdex database
+        run: |
+          if [ ! -f ./gistdex.db ]; then
+            echo "🔧 Initializing new Gistdex database..."
+            if [[ "${{ inputs.use-local-build }}" == "true" ]]; then
+              pnpm start init
+            else
+              pnpm dlx @ushironoko/gistdex@${{ inputs.gistdex-version }} init
+            fi
+          else
+            echo "✅ Using cached Gistdex database"
+          fi
+
+      # Index documentation
+      - name: Index documentation
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+        run: |
+          echo "📚 Indexing documentation files..."
+          if [[ "${{ inputs.use-local-build }}" == "true" ]]; then
+            pnpm start index \
+              --files "${{ inputs.doc-paths }}" \
+              --chunk-size 1000 \
+              --chunk-overlap 200
+          else
+            pnpm dlx @ushironoko/gistdex@${{ inputs.gistdex-version }} index \
+              --files "${{ inputs.doc-paths }}" \
+              --chunk-size 1000 \
+              --chunk-overlap 200
+          fi
+
+      # Determine diff range
+      - name: Determine diff range
+        id: diff-range
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "range=origin/${{ github.base_ref }}...HEAD" >> $GITHUB_OUTPUT
+          else
+            echo "range=${{ inputs.diff-range }}" >> $GITHUB_OUTPUT
+          fi
+
+      # Run analysis
+      - name: Run documentation impact analysis
+        id: doc-analysis
+        env:
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: |
+          echo "🔍 Analyzing documentation impact..."
+
+          # Build command based on local or published version
+          if [[ "${{ inputs.use-local-build }}" == "true" ]]; then
+            COMMAND="pnpm start ci:doc"
+          else
+            COMMAND="pnpm dlx @ushironoko/gistdex@${{ inputs.gistdex-version }} ci:doc"
+          fi
+
+          COMMAND="$COMMAND --diff \"${{ steps.diff-range.outputs.range }}\""
+          COMMAND="$COMMAND --threshold ${{ inputs.threshold }}"
+          COMMAND="$COMMAND --paths \"${{ inputs.doc-paths }}\""
+          COMMAND="$COMMAND --format github-comment"
+
+          if [[ "${{ inputs.post-pr-comment }}" == "true" ]] && [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            COMMAND="$COMMAND --github-pr"
+          fi
+
+          # Run analysis
+          eval $COMMAND | tee doc-impact-output.md || {
+            echo "❌ Documentation analysis failed"
+            exit 1
+          }
+
+          # Check for impacts
+          if grep -q "No documentation impacts detected" doc-impact-output.md; then
+            echo "has_impacts=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_impacts=true" >> $GITHUB_OUTPUT
+          fi
+
+      # Upload results
+      - name: Upload analysis results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-impact-analysis-${{ github.run_id }}
+          path: doc-impact-output.md
+          retention-days: 7
+          if-no-files-found: warn
+
+      # Add label if impacts detected
+      - name: Add documentation label
+        if: |
+          inputs.add-label == true &&
+          steps.doc-analysis.outputs.has_impacts == 'true' &&
+          github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['${{ inputs.label-name }}']
+              })
+            } catch (error) {
+              console.log('Could not add label:', error.message)
+            }
+
+      # Create job summary
+      - name: Create job summary
+        if: always()
+        run: |
+          echo "## 📚 Documentation Impact Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Configuration:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Diff range: \`${{ steps.diff-range.outputs.range }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Threshold: ${{ inputs.threshold }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Document paths: \`${{ inputs.doc-paths }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f doc-impact-output.md ]; then
+            cat doc-impact-output.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Analysis output not found" >> $GITHUB_STEP_SUMMARY
+          fi
