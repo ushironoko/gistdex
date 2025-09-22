@@ -62,7 +62,7 @@ The project provides a CLI tool with the following commands:
   - `--threshold <value>` - Similarity threshold 0-1 (default: 0.7)
   - `--paths <patterns>` - Comma-separated document glob patterns (default: "docs/**/*.md,README.md")
   - `--format <type>` - Output format: json or github-comment (default: json)
-  - `--github-pr` - Post results directly to GitHub PR as a comment
+  - `--github-pr` - Post results directly to GitHub PR as a comment using GitHub CLI (gh)
   - `--verbose` - Enable detailed debug output
 
 ##### CI Documentation Analysis Examples
@@ -77,7 +77,7 @@ npx gistdex ci:doc --diff main..HEAD
 # Generate GitHub PR comment format
 npx gistdex ci:doc --format github-comment
 
-# Post directly to GitHub PR (requires GITHUB_TOKEN)
+# Post directly to GitHub PR using gh CLI (requires GITHUB_TOKEN)
 npx gistdex ci:doc --github-pr --format github-comment
 
 # Custom document paths and threshold
@@ -114,6 +114,7 @@ jobs:
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # GitHub CLI (gh) is used internally to post comments to PR
           npx @ushironoko/gistdex ci:doc \
             --diff ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} \
             --github-pr \
@@ -288,8 +289,9 @@ The system provides automated documentation impact analysis for code changes:
 
 4. **GitHub Integration**:
    - Generates GitHub URLs with line numbers for precise references
-   - Posts formatted comments directly to pull requests
+   - Posts formatted comments directly to pull requests using GitHub CLI (gh)
    - Supports GitHub Actions environment variables
+   - Uses `gh pr comment` command for posting comments to PRs
 
 5. **Output Formats**:
    - **JSON**: Structured data for further processing
@@ -358,7 +360,8 @@ The system uses a **functional composition pattern** for vector databases, elimi
   - `diff-analyzer.ts` - Git diff analysis with multi-language symbol extraction using tree-sitter
   - `formatters.ts` - Output formatters (JSON, GitHub PR comment)
   - `api.ts` - External API for documentation analysis
-  - `post-github-comment.ts` - GitHub PR comment posting utility
+  - `github-integration.ts` - GitHub PR integration using GitHub CLI (gh)
+  - `git-command.ts` - Git and GitHub CLI command execution utilities
 - **utils/** - Utility functions
   - `env-loader.ts` - Environment variable loading
   - `ranking.ts` - Result re-ranking algorithms
@@ -660,8 +663,9 @@ gistdex/
 │   │   │   ├── doc-service.ts     # Documentation analysis
 │   │   │   ├── diff-analyzer.ts   # Git diff & symbol extraction
 │   │   │   ├── formatters.ts      # Output formatters
-│   │   │   ├── api.ts            # External API
-│   │   │   └── post-github-comment.ts # PR comment posting
+│   │   │   ├── api.ts             # External API
+│   │   │   ├── github-integration.ts # GitHub PR integration (gh CLI)
+│   │   │   └── git-command.ts     # Git/GitHub CLI execution
 │   │   └── utils/                 # Core utilities
 │   │       ├── env-loader.ts      # Environment variable loader
 │   │       ├── ranking.ts         # Search result ranking
