@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  mock,
+  test,
+} from "bun:test";
 import {
   cleanupTestDatabase,
   createTestDatabase,
@@ -8,12 +16,11 @@ import type { VectorSearchResult } from "../vector-db/adapters/types.js";
 import { getSectionContent, hybridSearch, semanticSearch } from "./search.js";
 
 // Mock the embedding module to avoid API calls in tests
-vi.mock("../embedding/embedding.js", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../embedding/embedding.js")>();
+mock.module("../embedding/embedding.js", async () => {
+  const actual = await import("../embedding/embedding.js");
   return {
     ...actual,
-    generateEmbedding: vi.fn().mockImplementation(async (text: string) => {
+    generateEmbedding: jest.fn().mockImplementation(async (text: string) => {
       // Generate a simple 3-dimensional embedding for testing
       const hash = text
         .split("")

@@ -1,53 +1,61 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  mock,
+} from "bun:test";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import type { VectorDocument } from "../../core/vector-db/adapters/types.js";
 import { listToolSchema } from "../schemas/validation.js";
 import { handleListTool, type ListToolOptions } from "./list-tool.js";
 
 // Mock the core modules
-vi.mock("../../core/database/database-operations.js", () => ({
-  createDatabaseOperations: vi.fn(() => ({
-    withDatabase: vi.fn(async (operation) => {
+mock.module("../../core/database/database-operations.js", () => ({
+  createDatabaseOperations: jest.fn(() => ({
+    withDatabase: jest.fn(async (operation) => {
       const mockService = {
-        initialize: vi.fn(),
-        close: vi.fn(),
-        saveItems: vi.fn().mockResolvedValue(["id1", "id2"]),
-        searchItems: vi.fn(),
-        getStats: vi.fn(),
-        listItems: vi.fn(),
-        getAdapterInfo: vi.fn(),
+        initialize: jest.fn(),
+        close: jest.fn(),
+        saveItems: jest.fn().mockResolvedValue(["id1", "id2"]),
+        searchItems: jest.fn(),
+        getStats: jest.fn(),
+        listItems: jest.fn(),
+        getAdapterInfo: jest.fn(),
       };
       return operation(mockService);
     }),
   })),
 }));
 
-vi.mock("../../core/database/database-service.js", () => ({
+mock.module("../../core/database/database-service.js", () => ({
   databaseService: {
-    initialize: vi.fn(),
-    close: vi.fn(),
+    initialize: jest.fn(),
+    close: jest.fn(),
   },
 }));
 
 // Mock sqlite-vec to avoid loading native modules in tests
-vi.mock("sqlite-vec", () => ({
-  default: vi.fn(),
+mock.module("sqlite-vec", () => ({
+  default: jest.fn(),
 }));
 
 // Mock the sqlite adapter factory to avoid sqlite dependency
-vi.mock("../../core/vector-db/adapters/sqlite-adapter.js", () => ({
-  createSQLiteAdapter: vi.fn(() =>
+mock.module("../../core/vector-db/adapters/sqlite-adapter.js", () => ({
+  createSQLiteAdapter: jest.fn(() =>
     Promise.resolve({
-      initialize: vi.fn(),
-      close: vi.fn(),
-      saveItems: vi.fn(),
-      searchItems: vi.fn(),
-      getItem: vi.fn(),
-      updateItem: vi.fn(),
-      deleteItem: vi.fn(),
-      listItems: vi.fn(),
-      getStats: vi.fn(),
-      getAdapterInfo: vi.fn(() => ({
+      initialize: jest.fn(),
+      close: jest.fn(),
+      saveItems: jest.fn(),
+      searchItems: jest.fn(),
+      getItem: jest.fn(),
+      updateItem: jest.fn(),
+      deleteItem: jest.fn(),
+      listItems: jest.fn(),
+      getStats: jest.fn(),
+      getAdapterInfo: jest.fn(() => ({
         name: "SQLite",
         version: "1.0.0",
         description: "Mock SQLite adapter",
@@ -61,18 +69,18 @@ describe("list-tool", () => {
   let options: ListToolOptions;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
 
     mockService = {
-      initialize: vi.fn(),
-      close: vi.fn(),
-      saveItem: vi.fn(),
-      saveItems: vi.fn(),
-      searchItems: vi.fn(),
-      countItems: vi.fn(),
-      getStats: vi.fn(),
-      listItems: vi.fn(),
-      getAdapterInfo: vi.fn(),
+      initialize: jest.fn(),
+      close: jest.fn(),
+      saveItem: jest.fn(),
+      saveItems: jest.fn(),
+      searchItems: jest.fn(),
+      countItems: jest.fn(),
+      getStats: jest.fn(),
+      listItems: jest.fn(),
+      getAdapterInfo: jest.fn(),
     };
 
     options = {
@@ -81,7 +89,7 @@ describe("list-tool", () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("Zod schema validation", () => {
@@ -237,8 +245,8 @@ describe("list-tool", () => {
         bySourceType: { text: 1, gist: 1 },
       };
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi.fn().mockResolvedValue(mockStats);
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest.fn().mockResolvedValue(mockStats);
 
       const input = { stats: false };
       const result = await handleListTool(input, options);
@@ -276,15 +284,17 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 1, bySourceType: { github: 1 } });
 
       const result = await handleListTool({}, options);
 
       expect(result.success).toBe(true);
-      expect(result.items?.[0]?.metadata).toEqual(mockItems[0]?.metadata);
+      expect(result.items?.[0]?.metadata).toEqual(
+        mockItems[0]?.metadata as Record<string, unknown>,
+      );
     });
 
     it("handles items without metadata", async () => {
@@ -296,8 +306,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 1, bySourceType: {} });
 
@@ -318,8 +328,8 @@ describe("list-tool", () => {
         metadata: { sourceType: "text" as const, title: `Item ${i + 1}` },
       }));
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 5, bySourceType: { text: 5 } });
 
@@ -341,8 +351,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 1, bySourceType: { text: 1 } });
 
@@ -364,8 +374,8 @@ describe("list-tool", () => {
         }),
       );
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 50, bySourceType: { text: 50 } });
 
@@ -378,8 +388,8 @@ describe("list-tool", () => {
     });
 
     it("uses default limit when not specified", async () => {
-      mockService.listItems = vi.fn().mockResolvedValue([]);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue([]);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 0, bySourceType: {} });
 
@@ -406,8 +416,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 1, bySourceType: { gist: 1 } });
 
@@ -439,8 +449,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 1, bySourceType: { github: 1 } });
 
@@ -469,8 +479,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 1, bySourceType: { file: 1 } });
 
@@ -498,8 +508,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 1, bySourceType: { text: 1 } });
 
@@ -515,8 +525,8 @@ describe("list-tool", () => {
     });
 
     it("returns empty results when no items match filter", async () => {
-      mockService.listItems = vi.fn().mockResolvedValue([]);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue([]);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 0, bySourceType: {} });
 
@@ -541,8 +551,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 1, bySourceType: { gist: 1 } });
 
@@ -570,7 +580,7 @@ describe("list-tool", () => {
         },
       };
 
-      mockService.getStats = vi.fn().mockResolvedValue(mockStats);
+      mockService.getStats = jest.fn().mockResolvedValue(mockStats);
 
       const input = { stats: true };
       const result = await handleListTool(input, options);
@@ -600,8 +610,8 @@ describe("list-tool", () => {
         bySourceType: { text: 1 },
       };
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi.fn().mockResolvedValue(mockStats);
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest.fn().mockResolvedValue(mockStats);
 
       const input = { stats: false };
       const result = await handleListTool(input, options);
@@ -627,7 +637,7 @@ describe("list-tool", () => {
         },
       };
 
-      mockService.getStats = vi.fn().mockResolvedValue(mockStats);
+      mockService.getStats = jest.fn().mockResolvedValue(mockStats);
 
       const input = { stats: true };
       const result = await handleListTool(input, options);
@@ -646,7 +656,7 @@ describe("list-tool", () => {
         bySourceType: {},
       };
 
-      mockService.getStats = vi.fn().mockResolvedValue(mockStats);
+      mockService.getStats = jest.fn().mockResolvedValue(mockStats);
 
       const input = { stats: true };
       const result = await handleListTool(input, options);
@@ -662,7 +672,7 @@ describe("list-tool", () => {
         bySourceType: { gist: 5, text: 5 },
       };
 
-      mockService.getStats = vi.fn().mockResolvedValue(mockStats);
+      mockService.getStats = jest.fn().mockResolvedValue(mockStats);
 
       const input = { stats: true, type: "gist" as const };
       const result = await handleListTool(input, options);
@@ -690,8 +700,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 10, bySourceType: { text: 10 } });
 
@@ -715,8 +725,8 @@ describe("list-tool", () => {
         }),
       );
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 100, bySourceType: { text: 100 } });
 
@@ -738,8 +748,8 @@ describe("list-tool", () => {
         }),
       );
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 100, bySourceType: { text: 100 } });
 
@@ -753,7 +763,7 @@ describe("list-tool", () => {
 
   describe("error handling for database issues", () => {
     it("handles database connection errors", async () => {
-      mockService.getStats = vi
+      mockService.getStats = jest
         .fn()
         .mockRejectedValue(new Error("Database connection failed"));
 
@@ -768,7 +778,7 @@ describe("list-tool", () => {
     });
 
     it("handles listItems database errors", async () => {
-      mockService.getStats = vi
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 0, bySourceType: {} });
       mockService.listItems = vi
@@ -786,7 +796,7 @@ describe("list-tool", () => {
     });
 
     it("handles getStats database errors", async () => {
-      mockService.getStats = vi
+      mockService.getStats = jest
         .fn()
         .mockRejectedValue(new Error("Statistics query failed"));
 
@@ -803,7 +813,7 @@ describe("list-tool", () => {
       mockService.listItems = vi
         .fn()
         .mockRejectedValue(new Error("Adapter not initialized"));
-      mockService.getStats = vi
+      mockService.getStats = jest
         .fn()
         .mockRejectedValue(new Error("Adapter not initialized"));
 
@@ -817,7 +827,7 @@ describe("list-tool", () => {
       mockService.listItems = vi
         .fn()
         .mockRejectedValue(new Error("Request timeout"));
-      mockService.getStats = vi
+      mockService.getStats = jest
         .fn()
         .mockRejectedValue(new Error("Request timeout"));
 
@@ -828,7 +838,7 @@ describe("list-tool", () => {
     });
 
     it("handles unknown error types", async () => {
-      mockService.getStats = vi.fn().mockRejectedValue("Unknown error");
+      mockService.getStats = jest.fn().mockRejectedValue("Unknown error");
 
       const result = await handleListTool({ stats: true }, options);
 
@@ -838,7 +848,7 @@ describe("list-tool", () => {
     });
 
     it("handles partial database failures", async () => {
-      mockService.getStats = vi
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 5, bySourceType: { text: 5 } });
       mockService.listItems = vi
@@ -922,8 +932,8 @@ describe("list-tool", () => {
     });
 
     it("accepts valid edge case inputs", async () => {
-      mockService.listItems = vi.fn().mockResolvedValue([]);
-      mockService.getStats = vi
+      mockService.listItems = jest.fn().mockResolvedValue([]);
+      mockService.getStats = jest
         .fn()
         .mockResolvedValue({ totalItems: 0, bySourceType: {} });
 
@@ -946,7 +956,7 @@ describe("list-tool", () => {
       const validInput = { limit: 50, type: "gist" as const };
 
       // Mock service to throw error, but validation should pass
-      mockService.getStats = vi.fn().mockRejectedValue(new Error("DB Error"));
+      mockService.getStats = jest.fn().mockRejectedValue(new Error("DB Error"));
 
       const result = await handleListTool(validInput, options);
 
@@ -959,8 +969,8 @@ describe("list-tool", () => {
 
   describe("empty database scenarios", () => {
     it("handles completely empty database", async () => {
-      mockService.listItems = vi.fn().mockResolvedValue([]);
-      mockService.getStats = vi.fn().mockResolvedValue({
+      mockService.listItems = jest.fn().mockResolvedValue([]);
+      mockService.getStats = jest.fn().mockResolvedValue({
         totalItems: 0,
         bySourceType: {},
       });
@@ -974,8 +984,8 @@ describe("list-tool", () => {
     });
 
     it("handles database with no items of specified type", async () => {
-      mockService.listItems = vi.fn().mockResolvedValue([]);
-      mockService.getStats = vi.fn().mockResolvedValue({
+      mockService.listItems = jest.fn().mockResolvedValue([]);
+      mockService.getStats = jest.fn().mockResolvedValue({
         totalItems: 10,
         bySourceType: { text: 5, file: 5 },
       });
@@ -990,8 +1000,8 @@ describe("list-tool", () => {
     });
 
     it("handles newly initialized database", async () => {
-      mockService.listItems = vi.fn().mockResolvedValue([]);
-      mockService.getStats = vi.fn().mockResolvedValue({
+      mockService.listItems = jest.fn().mockResolvedValue([]);
+      mockService.getStats = jest.fn().mockResolvedValue({
         totalItems: 0,
         bySourceType: {},
       });
@@ -1004,8 +1014,8 @@ describe("list-tool", () => {
     });
 
     it("handles database with items but empty result due to filtering", async () => {
-      mockService.listItems = vi.fn().mockResolvedValue([]);
-      mockService.getStats = vi.fn().mockResolvedValue({
+      mockService.listItems = jest.fn().mockResolvedValue([]);
+      mockService.getStats = jest.fn().mockResolvedValue({
         totalItems: 100,
         bySourceType: { text: 50, file: 50 },
       });
@@ -1035,8 +1045,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi.fn().mockResolvedValue({
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest.fn().mockResolvedValue({
         totalItems: 1,
         bySourceType: { text: 1 },
       });
@@ -1064,8 +1074,8 @@ describe("list-tool", () => {
         } as VectorDocument,
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi.fn().mockResolvedValue({
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest.fn().mockResolvedValue({
         totalItems: 2,
         bySourceType: { text: 2 },
       });
@@ -1094,8 +1104,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi.fn().mockResolvedValue({
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest.fn().mockResolvedValue({
         totalItems: 1,
         bySourceType: { gist: 1 },
       });
@@ -1128,8 +1138,8 @@ describe("list-tool", () => {
         },
       ];
 
-      mockService.listItems = vi.fn().mockResolvedValue(mockItems);
-      mockService.getStats = vi.fn().mockResolvedValue({
+      mockService.listItems = jest.fn().mockResolvedValue(mockItems);
+      mockService.getStats = jest.fn().mockResolvedValue({
         totalItems: 1,
         bySourceType: { text: 1 },
       });

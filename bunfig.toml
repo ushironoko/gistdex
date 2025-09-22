@@ -1,0 +1,9 @@
+[test]
+# ルートディレクトリ
+root = "."
+
+# カバレッジ設定（無効化）
+coverage = false
+
+# プリロードファイル（モックのみ）
+preload = ["./tests/mocks.ts"]

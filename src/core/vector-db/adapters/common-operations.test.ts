@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, jest } from "bun:test";
 import { createBatchOperations } from "./common-operations.js";
 
 describe("createBatchOperations", () => {
   describe("insertBatch", () => {
     it("should insert multiple items sequentially", async () => {
-      const insertFn = vi
+      const insertFn = jest
         .fn()
         .mockImplementation((item: { name: string }) =>
           Promise.resolve(`id-${item.name}`),
@@ -23,7 +23,7 @@ describe("createBatchOperations", () => {
     });
 
     it("should handle empty array", async () => {
-      const insertFn = vi.fn();
+      const insertFn = jest.fn();
       const batchOps = createBatchOperations();
 
       const ids = await batchOps.insertBatch([], insertFn);
@@ -33,7 +33,7 @@ describe("createBatchOperations", () => {
     });
 
     it("should propagate errors from insert function", async () => {
-      const insertFn = vi
+      const insertFn = jest
         .fn()
         .mockResolvedValueOnce("id-1")
         .mockRejectedValueOnce(new Error("Insert failed"));
@@ -50,7 +50,7 @@ describe("createBatchOperations", () => {
 
   describe("deleteBatch", () => {
     it("should delete multiple items sequentially", async () => {
-      const deleteFn = vi.fn().mockResolvedValue(undefined);
+      const deleteFn = jest.fn().mockResolvedValue(undefined);
 
       const batchOps = createBatchOperations();
       const ids = ["id-1", "id-2", "id-3"];
@@ -64,7 +64,7 @@ describe("createBatchOperations", () => {
     });
 
     it("should handle empty array", async () => {
-      const deleteFn = vi.fn();
+      const deleteFn = jest.fn();
       const batchOps = createBatchOperations();
 
       await batchOps.deleteBatch([], deleteFn);
@@ -73,7 +73,7 @@ describe("createBatchOperations", () => {
     });
 
     it("should propagate errors from delete function", async () => {
-      const deleteFn = vi
+      const deleteFn = jest
         .fn()
         .mockResolvedValueOnce(undefined)
         .mockRejectedValueOnce(new Error("Delete failed"));

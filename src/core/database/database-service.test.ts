@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { VectorDBConfig } from "../vector-db/adapters/types.js";
 import {
   createDatabaseService,
@@ -92,7 +92,7 @@ describe("DatabaseService", () => {
     const items = await service.listItems({ limit: 10 });
     expect(items).toHaveLength(1);
     expect(items[0]?.content).toBe(params.content);
-    expect(items[0]?.metadata?.title).toBe(params.metadata?.title);
+    expect(items[0]?.metadata?.title).toBe(params.metadata?.title as string);
   });
 
   test("can save multiple items in batch with real adapter", async () => {

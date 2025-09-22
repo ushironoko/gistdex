@@ -5,8 +5,8 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: [
-      "src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
-      "tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
+      "src/**/*.vitest.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
+      "tests/**/*.vitest.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
     ],
     exclude: [
       "**/node_modules/**",

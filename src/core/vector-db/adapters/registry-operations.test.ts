@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, jest, mock } from "bun:test";
 import {
   getDefaultRegistry,
   withCustomRegistry,
@@ -7,8 +7,8 @@ import {
 import type { VectorDBAdapter, VectorDBConfig } from "./types.js";
 
 // Mock node:sqlite to avoid import errors
-vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi.fn(),
+mock.module("node:sqlite", () => ({
+  DatabaseSync: jest.fn(),
 }));
 
 describe("registry-operations", () => {
@@ -40,18 +40,18 @@ describe("registry-operations", () => {
       // First operation adds custom adapter
       await withRegistry(async (registry) => {
         const mockAdapter = (): VectorDBAdapter => ({
-          initialize: vi.fn(),
-          insert: vi.fn(),
-          insertBatch: vi.fn(),
-          search: vi.fn(),
-          update: vi.fn(),
-          delete: vi.fn(),
-          deleteBatch: vi.fn(),
-          get: vi.fn(),
-          count: vi.fn(),
-          list: vi.fn(),
-          close: vi.fn(),
-          getInfo: vi.fn(),
+          initialize: jest.fn(),
+          insert: jest.fn(),
+          insertBatch: jest.fn(),
+          search: jest.fn(),
+          update: jest.fn(),
+          delete: jest.fn(),
+          deleteBatch: jest.fn(),
+          get: jest.fn(),
+          count: jest.fn(),
+          list: jest.fn(),
+          close: jest.fn(),
+          getInfo: jest.fn(),
         });
 
         registry.register("custom", mockAdapter);
@@ -68,18 +68,18 @@ describe("registry-operations", () => {
   describe("withCustomRegistry", () => {
     it("allows custom adapter registration", async () => {
       const mockAdapter = (): VectorDBAdapter => ({
-        initialize: vi.fn(),
-        insert: vi.fn(),
-        insertBatch: vi.fn(),
-        search: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-        deleteBatch: vi.fn(),
-        get: vi.fn(),
-        count: vi.fn(),
-        list: vi.fn(),
-        close: vi.fn(),
-        getInfo: vi.fn().mockReturnValue({
+        initialize: jest.fn(),
+        insert: jest.fn(),
+        insertBatch: jest.fn(),
+        search: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        deleteBatch: jest.fn(),
+        get: jest.fn(),
+        count: jest.fn(),
+        list: jest.fn(),
+        close: jest.fn(),
+        getInfo: jest.fn().mockReturnValue({
           provider: "custom",
           version: "1.0.0",
           capabilities: [],
@@ -107,33 +107,33 @@ describe("registry-operations", () => {
 
     it("supports multiple custom adapters", async () => {
       const mockAdapter1 = (): VectorDBAdapter => ({
-        initialize: vi.fn(),
-        insert: vi.fn(),
-        insertBatch: vi.fn(),
-        search: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-        deleteBatch: vi.fn(),
-        get: vi.fn(),
-        count: vi.fn(),
-        list: vi.fn(),
-        close: vi.fn(),
-        getInfo: vi.fn(),
+        initialize: jest.fn(),
+        insert: jest.fn(),
+        insertBatch: jest.fn(),
+        search: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        deleteBatch: jest.fn(),
+        get: jest.fn(),
+        count: jest.fn(),
+        list: jest.fn(),
+        close: jest.fn(),
+        getInfo: jest.fn(),
       });
 
       const mockAdapter2 = (): VectorDBAdapter => ({
-        initialize: vi.fn(),
-        insert: vi.fn(),
-        insertBatch: vi.fn(),
-        search: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-        deleteBatch: vi.fn(),
-        get: vi.fn(),
-        count: vi.fn(),
-        list: vi.fn(),
-        close: vi.fn(),
-        getInfo: vi.fn(),
+        initialize: jest.fn(),
+        insert: jest.fn(),
+        insertBatch: jest.fn(),
+        search: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        deleteBatch: jest.fn(),
+        get: jest.fn(),
+        count: jest.fn(),
+        list: jest.fn(),
+        close: jest.fn(),
+        getInfo: jest.fn(),
       });
 
       const customAdapters = new Map([
@@ -166,18 +166,18 @@ describe("registry-operations", () => {
 
       // Add custom adapter to first registry
       const mockAdapter = (): VectorDBAdapter => ({
-        initialize: vi.fn(),
-        insert: vi.fn(),
-        insertBatch: vi.fn(),
-        search: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-        deleteBatch: vi.fn(),
-        get: vi.fn(),
-        count: vi.fn(),
-        list: vi.fn(),
-        close: vi.fn(),
-        getInfo: vi.fn(),
+        initialize: jest.fn(),
+        insert: jest.fn(),
+        insertBatch: jest.fn(),
+        search: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+        deleteBatch: jest.fn(),
+        get: jest.fn(),
+        count: jest.fn(),
+        list: jest.fn(),
+        close: jest.fn(),
+        getInfo: jest.fn(),
       });
 
       registry1.register("custom", mockAdapter);

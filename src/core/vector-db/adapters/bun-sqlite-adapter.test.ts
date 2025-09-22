@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import type { VectorDBAdapter, VectorDocument } from "./types.js";
 
 // Dynamic import to check if bun:sqlite is available

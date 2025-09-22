@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import type { DocAnalysisResult } from "./doc-service.js";
 import { formatGitHubComment, formatJSON } from "./formatters.js";
 

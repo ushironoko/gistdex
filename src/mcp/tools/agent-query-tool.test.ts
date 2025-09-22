@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  mock,
+} from "bun:test";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
 import { agentQueryToolSchema } from "../schemas/validation.js";
@@ -8,19 +16,19 @@ import {
 } from "./agent-query-tool.js";
 
 // Mock the core modules
-vi.mock("../../core/search/search.js", () => ({
-  semanticSearch: vi.fn(),
-  hybridSearch: vi.fn(),
-  rerankResults: vi.fn((_query, results) => results),
+mock.module("../../core/search/search.js", () => ({
+  semanticSearch: jest.fn(),
+  hybridSearch: jest.fn(),
+  rerankResults: jest.fn((_query, results) => results),
 }));
 
-vi.mock("../utils/metadata-generator.js", () => ({
-  analyzeSemanticCoherence: vi.fn(() => ({
+mock.module("../utils/metadata-generator.js", () => ({
+  analyzeSemanticCoherence: jest.fn(() => ({
     coherence: 0.8,
     diversity: 0.7,
     topicClusters: [{ topic: "test", confidence: 0.9, resultIndices: [0, 1] }],
   })),
-  analyzeContentTypes: vi.fn(() => ({
+  analyzeContentTypes: jest.fn(() => ({
     contentTypes: [
       { type: "code", count: 3, percentage: 0.6 },
       { type: "documentation", count: 1, percentage: 0.2 },
@@ -30,8 +38,8 @@ vi.mock("../utils/metadata-generator.js", () => ({
     hasExamples: true,
     hasImplementation: true,
   })),
-  extractMainTopics: vi.fn(() => ["typescript", "functions", "types"]),
-  analyzeContentCharacteristics: vi.fn(() => ({
+  extractMainTopics: jest.fn(() => ["typescript", "functions", "types"]),
+  analyzeContentCharacteristics: jest.fn(() => ({
     predominantType: "code",
     hasExamples: true,
     hasImplementation: true,
@@ -46,7 +54,7 @@ describe("agent-query-tool", () => {
   let mockSearchResults: VectorSearchResult[];
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
 
     mockSearchResults = [
       {
@@ -70,15 +78,15 @@ describe("agent-query-tool", () => {
     ];
 
     mockService = {
-      initialize: vi.fn(),
-      close: vi.fn(),
-      saveItem: vi.fn(),
-      saveItems: vi.fn(),
-      searchItems: vi.fn().mockResolvedValue(mockSearchResults),
-      countItems: vi.fn(),
-      getStats: vi.fn(),
-      listItems: vi.fn(),
-      getAdapterInfo: vi.fn(),
+      initialize: jest.fn(),
+      close: jest.fn(),
+      saveItem: jest.fn(),
+      saveItems: jest.fn(),
+      searchItems: jest.fn().mockResolvedValue(mockSearchResults),
+      countItems: jest.fn(),
+      getStats: jest.fn(),
+      listItems: jest.fn(),
+      getAdapterInfo: jest.fn(),
     };
 
     options = {
@@ -87,13 +95,13 @@ describe("agent-query-tool", () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("Summary Mode", () => {
     it("should return summary response when mode is 'summary'", async () => {
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
+      (semanticSearch as any).mockResolvedValue(mockSearchResults);
 
       const input = {
         query: "TypeScript functions",
@@ -137,7 +145,7 @@ describe("agent-query-tool", () => {
 
     it("should extract main topics based on word frequency", async () => {
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
+      (semanticSearch as any).mockResolvedValue(mockSearchResults);
 
       const input = {
         visitedCache: true,
@@ -158,7 +166,7 @@ describe("agent-query-tool", () => {
 
     it("should assess coverage based on goal keywords", async () => {
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
+      (semanticSearch as any).mockResolvedValue(mockSearchResults);
 
       const input = {
         visitedCache: true,
@@ -184,7 +192,7 @@ describe("agent-query-tool", () => {
       ];
 
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(lowScoreResults);
+      (semanticSearch as any).mockResolvedValue(lowScoreResults);
 
       const input = {
         visitedCache: true,
@@ -204,7 +212,7 @@ describe("agent-query-tool", () => {
 
     it("should default to summary mode when mode is not specified", async () => {
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
+      (semanticSearch as any).mockResolvedValue(mockSearchResults);
 
       const input = {
         visitedCache: true,
@@ -224,7 +232,7 @@ describe("agent-query-tool", () => {
   describe("Detailed Mode", () => {
     it("should return detailed results when mode is 'detailed'", async () => {
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
+      (semanticSearch as any).mockResolvedValue(mockSearchResults);
 
       const input = {
         visitedCache: true,
@@ -255,7 +263,7 @@ describe("agent-query-tool", () => {
         embedding: new Array(768).fill(0.1),
       })) as Array<VectorSearchResult & { embedding: number[] }>;
 
-      vi.mocked(semanticSearch).mockResolvedValue(mockResultsWithEmbedding);
+      (semanticSearch as any).mockResolvedValue(mockResultsWithEmbedding);
 
       const input = {
         visitedCache: true,
@@ -289,7 +297,7 @@ describe("agent-query-tool", () => {
   describe("Full Mode", () => {
     it("should return complete information when mode is 'full'", async () => {
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(mockSearchResults);
+      (semanticSearch as any).mockResolvedValue(mockSearchResults);
 
       const input = {
         visitedCache: true,
@@ -320,7 +328,7 @@ describe("agent-query-tool", () => {
         embedding: new Array(768).fill(0.1),
       })) as Array<VectorSearchResult & { embedding: number[] }>;
 
-      vi.mocked(semanticSearch).mockResolvedValue(mockResultsWithEmbedding);
+      (semanticSearch as any).mockResolvedValue(mockResultsWithEmbedding);
 
       const input = {
         visitedCache: true,
@@ -413,7 +421,7 @@ describe("agent-query-tool", () => {
       );
 
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(manyResults);
+      (semanticSearch as any).mockResolvedValue(manyResults);
 
       const input = {
         visitedCache: true,
@@ -444,7 +452,7 @@ describe("agent-query-tool", () => {
       );
 
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(allResults);
+      (semanticSearch as any).mockResolvedValue(allResults);
 
       // First page
       const firstInput = {
@@ -489,7 +497,7 @@ describe("agent-query-tool", () => {
       ];
 
       const { semanticSearch } = await import("../../core/search/search.js");
-      vi.mocked(semanticSearch).mockResolvedValue(fewResults);
+      (semanticSearch as any).mockResolvedValue(fewResults);
 
       const input = {
         visitedCache: true,

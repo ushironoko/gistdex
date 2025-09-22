@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, jest, mock } from "bun:test";
 import {
   createCommandHandler,
   createReadOnlyCommandHandler,
@@ -6,24 +6,24 @@ import {
 } from "./command-handler.js";
 
 // Mock dependencies
-vi.mock("./config-helper.js", () => ({
-  getDBConfig: vi.fn().mockResolvedValue({
+mock.module("./config-helper.js", () => ({
+  getDBConfig: jest.fn().mockResolvedValue({
     config: { provider: "sqlite" },
     customAdapters: new Map(),
   }),
 }));
 
-vi.mock("../../core/database/database-operations.js", () => ({
-  createDatabaseOperations: vi.fn().mockReturnValue({
-    withReadOnly: vi.fn((fn) => fn({ initialized: true })),
-    withDatabase: vi.fn((fn) => fn({ initialized: true })),
+mock.module("../../core/database/database-operations.js", () => ({
+  createDatabaseOperations: jest.fn().mockReturnValue({
+    withReadOnly: jest.fn((fn) => fn({ initialized: true })),
+    withDatabase: jest.fn((fn) => fn({ initialized: true })),
   }),
 }));
 
 describe("command-handler utils", () => {
   describe("createCommandHandler", () => {
     it("should create a readonly command handler", async () => {
-      const mockHandler = vi.fn();
+      const mockHandler = jest.fn();
       const handler = createCommandHandler("readonly", mockHandler);
       const ctx = { values: {} };
 
@@ -36,7 +36,7 @@ describe("command-handler utils", () => {
     });
 
     it("should create a write command handler", async () => {
-      const mockHandler = vi.fn();
+      const mockHandler = jest.fn();
       const handler = createCommandHandler("write", mockHandler);
       const ctx = { values: {} };
 
@@ -50,7 +50,7 @@ describe("command-handler utils", () => {
 
     it("should pass context values to getDBConfig", async () => {
       const { getDBConfig } = await import("./config-helper.js");
-      const handler = createCommandHandler("readonly", vi.fn());
+      const handler = createCommandHandler("readonly", jest.fn());
       const ctx = { values: { provider: "custom", db: "test.db" } };
 
       await handler(ctx);
@@ -61,7 +61,7 @@ describe("command-handler utils", () => {
 
   describe("createReadOnlyCommandHandler", () => {
     it("should create a readonly handler", async () => {
-      const mockHandler = vi.fn();
+      const mockHandler = jest.fn();
       const handler = createReadOnlyCommandHandler(mockHandler);
       const ctx = { values: {} };
 
@@ -73,7 +73,7 @@ describe("command-handler utils", () => {
 
   describe("createWriteCommandHandler", () => {
     it("should create a write handler", async () => {
-      const mockHandler = vi.fn();
+      const mockHandler = jest.fn();
       const handler = createWriteCommandHandler(mockHandler);
       const ctx = { values: {} };
 

@@ -1,35 +1,43 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  mock,
+} from "bun:test";
 import { handleQuery } from "./query.js";
 
 // Test context type that matches what handleQuery expects
 type TestQueryContext = Parameters<typeof handleQuery>[0];
 
 // Mock node:sqlite to avoid import errors
-vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi.fn(),
+mock.module("node:sqlite", () => ({
+  DatabaseSync: jest.fn(),
 }));
 
-vi.mock("../../core/database/database-service.js", () => ({
+mock.module("../../core/database/database-service.js", () => ({
   databaseService: {
-    initialize: vi.fn(),
-    close: vi.fn(),
-    searchItems: vi.fn().mockResolvedValue([]),
+    initialize: jest.fn(),
+    close: jest.fn(),
+    searchItems: jest.fn().mockResolvedValue([]),
   },
-  createDatabaseService: vi.fn(() => ({
-    initialize: vi.fn(),
-    close: vi.fn(),
-    searchItems: vi.fn().mockResolvedValue([]),
-    saveItem: vi.fn(),
-    saveItems: vi.fn(),
-    countItems: vi.fn(),
-    listItems: vi.fn(),
-    getStats: vi.fn(),
-    getAdapterInfo: vi.fn(),
+  createDatabaseService: jest.fn(() => ({
+    initialize: jest.fn(),
+    close: jest.fn(),
+    searchItems: jest.fn().mockResolvedValue([]),
+    saveItem: jest.fn(),
+    saveItems: jest.fn(),
+    countItems: jest.fn(),
+    listItems: jest.fn(),
+    getStats: jest.fn(),
+    getAdapterInfo: jest.fn(),
   })),
 }));
 
-vi.mock("../../core/search/search.js", () => ({
-  semanticSearch: vi.fn().mockResolvedValue([
+mock.module("../../core/search/search.js", () => ({
+  semanticSearch: jest.fn().mockResolvedValue([
     {
       content: "Test result content",
       score: 0.95,
@@ -40,7 +48,7 @@ vi.mock("../../core/search/search.js", () => ({
       },
     },
   ]),
-  hybridSearch: vi.fn().mockResolvedValue([
+  hybridSearch: jest.fn().mockResolvedValue([
     {
       content: "Hybrid result content",
       score: 0.98,
@@ -50,15 +58,17 @@ vi.mock("../../core/search/search.js", () => ({
       },
     },
   ]),
-  calculateSearchStats: vi.fn().mockReturnValue({
+  calculateSearchStats: jest.fn().mockReturnValue({
     totalResults: 1,
     averageScore: 0.95,
     minScore: 0.95,
     maxScore: 0.95,
     sourceTypes: { text: 1 },
   }),
-  getOriginalContent: vi.fn().mockResolvedValue("Original full content"),
-  getSectionContent: vi.fn().mockResolvedValue("Section content from markdown"),
+  getOriginalContent: jest.fn().mockResolvedValue("Original full content"),
+  getSectionContent: jest
+    .fn()
+    .mockResolvedValue("Section content from markdown"),
 }));
 
 describe("handleQuery", () => {
@@ -67,11 +77,11 @@ describe("handleQuery", () => {
   const originalProcessExit = process.exit;
 
   beforeEach(() => {
-    console.log = vi.fn();
-    console.error = vi.fn();
+    console.log = jest.fn();
+    console.error = jest.fn();
     // @ts-expect-error - Mocking process.exit for testing
-    process.exit = vi.fn();
-    vi.clearAllMocks();
+    process.exit = jest.fn();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -130,7 +140,7 @@ describe("handleQuery", () => {
 
   it("handles no results", async () => {
     const { semanticSearch } = await import("../../core/search/search.js");
-    vi.mocked(semanticSearch).mockResolvedValueOnce([]);
+    (semanticSearch as any).mockResolvedValueOnce([]);
 
     await handleQuery({
       values: {},
@@ -158,8 +168,8 @@ describe("handleQuery", () => {
     const { semanticSearch, getOriginalContent } = await import(
       "../../core/search/search.js"
     );
-    vi.mocked(semanticSearch).mockResolvedValueOnce([mockResult]);
-    vi.mocked(getOriginalContent).mockResolvedValueOnce(
+    (semanticSearch as any).mockResolvedValueOnce([mockResult]);
+    (getOriginalContent as any).mockResolvedValueOnce(
       "This is the complete original content that was indexed. It includes all three chunks combined together.",
     );
 
@@ -194,8 +204,8 @@ describe("handleQuery", () => {
     const { semanticSearch, getOriginalContent } = await import(
       "../../core/search/search.js"
     );
-    vi.mocked(semanticSearch).mockResolvedValueOnce([mockResult]);
-    vi.mocked(getOriginalContent).mockResolvedValueOnce(
+    (semanticSearch as any).mockResolvedValueOnce([mockResult]);
+    (getOriginalContent as any).mockResolvedValueOnce(
       "This is the complete original long content that spans multiple chunks",
     );
 
@@ -278,8 +288,8 @@ describe("handleQuery", () => {
     const { semanticSearch, getSectionContent } = await import(
       "../../core/search/search.js"
     );
-    vi.mocked(semanticSearch).mockResolvedValue([mockResult]);
-    vi.mocked(getSectionContent).mockResolvedValue(
+    (semanticSearch as any).mockResolvedValue([mockResult]);
+    (getSectionContent as any).mockResolvedValue(
       "## Introduction\n\nThis is the full introduction section content with multiple paragraphs.",
     );
 
@@ -341,7 +351,7 @@ describe("handleQuery", () => {
     const { semanticSearch, getSectionContent } = await import(
       "../../core/search/search.js"
     );
-    vi.mocked(semanticSearch).mockResolvedValue([mockResult]);
+    (semanticSearch as any).mockResolvedValue([mockResult]);
 
     await handleQuery({
       values: { section: true },

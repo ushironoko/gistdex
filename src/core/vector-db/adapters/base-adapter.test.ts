@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, jest } from "bun:test";
 import { DocumentNotFoundError } from "../errors.js";
 import type { BaseAdapterConfig, StorageOperations } from "./base-adapter.js";
 import { createBaseAdapter } from "./base-adapter.js";
@@ -6,13 +6,13 @@ import type { VectorDocument, VectorSearchResult } from "./types.js";
 
 describe("createBaseAdapter", () => {
   const mockStorage: StorageOperations = {
-    storeDocument: vi.fn(),
-    retrieveDocument: vi.fn(),
-    removeDocument: vi.fn(),
-    searchSimilar: vi.fn(),
-    countDocuments: vi.fn(),
-    listDocuments: vi.fn(),
-    clear: vi.fn(),
+    storeDocument: jest.fn(),
+    retrieveDocument: jest.fn(),
+    removeDocument: jest.fn(),
+    searchSimilar: jest.fn(),
+    countDocuments: jest.fn(),
+    listDocuments: jest.fn(),
+    clear: jest.fn(),
   };
 
   const config: BaseAdapterConfig = {
@@ -23,7 +23,7 @@ describe("createBaseAdapter", () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("initialization", () => {
@@ -31,7 +31,7 @@ describe("createBaseAdapter", () => {
       const adapter = createBaseAdapter(config, mockStorage);
       await adapter.initialize();
 
-      vi.mocked(mockStorage.countDocuments).mockResolvedValue(0);
+      (mockStorage.countDocuments as any).mockResolvedValue(0);
 
       // Should not throw when using after initialization
       await expect(adapter.count()).resolves.toBeDefined();
@@ -65,7 +65,7 @@ describe("createBaseAdapter", () => {
         metadata: { test: true },
       };
 
-      vi.mocked(mockStorage.storeDocument).mockResolvedValue("generated-id");
+      (mockStorage.storeDocument as any).mockResolvedValue("generated-id");
 
       const result = await adapter.insert(doc);
 
@@ -105,7 +105,7 @@ describe("createBaseAdapter", () => {
         },
       ];
 
-      vi.mocked(mockStorage.searchSimilar).mockResolvedValue(mockResults);
+      (mockStorage.searchSimilar as any).mockResolvedValue(mockResults);
 
       const results = await adapter.search([0.1, 0.2, 0.3]);
 
@@ -136,8 +136,8 @@ describe("createBaseAdapter", () => {
         metadata: { version: 1 },
       };
 
-      vi.mocked(mockStorage.retrieveDocument).mockResolvedValue(existing);
-      vi.mocked(mockStorage.storeDocument).mockResolvedValue("test-id");
+      (mockStorage.retrieveDocument as any).mockResolvedValue(existing);
+      (mockStorage.storeDocument as any).mockResolvedValue("test-id");
 
       await adapter.update("test-id", {
         content: "new content",
@@ -161,7 +161,7 @@ describe("createBaseAdapter", () => {
       const adapter = createBaseAdapter(config, mockStorage);
       await adapter.initialize();
 
-      vi.mocked(mockStorage.retrieveDocument).mockResolvedValue(null);
+      (mockStorage.retrieveDocument as any).mockResolvedValue(null);
 
       await expect(
         adapter.update("non-existent", { content: "new" }),
@@ -180,8 +180,8 @@ describe("createBaseAdapter", () => {
         embedding: [0.1, 0.2, 0.3],
       };
 
-      vi.mocked(mockStorage.retrieveDocument).mockResolvedValue(existing);
-      vi.mocked(mockStorage.removeDocument).mockResolvedValue();
+      (mockStorage.retrieveDocument as any).mockResolvedValue(existing);
+      (mockStorage.removeDocument as any).mockResolvedValue();
 
       await adapter.delete("test-id");
 
@@ -192,7 +192,7 @@ describe("createBaseAdapter", () => {
       const adapter = createBaseAdapter(config, mockStorage);
       await adapter.initialize();
 
-      vi.mocked(mockStorage.retrieveDocument).mockResolvedValue(null);
+      (mockStorage.retrieveDocument as any).mockResolvedValue(null);
 
       await expect(adapter.delete("non-existent")).rejects.toThrow(
         DocumentNotFoundError,
@@ -210,7 +210,7 @@ describe("createBaseAdapter", () => {
         { id: "2", content: "doc2", embedding: [0.4, 0.5, 0.6] },
       ];
 
-      vi.mocked(mockStorage.storeDocument)
+      (mockStorage.storeDocument as any)
         .mockResolvedValueOnce("id1")
         .mockResolvedValueOnce("id2");
 
@@ -224,12 +224,12 @@ describe("createBaseAdapter", () => {
       const adapter = createBaseAdapter(config, mockStorage);
       await adapter.initialize();
 
-      vi.mocked(mockStorage.retrieveDocument).mockResolvedValue({
+      (mockStorage.retrieveDocument as any).mockResolvedValue({
         id: "test",
         content: "test",
         embedding: [0.1, 0.2, 0.3],
       });
-      vi.mocked(mockStorage.removeDocument).mockResolvedValue();
+      (mockStorage.removeDocument as any).mockResolvedValue();
 
       await adapter.deleteBatch(["id1", "id2"]);
 

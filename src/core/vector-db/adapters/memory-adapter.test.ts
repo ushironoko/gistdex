@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { createMemoryAdapter } from "./memory-adapter.js";
 import type { VectorDBAdapter, VectorDocument } from "./types.js";
 

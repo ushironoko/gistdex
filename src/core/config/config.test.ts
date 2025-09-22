@@ -1,19 +1,29 @@
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  type Mock,
+  mock,
+} from "bun:test";
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import {
   createConfigOperations,
   type GistdexConfig,
 } from "./config-operations.js";
 
 // Mock fs module
-vi.mock("node:fs", () => ({
-  existsSync: vi.fn(),
+mock.module("node:fs", () => ({
+  existsSync: jest.fn(),
 }));
 
-vi.mock("node:fs/promises", () => ({
-  readFile: vi.fn(),
-  writeFile: vi.fn(),
+mock.module("node:fs/promises", () => ({
+  readFile: jest.fn(),
+  writeFile: jest.fn(),
 }));
 
 describe("createConfigOperations", () => {
@@ -21,14 +31,14 @@ describe("createConfigOperations", () => {
 
   beforeEach(() => {
     configOperations = createConfigOperations();
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     // Reset environment variables
     delete process.env.VECTOR_DB_PROVIDER;
     delete process.env.VECTOR_DB_PATH;
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     configOperations.reset();
   });
 
@@ -48,25 +58,31 @@ describe("createConfigOperations", () => {
         },
       };
 
-      vi.mocked(existsSync).mockImplementation((path) => {
+      (existsSync as Mock<typeof existsSync>).mockImplementation((path) => {
         // Only return true for JSON config files, not TS/JS files
-        return path === "./gistdex.config.json";
+        return String(path) === "./gistdex.config.json";
       });
-      vi.mocked(readFile).mockResolvedValue(JSON.stringify(mockConfig));
+      (readFile as Mock<typeof readFile>).mockResolvedValue(
+        JSON.stringify(mockConfig),
+      );
 
       const config = await configOperations.load();
 
       // defu merges with defaults, so check specific values
-      expect(config.vectorDB?.provider).toBe(mockConfig.vectorDB?.provider);
-      expect(config.vectorDB?.options?.path).toBe(
-        mockConfig.vectorDB?.options?.path,
+      expect(config.vectorDB?.provider).toBe(
+        mockConfig.vectorDB?.provider as string,
       );
-      expect(config.embedding?.model).toBe(mockConfig.embedding?.model);
+      expect(config.vectorDB?.options?.path).toBe(
+        mockConfig.vectorDB?.options?.path as string,
+      );
+      expect(config.embedding?.model).toBe(
+        mockConfig.embedding?.model as string,
+      );
       expect(readFile).toHaveBeenCalledWith("./gistdex.config.json", "utf-8");
     });
 
     it("should return default config when file does not exist", async () => {
-      vi.mocked(existsSync).mockReturnValue(false);
+      (existsSync as Mock<typeof existsSync>).mockReturnValue(false);
 
       const config = await configOperations.load();
 
@@ -79,7 +95,7 @@ describe("createConfigOperations", () => {
       process.env.VECTOR_DB_PROVIDER = "memory";
       process.env.CHUNK_SIZE = "2000";
 
-      vi.mocked(existsSync).mockReturnValue(false);
+      (existsSync as Mock<typeof existsSync>).mockReturnValue(false);
 
       const config = await configOperations.load();
 
@@ -102,10 +118,12 @@ describe("createConfigOperations", () => {
         },
       };
 
-      vi.mocked(existsSync).mockImplementation((path) => {
-        return path === "./gistdex.config.json";
+      (existsSync as Mock<typeof existsSync>).mockImplementation((path) => {
+        return String(path) === "./gistdex.config.json";
       });
-      vi.mocked(readFile).mockResolvedValue(JSON.stringify(mockConfig));
+      (readFile as Mock<typeof readFile>).mockResolvedValue(
+        JSON.stringify(mockConfig),
+      );
 
       const config = await configOperations.load();
 
@@ -192,8 +210,10 @@ describe("createConfigOperations", () => {
         },
       };
 
-      vi.mocked(existsSync).mockReturnValue(true);
-      vi.mocked(readFile).mockResolvedValue(JSON.stringify(mockConfig));
+      (existsSync as Mock<typeof existsSync>).mockReturnValue(true);
+      (readFile as Mock<typeof readFile>).mockResolvedValue(
+        JSON.stringify(mockConfig),
+      );
 
       const cliOverrides = {
         provider: "memory",
@@ -216,10 +236,12 @@ describe("createConfigOperations", () => {
         },
       };
 
-      vi.mocked(existsSync).mockImplementation((path) => {
-        return path === "./gistdex.config.json";
+      (existsSync as Mock<typeof existsSync>).mockImplementation((path) => {
+        return String(path) === "./gistdex.config.json";
       });
-      vi.mocked(readFile).mockResolvedValue(JSON.stringify(mockConfig));
+      (readFile as Mock<typeof readFile>).mockResolvedValue(
+        JSON.stringify(mockConfig),
+      );
 
       const cliOverrides = {
         provider: "memory",

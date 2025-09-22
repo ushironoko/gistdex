@@ -1,19 +1,19 @@
-import type { MockInstance } from "vitest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
+
 import { showVersion } from "./version.js";
 
 // Mock package.json
-vi.mock("../../../package.json", () => ({
+mock.module("../../../package.json", () => ({
   default: {
     version: "1.0.0-test",
   },
 }));
 
 describe("showVersion", () => {
-  let consoleLogSpy: MockInstance;
+  let consoleLogSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
-    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
   });
 
   it("should display the version number", () => {

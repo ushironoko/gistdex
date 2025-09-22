@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
 import {
   analyzeContentTypes,

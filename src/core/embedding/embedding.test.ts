@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  type Mock,
+  mock,
+  test,
+} from "bun:test";
 import {
   cosineSimilarity,
   EMBEDDING_DIMENSION,
@@ -10,15 +18,15 @@ import {
 } from "./embedding.js";
 
 // Only mock external APIs - Google AI SDK
-vi.mock("@ai-sdk/google", () => ({
+mock.module("@ai-sdk/google", () => ({
   google: {
-    textEmbedding: vi.fn(),
+    textEmbedding: jest.fn(),
   },
 }));
 
-vi.mock("ai", () => ({
-  embed: vi.fn(),
-  embedMany: vi.fn(),
+mock.module("ai", () => ({
+  embed: jest.fn(),
+  embedMany: jest.fn(),
 }));
 
 import { google } from "@ai-sdk/google";
@@ -126,7 +134,7 @@ describe("cosineSimilarity", () => {
 
 describe("generateEmbedding (with API mock)", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   test("generates embedding for single text", async () => {
@@ -134,10 +142,10 @@ describe("generateEmbedding (with API mock)", () => {
     const normalizedEmbedding = normalizeEmbedding(mockEmbedding);
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(
+    (google.textEmbedding as Mock<typeof google.textEmbedding>).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
-    vi.mocked(embed).mockResolvedValue({
+    (embed as Mock<typeof embed>).mockResolvedValue({
       embedding: mockEmbedding,
     } as unknown as Awaited<ReturnType<typeof embed>>);
 
@@ -162,10 +170,10 @@ describe("generateEmbedding (with API mock)", () => {
     const normalizedEmbedding = normalizeEmbedding(mockEmbedding);
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(
+    (google.textEmbedding as Mock<typeof google.textEmbedding>).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
-    vi.mocked(embed).mockResolvedValue({
+    (embed as Mock<typeof embed>).mockResolvedValue({
       embedding: mockEmbedding,
     } as unknown as Awaited<ReturnType<typeof embed>>);
 
@@ -186,10 +194,10 @@ describe("generateEmbedding (with API mock)", () => {
   test("handles API errors gracefully", async () => {
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(
+    (google.textEmbedding as Mock<typeof google.textEmbedding>).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
-    vi.mocked(embed).mockRejectedValue(new Error("API Error"));
+    (embed as Mock<typeof embed>).mockRejectedValue(new Error("API Error"));
 
     await expect(generateEmbedding("test")).rejects.toThrow(
       "Failed to generate embedding for text",
@@ -199,7 +207,7 @@ describe("generateEmbedding (with API mock)", () => {
 
 describe("generateEmbeddings (with API mock)", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   test("generates embeddings for multiple texts", async () => {
@@ -212,10 +220,10 @@ describe("generateEmbeddings (with API mock)", () => {
     const normalizedEmbeddings = mockEmbeddings.map(normalizeEmbedding);
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(
+    (google.textEmbedding as Mock<typeof google.textEmbedding>).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
-    vi.mocked(embedMany).mockResolvedValue({
+    (embedMany as Mock<typeof embedMany>).mockResolvedValue({
       embeddings: mockEmbeddings,
     } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
@@ -250,10 +258,10 @@ describe("generateEmbeddings (with API mock)", () => {
     const normalizedEmbedding = normalizeEmbedding(mockEmbedding);
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(
+    (google.textEmbedding as Mock<typeof google.textEmbedding>).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
-    vi.mocked(embedMany).mockResolvedValue({
+    (embedMany as Mock<typeof embedMany>).mockResolvedValue({
       embeddings: [mockEmbedding],
     } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
@@ -274,7 +282,7 @@ describe("generateEmbeddings (with API mock)", () => {
 
 describe("generateEmbeddingsBatch (with API mock)", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   test("processes texts in batches", async () => {
@@ -296,11 +304,11 @@ describe("generateEmbeddingsBatch (with API mock)", () => {
 
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(
+    (google.textEmbedding as Mock<typeof google.textEmbedding>).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
 
-    vi.mocked(embedMany)
+    (embedMany as Mock<typeof embedMany>)
       .mockResolvedValueOnce({
         embeddings: mockBatch1,
       } as unknown as Awaited<ReturnType<typeof embedMany>>)
@@ -336,10 +344,10 @@ describe("generateEmbeddingsBatch (with API mock)", () => {
     const mockEmbeddings = [Array(768).fill(0.1), Array(768).fill(0.2)];
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(
+    (google.textEmbedding as Mock<typeof google.textEmbedding>).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
-    vi.mocked(embedMany).mockResolvedValue({
+    (embedMany as Mock<typeof embedMany>).mockResolvedValue({
       embeddings: mockEmbeddings,
     } as unknown as Awaited<ReturnType<typeof embedMany>>);
 
@@ -355,12 +363,12 @@ describe("generateEmbeddingsBatch (with API mock)", () => {
       .map((_, i) => `text${i}`);
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(
+    (google.textEmbedding as Mock<typeof google.textEmbedding>).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
 
     // Mock for default batch size of 100
-    vi.mocked(embedMany)
+    (embedMany as Mock<typeof embedMany>)
       .mockResolvedValueOnce({
         embeddings: Array(100)
           .fill(null)
@@ -389,10 +397,12 @@ describe("generateEmbeddingsBatch (with API mock)", () => {
     const texts = ["text1", "text2"];
     const mockModel = { model: "test-model" };
 
-    vi.mocked(google.textEmbedding).mockReturnValue(
+    (google.textEmbedding as Mock<typeof google.textEmbedding>).mockReturnValue(
       mockModel as unknown as ReturnType<typeof google.textEmbedding>,
     );
-    vi.mocked(embedMany).mockRejectedValue(new Error("Batch API Error"));
+    (embedMany as Mock<typeof embedMany>).mockRejectedValue(
+      new Error("Batch API Error"),
+    );
 
     await expect(
       generateEmbeddingsBatch(texts, { batchSize: 10 }),

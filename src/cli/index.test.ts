@@ -1,33 +1,33 @@
-import { describe, expect, it, vi } from "vitest";
-
 // Mock the commands to prevent actual execution
-vi.mock("./commands/index.js", () => ({
-  handleIndex: vi.fn().mockResolvedValue(undefined),
-  getDBConfig: vi.fn().mockReturnValue({}),
+import { describe, expect, it, jest, mock } from "bun:test";
+
+mock.module("./commands/index.js", () => ({
+  handleIndex: jest.fn().mockResolvedValue(undefined),
+  getDBConfig: jest.fn().mockReturnValue({}),
 }));
 
-vi.mock("./commands/info.js", () => ({
-  handleInfo: vi.fn().mockResolvedValue(undefined),
+mock.module("./commands/info.js", () => ({
+  handleInfo: jest.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("./commands/init.js", () => ({
-  handleInit: vi.fn().mockResolvedValue(undefined),
+mock.module("./commands/init.js", () => ({
+  handleInit: jest.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("./commands/list.js", () => ({
-  handleList: vi.fn().mockResolvedValue(undefined),
+mock.module("./commands/list.js", () => ({
+  handleList: jest.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("./commands/query.js", () => ({
-  handleQuery: vi.fn().mockResolvedValue(undefined),
+mock.module("./commands/query.js", () => ({
+  handleQuery: jest.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("./commands/version.js", () => ({
-  showVersion: vi.fn(),
+mock.module("./commands/version.js", () => ({
+  showVersion: jest.fn(),
 }));
 
-vi.mock("./utils/special-flags.js", () => ({
-  handleSpecialFlags: vi.fn().mockReturnValue(false),
+mock.module("./utils/special-flags.js", () => ({
+  handleSpecialFlags: jest.fn().mockReturnValue(false),
 }));
 
 describe("CLI index", () => {

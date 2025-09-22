@@ -1,23 +1,23 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, jest, mock } from "bun:test";
 import type { DatabaseService } from "../database/database-service.js";
 import { indexFile } from "./indexer.js";
 
 // Mock database service
 const mockDatabaseService: DatabaseService = {
-  initialize: vi.fn().mockResolvedValue(undefined),
-  saveItem: vi.fn().mockResolvedValue("id1"),
-  saveItems: vi.fn().mockResolvedValue(["id1", "id2", "id3"]),
-  searchItems: vi.fn().mockResolvedValue([]),
-  countItems: vi.fn().mockResolvedValue(0),
-  listItems: vi.fn().mockResolvedValue([]),
-  getStats: vi.fn().mockResolvedValue({ totalItems: 0, bySourceType: {} }),
-  close: vi.fn().mockResolvedValue(undefined),
-  getAdapterInfo: vi.fn().mockReturnValue(null),
+  initialize: jest.fn().mockResolvedValue(undefined),
+  saveItem: jest.fn().mockResolvedValue("id1"),
+  saveItems: jest.fn().mockResolvedValue(["id1", "id2", "id3"]),
+  searchItems: jest.fn().mockResolvedValue([]),
+  countItems: jest.fn().mockResolvedValue(0),
+  listItems: jest.fn().mockResolvedValue([]),
+  getStats: jest.fn().mockResolvedValue({ totalItems: 0, bySourceType: {} }),
+  close: jest.fn().mockResolvedValue(undefined),
+  getAdapterInfo: jest.fn().mockReturnValue(null),
 };
 
 // Mock embedding generation
-vi.mock("../embedding/embedding.js", () => ({
-  generateEmbeddingsBatch: vi.fn().mockImplementation((chunks: string[]) => {
+mock.module("../embedding/embedding.js", () => ({
+  generateEmbeddingsBatch: jest.fn().mockImplementation((chunks: string[]) => {
     // Return embeddings matching the number of chunks
     return Promise.resolve(
       chunks.map((_, index) => new Array(768).fill(0.1 * (index + 1))),
@@ -26,11 +26,11 @@ vi.mock("../embedding/embedding.js", () => ({
 }));
 
 // Mock file system
-vi.mock("node:fs/promises", async () => {
-  const actual = await vi.importActual("node:fs/promises");
+mock.module("node:fs/promises", async () => {
+  const actual = await import("node:fs/promises");
   return {
     ...actual,
-    readFile: vi.fn().mockImplementation((path: string) => {
+    readFile: jest.fn().mockImplementation((path: string) => {
       // Return different content based on file extension
       if (path.includes(".txt")) {
         // Text file - should be chunked with larger size
@@ -65,7 +65,7 @@ describe("indexer with automatic chunk optimization", () => {
     expect(result.errors).toHaveLength(0);
 
     // Check that saveItems was called
-    const saveItemsCalls = vi.mocked(mockDatabaseService.saveItems).mock.calls;
+    const saveItemsCalls = (mockDatabaseService.saveItems as any).mock.calls;
     expect(saveItemsCalls.length).toBeGreaterThan(0);
 
     // Get the items that were saved
@@ -133,7 +133,7 @@ describe("indexer with automatic chunk optimization", () => {
 
     // With preserveBoundaries, CST-based chunking will be used
     // This creates more granular chunks (one for each const statement)
-    const saveItemsCalls = vi.mocked(mockDatabaseService.saveItems).mock.calls;
+    const saveItemsCalls = (mockDatabaseService.saveItems as any).mock.calls;
     expect(saveItemsCalls.length).toBeGreaterThan(0);
 
     const savedItems = saveItemsCalls[0]?.[0];
@@ -146,7 +146,7 @@ describe("indexer with automatic chunk optimization", () => {
 
   it("should not enable preserveBoundaries for text files by default", async () => {
     // Clear previous mock calls
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     const result = await indexFile(
       "test.txt",
       {},
@@ -159,7 +159,7 @@ describe("indexer with automatic chunk optimization", () => {
 
     // Text files should not have preserveBoundaries enabled
     // They should use regular chunking with the optimized chunk size
-    const saveItemsCalls = vi.mocked(mockDatabaseService.saveItems).mock.calls;
+    const saveItemsCalls = (mockDatabaseService.saveItems as any).mock.calls;
     expect(saveItemsCalls.length).toBeGreaterThan(0);
 
     const savedItems = saveItemsCalls[0]?.[0];
@@ -169,7 +169,7 @@ describe("indexer with automatic chunk optimization", () => {
       console.log("WARNING: Too many chunks for text file:", savedItems.length);
       console.log(
         "Sample chunks:",
-        savedItems.slice(0, 3).map((item) => {
+        savedItems.slice(0, 3).map((item: any) => {
           const typedItem = item as { content?: string };
           return {
             content: typedItem.content?.substring(0, 30),
@@ -196,7 +196,7 @@ describe("indexer with automatic chunk optimization", () => {
     expect(result.errors).toHaveLength(0);
 
     // With explicit chunk size 2000, we should get chunks
-    const saveItemsCalls = vi.mocked(mockDatabaseService.saveItems).mock.calls;
+    const saveItemsCalls = (mockDatabaseService.saveItems as any).mock.calls;
     expect(saveItemsCalls.length).toBeGreaterThan(0);
 
     const savedItems = saveItemsCalls[0]?.[0];

@@ -1,35 +1,44 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  type Mock,
+  mock,
+} from "bun:test";
 import { handleInfo } from "./info.js";
 
 // Mock node:sqlite to avoid import errors
-vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi.fn(),
+mock.module("node:sqlite", () => ({
+  DatabaseSync: jest.fn(),
 }));
 
-vi.mock("../../core/database/database-service.js", () => ({
+mock.module("../../core/database/database-service.js", () => ({
   databaseService: {
-    initialize: vi.fn(),
-    close: vi.fn(),
-    getAdapterInfo: vi.fn().mockReturnValue({
+    initialize: jest.fn(),
+    close: jest.fn(),
+    getAdapterInfo: jest.fn().mockReturnValue({
       provider: "sqlite",
       version: "1.0.0",
       capabilities: ["vector-search", "hybrid-search"],
     }),
   },
-  createDatabaseService: vi.fn(() => ({
-    initialize: vi.fn(),
-    close: vi.fn(),
-    getAdapterInfo: vi.fn().mockReturnValue({
+  createDatabaseService: jest.fn(() => ({
+    initialize: jest.fn(),
+    close: jest.fn(),
+    getAdapterInfo: jest.fn().mockReturnValue({
       provider: "sqlite",
       version: "1.0.0",
       capabilities: ["vector-search", "hybrid-search"],
     }),
-    searchItems: vi.fn(),
-    saveItem: vi.fn(),
-    saveItems: vi.fn(),
-    countItems: vi.fn(),
-    listItems: vi.fn(),
-    getStats: vi.fn(),
+    searchItems: jest.fn(),
+    saveItem: jest.fn(),
+    saveItems: jest.fn(),
+    countItems: jest.fn(),
+    listItems: jest.fn(),
+    getStats: jest.fn(),
   })),
 }));
 
@@ -37,8 +46,8 @@ describe("handleInfo", () => {
   const originalConsoleLog = console.log;
 
   beforeEach(() => {
-    console.log = vi.fn();
-    vi.clearAllMocks();
+    console.log = jest.fn();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -60,16 +69,18 @@ describe("handleInfo", () => {
     const { createDatabaseService } = await import(
       "../../core/database/database-service.js"
     );
-    vi.mocked(createDatabaseService).mockImplementationOnce(() => ({
-      initialize: vi.fn(),
-      close: vi.fn(),
-      getAdapterInfo: vi.fn().mockReturnValue(null),
-      searchItems: vi.fn(),
-      saveItem: vi.fn(),
-      saveItems: vi.fn(),
-      countItems: vi.fn(),
-      listItems: vi.fn(),
-      getStats: vi.fn(),
+    (
+      createDatabaseService as Mock<typeof createDatabaseService>
+    ).mockImplementationOnce(() => ({
+      initialize: jest.fn(),
+      close: jest.fn(),
+      getAdapterInfo: jest.fn().mockReturnValue(null),
+      searchItems: jest.fn(),
+      saveItem: jest.fn(),
+      saveItems: jest.fn(),
+      countItems: jest.fn(),
+      listItems: jest.fn(),
+      getStats: jest.fn(),
     }));
 
     await handleInfo({ values: {} });

@@ -1,28 +1,36 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  mock,
+} from "bun:test";
 import { createFactory } from "./factory.js";
 import { createRegistry } from "./registry.js";
 
 // Mock node:sqlite to avoid actual database initialization in tests
-vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi
+mock.module("node:sqlite", () => ({
+  DatabaseSync: jest
     .fn()
     .mockImplementation((_path: string, _options?: unknown) => ({
-      exec: vi.fn(),
-      prepare: vi.fn().mockReturnValue({
-        run: vi.fn(),
-        get: vi.fn(),
-        all: vi.fn().mockReturnValue([]),
+      exec: jest.fn(),
+      prepare: jest.fn().mockReturnValue({
+        run: jest.fn(),
+        get: jest.fn(),
+        all: jest.fn().mockReturnValue([]),
       }),
-      close: vi.fn(),
-      loadExtension: vi.fn(),
+      close: jest.fn(),
+      loadExtension: jest.fn(),
     })),
 }));
 
 // Mock sqlite-vec
-vi.mock("sqlite-vec", () => ({
-  default: { load: vi.fn() },
-  load: vi.fn(),
-  getLoadablePath: vi.fn().mockReturnValue("/mock/path/to/sqlite-vec.so"),
+mock.module("sqlite-vec", () => ({
+  default: { load: jest.fn() },
+  load: jest.fn(),
+  getLoadablePath: jest.fn().mockReturnValue("/mock/path/to/sqlite-vec.so"),
 }));
 
 describe("createFactory", () => {
@@ -35,7 +43,11 @@ describe("createFactory", () => {
   });
 
   afterEach(async () => {
-    vi.unstubAllEnvs();
+    // Clean up environment variables
+    delete process.env.VECTOR_DB_PROVIDER;
+    delete process.env.EMBEDDING_DIMENSION;
+    delete process.env.VECTOR_DB_CONFIG;
+    delete process.env.SQLITE_DB_PATH;
   });
 
   describe("setDefaultConfig/getDefaultConfig", () => {
@@ -85,26 +97,26 @@ describe("createFactory", () => {
 
   describe("createFromEnv", () => {
     it("should create adapter from environment variables", async () => {
-      vi.stubEnv("VECTOR_DB_PROVIDER", "memory");
-      vi.stubEnv("EMBEDDING_DIMENSION", "512");
+      process.env.VECTOR_DB_PROVIDER = "memory";
+      process.env.EMBEDDING_DIMENSION = "512";
 
       const adapter = await factory.createFromEnv();
       expect(adapter.getInfo().provider).toBe("memory");
     });
 
     it("should parse VECTOR_DB_CONFIG JSON", async () => {
-      vi.stubEnv("VECTOR_DB_PROVIDER", "sqlite");
-      vi.stubEnv("VECTOR_DB_CONFIG", JSON.stringify({ dimension: 256 }));
+      process.env.VECTOR_DB_PROVIDER = "sqlite";
+      process.env.VECTOR_DB_CONFIG = JSON.stringify({ dimension: 256 });
 
       const adapter = await factory.createFromEnv();
       expect(adapter).toBeDefined();
     });
 
     it("should handle invalid JSON gracefully", async () => {
-      vi.stubEnv("VECTOR_DB_PROVIDER", "sqlite");
-      vi.stubEnv("VECTOR_DB_CONFIG", "invalid json");
+      process.env.VECTOR_DB_PROVIDER = "sqlite";
+      process.env.VECTOR_DB_CONFIG = "invalid json";
 
-      const consoleWarnSpy = vi
+      const consoleWarnSpy = jest
         .spyOn(console, "warn")
         .mockImplementation(() => {});
 
@@ -119,9 +131,9 @@ describe("createFactory", () => {
     });
 
     it("should use SQLite-specific env vars when provider is sqlite", async () => {
-      vi.stubEnv("VECTOR_DB_PROVIDER", "sqlite");
-      vi.stubEnv("SQLITE_DB_PATH", "test.db");
-      vi.stubEnv("EMBEDDING_DIMENSION", "1024");
+      process.env.VECTOR_DB_PROVIDER = "sqlite";
+      process.env.SQLITE_DB_PATH = "test.db";
+      process.env.EMBEDDING_DIMENSION = "1024";
 
       const adapter = await factory.createFromEnv();
       expect(adapter.getInfo().provider).toBe("sqlite");

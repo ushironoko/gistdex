@@ -1,54 +1,63 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  type Mock,
+  mock,
+} from "bun:test";
 import { handleIndex } from "./index.js";
 
-vi.mock("../../core/database/database-operations.js", () => ({
-  createDatabaseOperations: vi.fn(() => ({
-    withDatabase: vi.fn(async (operation) => {
+mock.module("../../core/database/database-operations.js", () => ({
+  createDatabaseOperations: jest.fn(() => ({
+    withDatabase: jest.fn(async (operation) => {
       const mockService = {
-        initialize: vi.fn(),
-        close: vi.fn(),
-        saveItems: vi.fn().mockResolvedValue(["id1", "id2"]),
-        searchItems: vi.fn(),
-        getStats: vi.fn(),
-        listItems: vi.fn(),
-        getAdapterInfo: vi.fn(),
+        initialize: jest.fn(),
+        close: jest.fn(),
+        saveItems: jest.fn().mockResolvedValue(["id1", "id2"]),
+        searchItems: jest.fn(),
+        getStats: jest.fn(),
+        listItems: jest.fn(),
+        getAdapterInfo: jest.fn(),
       };
       return operation(mockService);
     }),
   })),
 }));
 
-vi.mock("../../core/database/database-service.js", () => ({
+mock.module("../../core/database/database-service.js", () => ({
   databaseService: {
-    initialize: vi.fn(),
-    close: vi.fn(),
+    initialize: jest.fn(),
+    close: jest.fn(),
   },
 }));
 
-vi.mock("../../core/indexer/indexer.js", () => ({
-  indexText: vi.fn().mockResolvedValue({
+mock.module("../../core/indexer/indexer.js", () => ({
+  indexText: jest.fn().mockResolvedValue({
     itemsIndexed: 1,
     chunksCreated: 3,
     errors: [],
   }),
-  indexFile: vi.fn().mockResolvedValue({
+  indexFile: jest.fn().mockResolvedValue({
     itemsIndexed: 1,
     chunksCreated: 5,
     errors: [],
   }),
-  indexGist: vi.fn().mockResolvedValue({
+  indexGist: jest.fn().mockResolvedValue({
     itemsIndexed: 2,
     chunksCreated: 10,
     errors: [],
   }),
-  indexGitHubRepo: vi.fn().mockResolvedValue({
+  indexGitHubRepo: jest.fn().mockResolvedValue({
     itemsIndexed: 5,
     chunksCreated: 20,
     errors: [],
   }),
 }));
 
-vi.mock("../../core/security/security.js", () => {
+mock.module("../../core/security/security.js", () => {
   class SecurityError extends Error {
     constructor(message: string, options?: ErrorOptions) {
       super(message, options);
@@ -56,34 +65,34 @@ vi.mock("../../core/security/security.js", () => {
     }
   }
   return {
-    validateFilePath: vi.fn().mockImplementation((path) => path),
+    validateFilePath: jest.fn().mockImplementation((path) => path),
     SecurityError,
   };
 });
 
-vi.mock("node:fs", () => ({
-  existsSync: vi.fn().mockReturnValue(true),
+mock.module("node:fs", () => ({
+  existsSync: jest.fn().mockReturnValue(true),
 }));
 
 // Mock sqlite-vec to avoid loading native modules in tests
-vi.mock("sqlite-vec", () => ({
-  default: vi.fn(),
+mock.module("sqlite-vec", () => ({
+  default: jest.fn(),
 }));
 
 // Mock the sqlite adapter factory to avoid sqlite dependency
-vi.mock("../../core/vector-db/adapters/sqlite-adapter.js", () => ({
-  createSQLiteAdapter: vi.fn(() =>
+mock.module("../../core/vector-db/adapters/sqlite-adapter.js", () => ({
+  createSQLiteAdapter: jest.fn(() =>
     Promise.resolve({
-      initialize: vi.fn(),
-      close: vi.fn(),
-      saveItems: vi.fn(),
-      searchItems: vi.fn(),
-      getItem: vi.fn(),
-      updateItem: vi.fn(),
-      deleteItem: vi.fn(),
-      listItems: vi.fn(),
-      getStats: vi.fn(),
-      getAdapterInfo: vi.fn(() => ({
+      initialize: jest.fn(),
+      close: jest.fn(),
+      saveItems: jest.fn(),
+      searchItems: jest.fn(),
+      getItem: jest.fn(),
+      updateItem: jest.fn(),
+      deleteItem: jest.fn(),
+      listItems: jest.fn(),
+      getStats: jest.fn(),
+      getAdapterInfo: jest.fn(() => ({
         name: "SQLite",
         version: "1.0.0",
         description: "Mock SQLite adapter",
@@ -98,11 +107,11 @@ describe("handleIndex", () => {
   const originalProcessExit = process.exit;
 
   beforeEach(() => {
-    console.log = vi.fn();
-    console.error = vi.fn();
+    console.log = jest.fn();
+    console.error = jest.fn();
     // @ts-expect-error - Mocking process.exit for testing
-    process.exit = vi.fn();
-    vi.clearAllMocks();
+    process.exit = jest.fn();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -185,10 +194,10 @@ describe("handleIndex", () => {
     const securityModule = await import("../../core/security/security.js");
     const { validateFilePath } = securityModule;
 
-    vi.mocked(validateFilePath).mockResolvedValueOnce(
+    (validateFilePath as Mock<typeof validateFilePath>).mockResolvedValueOnce(
       "/absolute/path/nonexistent.txt",
     );
-    vi.mocked(existsSync).mockReturnValueOnce(false);
+    (existsSync as Mock<typeof existsSync>).mockReturnValueOnce(false);
 
     await handleIndex({
       values: {
@@ -211,7 +220,9 @@ describe("handleIndex", () => {
     const error = new SecurityError("Invalid path", "code");
 
     // Mock validateFilePath to reject with SecurityError
-    vi.mocked(validateFilePath).mockRejectedValueOnce(error);
+    (validateFilePath as Mock<typeof validateFilePath>).mockRejectedValueOnce(
+      error,
+    );
 
     try {
       await handleIndex({

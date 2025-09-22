@@ -1,13 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, jest, mock } from "bun:test";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import type { IndexToolInput } from "../schemas/validation.js";
 import { handleIndexOperation } from "./index-tool.js";
 
-vi.mock("../../core/indexer/indexer.js", async () => {
-  const actual = await vi.importActual("../../core/indexer/indexer.js");
+mock.module("../../core/indexer/indexer.js", async () => {
+  const actual = await import("../../core/indexer/indexer.js");
   return {
     ...actual,
-    indexFile: vi.fn().mockResolvedValue({
+    indexFile: jest.fn().mockResolvedValue({
       itemsIndexed: 1,
       chunksCreated: 3,
       errors: [],
@@ -17,17 +17,17 @@ vi.mock("../../core/indexer/indexer.js", async () => {
 
 describe("index-tool with preserve boundaries", () => {
   const mockService = {
-    saveItems: vi.fn().mockResolvedValue(["id1", "id2", "id3"]),
-    searchItems: vi.fn(),
-    getItems: vi.fn(),
-    deleteItem: vi.fn(),
-    deleteAll: vi.fn(),
-    getStats: vi.fn(),
+    saveItems: jest.fn().mockResolvedValue(["id1", "id2", "id3"]),
+    searchItems: jest.fn(),
+    getItems: jest.fn(),
+    deleteItem: jest.fn(),
+    deleteAll: jest.fn(),
+    getStats: jest.fn(),
   } as unknown as DatabaseService;
 
   it("should pass preserveBoundaries option when indexing a file", async () => {
     const { indexFile } = await import("../../core/indexer/indexer.js");
-    const mockedIndexFile = vi.mocked(indexFile);
+    const mockedIndexFile = indexFile as any;
 
     const input: IndexToolInput = {
       type: "file",
@@ -54,7 +54,7 @@ describe("index-tool with preserve boundaries", () => {
 
   it("should default to true when preserveBoundaries is not specified", async () => {
     const { indexFile } = await import("../../core/indexer/indexer.js");
-    const mockedIndexFile = vi.mocked(indexFile);
+    const mockedIndexFile = indexFile as any;
 
     const input: IndexToolInput = {
       type: "file",

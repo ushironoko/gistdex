@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  type Mock,
+  mock,
+} from "bun:test";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import * as searchModule from "../../core/search/search.js";
 import type { VectorSearchResult } from "../../core/vector-db/adapters/types.js";
@@ -6,9 +14,20 @@ import * as queryCacheModule from "../utils/query-cache.js";
 import * as queryChainModule from "../utils/query-chain.js";
 import { handleQueryTool } from "./query-tool.js";
 
-vi.mock("../../core/search/search.js");
-vi.mock("../utils/query-cache.js");
-vi.mock("../utils/query-chain.js");
+mock.module("../../core/search/search.js", () => ({
+  semanticSearch: jest.fn(),
+  hybridSearch: jest.fn(),
+  rerankResults: jest.fn(),
+  getSectionContent: jest.fn(),
+  getOriginalContent: jest.fn(),
+}));
+mock.module("../utils/query-cache.js", () => ({
+  findSimilarQuery: jest.fn(),
+  saveSuccessfulQuery: jest.fn(),
+}));
+mock.module("../utils/query-chain.js", () => ({
+  executeQueryChain: jest.fn(),
+}));
 
 describe("query-tool", () => {
   let mockService: DatabaseService;
@@ -28,24 +47,44 @@ describe("query-tool", () => {
   ] as const satisfies VectorSearchResult[];
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     mockService = {
-      query: vi.fn(),
-      index: vi.fn(),
-      close: vi.fn(),
-      listItems: vi.fn(),
+      query: jest.fn(),
+      index: jest.fn(),
+      close: jest.fn(),
+      listItems: jest.fn(),
     } as unknown as DatabaseService;
 
     // Setup default mocks
-    vi.mocked(searchModule.semanticSearch).mockResolvedValue(mockResults);
-    vi.mocked(searchModule.hybridSearch).mockResolvedValue(mockResults);
-    vi.mocked(searchModule.rerankResults).mockReturnValue(mockResults);
-    vi.mocked(searchModule.getSectionContent).mockResolvedValue(null);
-    vi.mocked(searchModule.getOriginalContent).mockResolvedValue(null);
-    vi.mocked(queryCacheModule.findSimilarQuery).mockReturnValue(null);
-    vi.mocked(queryCacheModule.saveSuccessfulQuery).mockResolvedValue(
-      undefined,
-    );
+    (
+      searchModule.semanticSearch as Mock<typeof searchModule.semanticSearch>
+    ).mockResolvedValue(mockResults);
+    (
+      searchModule.hybridSearch as Mock<typeof searchModule.hybridSearch>
+    ).mockResolvedValue(mockResults);
+    (
+      searchModule.rerankResults as Mock<typeof searchModule.rerankResults>
+    ).mockReturnValue(mockResults);
+    (
+      searchModule.getSectionContent as Mock<
+        typeof searchModule.getSectionContent
+      >
+    ).mockResolvedValue(null);
+    (
+      searchModule.getOriginalContent as Mock<
+        typeof searchModule.getOriginalContent
+      >
+    ).mockResolvedValue(null);
+    (
+      queryCacheModule.findSimilarQuery as Mock<
+        typeof queryCacheModule.findSimilarQuery
+      >
+    ).mockReturnValue(null);
+    (
+      queryCacheModule.saveSuccessfulQuery as Mock<
+        typeof queryCacheModule.saveSuccessfulQuery
+      >
+    ).mockResolvedValue(undefined);
   });
 
   describe("basic search", () => {
@@ -97,9 +136,11 @@ describe("query-tool", () => {
     };
 
     beforeEach(() => {
-      vi.mocked(queryChainModule.executeQueryChain).mockResolvedValue(
-        mockChainResult,
-      );
+      (
+        queryChainModule.executeQueryChain as Mock<
+          typeof queryChainModule.executeQueryChain
+        >
+      ).mockResolvedValue(mockChainResult);
     });
 
     it("should execute query chain when option is enabled", async () => {
@@ -154,9 +195,9 @@ describe("query-tool", () => {
 
   describe("error handling", () => {
     it("should handle search errors gracefully", async () => {
-      vi.mocked(searchModule.semanticSearch).mockRejectedValue(
-        new Error("Search failed"),
-      );
+      (
+        searchModule.semanticSearch as Mock<typeof searchModule.semanticSearch>
+      ).mockRejectedValue(new Error("Search failed"));
 
       const result = await handleQueryTool(
         { query: "test query" },
@@ -168,9 +209,11 @@ describe("query-tool", () => {
     });
 
     it("should handle chain execution errors", async () => {
-      vi.mocked(queryChainModule.executeQueryChain).mockRejectedValue(
-        new Error("Chain execution failed"),
-      );
+      (
+        queryChainModule.executeQueryChain as Mock<
+          typeof queryChainModule.executeQueryChain
+        >
+      ).mockRejectedValue(new Error("Chain execution failed"));
 
       const result = await handleQueryTool(
         { query: "test query", useChain: true },
@@ -210,20 +253,40 @@ describe("query-tool", () => {
       ];
 
       // Reset specific mocks for this test case
-      vi.mocked(searchModule.semanticSearch).mockReset();
-      vi.mocked(searchModule.getSectionContent).mockReset();
-      vi.mocked(searchModule.rerankResults).mockReset();
-      vi.mocked(queryCacheModule.saveSuccessfulQuery).mockReset();
+      (
+        searchModule.semanticSearch as Mock<typeof searchModule.semanticSearch>
+      ).mockReset();
+      (
+        searchModule.getSectionContent as Mock<
+          typeof searchModule.getSectionContent
+        >
+      ).mockReset();
+      (
+        searchModule.rerankResults as Mock<typeof searchModule.rerankResults>
+      ).mockReset();
+      (
+        queryCacheModule.saveSuccessfulQuery as Mock<
+          typeof queryCacheModule.saveSuccessfulQuery
+        >
+      ).mockReset();
 
       // Set up test-specific mock implementations
-      vi.mocked(searchModule.semanticSearch).mockResolvedValue(markdownResults);
-      vi.mocked(searchModule.getSectionContent).mockResolvedValue(
-        "Full section content with multiple paragraphs",
-      );
-      vi.mocked(searchModule.rerankResults).mockReturnValue(markdownResults);
-      vi.mocked(queryCacheModule.saveSuccessfulQuery).mockResolvedValue(
-        undefined,
-      );
+      (
+        searchModule.semanticSearch as Mock<typeof searchModule.semanticSearch>
+      ).mockResolvedValue(markdownResults);
+      (
+        searchModule.getSectionContent as Mock<
+          typeof searchModule.getSectionContent
+        >
+      ).mockResolvedValue("Full section content with multiple paragraphs");
+      (
+        searchModule.rerankResults as Mock<typeof searchModule.rerankResults>
+      ).mockReturnValue(markdownResults);
+      (
+        queryCacheModule.saveSuccessfulQuery as Mock<
+          typeof queryCacheModule.saveSuccessfulQuery
+        >
+      ).mockResolvedValue(undefined);
 
       const result = await handleQueryTool(
         { query: "markdown test" },
@@ -254,9 +317,9 @@ describe("query-tool", () => {
         },
       ];
 
-      vi.mocked(searchModule.semanticSearch).mockResolvedValue(
-        nonMarkdownResults,
-      );
+      (
+        searchModule.semanticSearch as Mock<typeof searchModule.semanticSearch>
+      ).mockResolvedValue(nonMarkdownResults);
 
       const result = await handleQueryTool(
         { query: "js test" },
@@ -283,7 +346,9 @@ describe("query-tool", () => {
         },
       ];
 
-      vi.mocked(searchModule.semanticSearch).mockResolvedValue(markdownResults);
+      (
+        searchModule.semanticSearch as Mock<typeof searchModule.semanticSearch>
+      ).mockResolvedValue(markdownResults);
 
       // Note: section=false is not actually possible with current schema (it's optional boolean)
       // This test documents the current behavior where undefined section allows auto-detection
@@ -313,20 +378,40 @@ describe("query-tool", () => {
       ];
 
       // Reset specific mocks for this test case
-      vi.mocked(searchModule.semanticSearch).mockReset();
-      vi.mocked(searchModule.getSectionContent).mockReset();
-      vi.mocked(searchModule.rerankResults).mockReset();
-      vi.mocked(queryCacheModule.saveSuccessfulQuery).mockReset();
+      (
+        searchModule.semanticSearch as Mock<typeof searchModule.semanticSearch>
+      ).mockReset();
+      (
+        searchModule.getSectionContent as Mock<
+          typeof searchModule.getSectionContent
+        >
+      ).mockReset();
+      (
+        searchModule.rerankResults as Mock<typeof searchModule.rerankResults>
+      ).mockReset();
+      (
+        queryCacheModule.saveSuccessfulQuery as Mock<
+          typeof queryCacheModule.saveSuccessfulQuery
+        >
+      ).mockReset();
 
       // Set up test-specific mock implementations
-      vi.mocked(searchModule.semanticSearch).mockResolvedValue(markdownResults);
-      vi.mocked(searchModule.getSectionContent).mockResolvedValue(
-        "Full markdown section content",
-      );
-      vi.mocked(searchModule.rerankResults).mockReturnValue(markdownResults);
-      vi.mocked(queryCacheModule.saveSuccessfulQuery).mockResolvedValue(
-        undefined,
-      );
+      (
+        searchModule.semanticSearch as Mock<typeof searchModule.semanticSearch>
+      ).mockResolvedValue(markdownResults);
+      (
+        searchModule.getSectionContent as Mock<
+          typeof searchModule.getSectionContent
+        >
+      ).mockResolvedValue("Full markdown section content");
+      (
+        searchModule.rerankResults as Mock<typeof searchModule.rerankResults>
+      ).mockReturnValue(markdownResults);
+      (
+        queryCacheModule.saveSuccessfulQuery as Mock<
+          typeof queryCacheModule.saveSuccessfulQuery
+        >
+      ).mockResolvedValue(undefined);
 
       await handleQueryTool(
         { query: "test markdown" },
@@ -374,9 +459,11 @@ describe("query-tool", () => {
         })),
         timestamp: new Date().toISOString(),
       };
-      vi.mocked(queryChainModule.executeQueryChain).mockResolvedValue(
-        mockChainResult,
-      );
+      (
+        queryChainModule.executeQueryChain as Mock<
+          typeof queryChainModule.executeQueryChain
+        >
+      ).mockResolvedValue(mockChainResult);
     });
 
     it("should respect rerank option in query chain", async () => {

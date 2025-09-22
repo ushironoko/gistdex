@@ -1,26 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, jest, mock } from "bun:test";
 import { createMemoryAdapter } from "./memory-adapter.js";
 import { createRegistry } from "./registry.js";
 
 // Mock SQLite to avoid actual database initialization in tests
-vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi.fn().mockImplementation(() => ({
-    exec: vi.fn(),
-    prepare: vi.fn().mockReturnValue({
-      run: vi.fn(),
-      get: vi.fn(),
-      all: vi.fn().mockReturnValue([]),
+mock.module("node:sqlite", () => ({
+  DatabaseSync: jest.fn().mockImplementation(() => ({
+    exec: jest.fn(),
+    prepare: jest.fn().mockReturnValue({
+      run: jest.fn(),
+      get: jest.fn(),
+      all: jest.fn().mockReturnValue([]),
     }),
-    close: vi.fn(),
-    loadExtension: vi.fn(),
+    close: jest.fn(),
+    loadExtension: jest.fn(),
   })),
 }));
 
 // Mock sqlite-vec
-vi.mock("sqlite-vec", () => ({
-  default: { load: vi.fn() },
-  load: vi.fn(),
-  getLoadablePath: vi.fn().mockReturnValue("/mock/path/to/sqlite-vec.so"),
+mock.module("sqlite-vec", () => ({
+  default: { load: jest.fn() },
+  load: jest.fn(),
+  getLoadablePath: jest.fn().mockReturnValue("/mock/path/to/sqlite-vec.so"),
 }));
 
 describe("createRegistry", () => {

@@ -1,13 +1,22 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  type Mock,
+  mock,
+} from "bun:test";
 import { handleList } from "./list.js";
 
 // Mock node:sqlite to avoid import errors
-vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi.fn(),
+mock.module("node:sqlite", () => ({
+  DatabaseSync: jest.fn(),
 }));
 
-vi.mock("../utils/config-helper.js", () => ({
-  getDBConfig: vi.fn().mockResolvedValue({
+mock.module("../utils/config-helper.js", () => ({
+  getDBConfig: jest.fn().mockResolvedValue({
     config: {
       provider: "sqlite",
       options: { path: "./test.db" },
@@ -16,15 +25,15 @@ vi.mock("../utils/config-helper.js", () => ({
   }),
 }));
 
-vi.mock("../../core/database/database-service.js", () => ({
+mock.module("../../core/database/database-service.js", () => ({
   databaseService: {
-    initialize: vi.fn(),
-    close: vi.fn(),
-    getStats: vi.fn().mockResolvedValue({
+    initialize: jest.fn(),
+    close: jest.fn(),
+    getStats: jest.fn().mockResolvedValue({
       totalItems: 5,
       bySourceType: { text: 2, file: 3 },
     }),
-    listItems: vi.fn().mockResolvedValue([
+    listItems: jest.fn().mockResolvedValue([
       {
         id: "12345678-abcd",
         metadata: {
@@ -36,14 +45,14 @@ vi.mock("../../core/database/database-service.js", () => ({
       },
     ]),
   },
-  createDatabaseService: vi.fn(() => ({
-    initialize: vi.fn(),
-    close: vi.fn(),
-    getStats: vi.fn().mockResolvedValue({
+  createDatabaseService: jest.fn(() => ({
+    initialize: jest.fn(),
+    close: jest.fn(),
+    getStats: jest.fn().mockResolvedValue({
       totalItems: 5,
       bySourceType: { text: 2, file: 3 },
     }),
-    listItems: vi.fn().mockResolvedValue([
+    listItems: jest.fn().mockResolvedValue([
       {
         id: "12345678-abcd",
         metadata: {
@@ -54,11 +63,11 @@ vi.mock("../../core/database/database-service.js", () => ({
         },
       },
     ]),
-    searchItems: vi.fn(),
-    saveItem: vi.fn(),
-    saveItems: vi.fn(),
-    countItems: vi.fn(),
-    getAdapterInfo: vi.fn(),
+    searchItems: jest.fn(),
+    saveItem: jest.fn(),
+    saveItems: jest.fn(),
+    countItems: jest.fn(),
+    getAdapterInfo: jest.fn(),
   })),
 }));
 
@@ -66,8 +75,8 @@ describe("handleList", () => {
   const originalConsoleLog = console.log;
 
   beforeEach(() => {
-    console.log = vi.fn();
-    vi.clearAllMocks();
+    console.log = jest.fn();
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -104,19 +113,21 @@ describe("handleList", () => {
     const { createDatabaseService } = await import(
       "../../core/database/database-service.js"
     );
-    vi.mocked(createDatabaseService).mockImplementationOnce(() => ({
-      initialize: vi.fn(),
-      close: vi.fn(),
-      getStats: vi.fn().mockResolvedValue({
+    (
+      createDatabaseService as Mock<typeof createDatabaseService>
+    ).mockImplementationOnce(() => ({
+      initialize: jest.fn(),
+      close: jest.fn(),
+      getStats: jest.fn().mockResolvedValue({
         totalItems: 0,
         bySourceType: {},
       }),
-      listItems: vi.fn().mockResolvedValue([]),
-      searchItems: vi.fn(),
-      saveItem: vi.fn(),
-      saveItems: vi.fn(),
-      countItems: vi.fn(),
-      getAdapterInfo: vi.fn(),
+      listItems: jest.fn().mockResolvedValue([]),
+      searchItems: jest.fn(),
+      saveItem: jest.fn(),
+      saveItems: jest.fn(),
+      countItems: jest.fn(),
+      getAdapterInfo: jest.fn(),
     }));
 
     await handleList({

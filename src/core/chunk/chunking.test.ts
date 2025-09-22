@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 import { chunkText } from "./chunking.js";
 
 describe("chunkText", () => {

@@ -1,72 +1,80 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+  mock,
+} from "bun:test";
 import { createSQLiteAdapter } from "./sqlite-adapter.js";
 import type { VectorDBAdapter, VectorDocument } from "./types.js";
 
 // Mock node:sqlite to avoid actual SQLite initialization in tests
-vi.mock("node:sqlite", () => ({
-  DatabaseSync: vi
+mock.module("node:sqlite", () => ({
+  DatabaseSync: jest
     .fn()
     .mockImplementation((_path: string, _options?: unknown) => ({
-      exec: vi.fn(),
-      prepare: vi.fn().mockImplementation((query: string) => {
+      exec: jest.fn(),
+      prepare: jest.fn().mockImplementation((query: string) => {
         // Mock for SELECT vec_rowid query
         if (query.includes("SELECT vec_rowid FROM documents")) {
           return {
-            get: vi.fn().mockReturnValue(null),
+            get: jest.fn().mockReturnValue(null),
           };
         }
         // Mock for COUNT query
         if (query.includes("COUNT(*)")) {
           return {
-            get: vi.fn().mockReturnValue({ count: 0 }),
+            get: jest.fn().mockReturnValue({ count: 0 }),
           };
         }
         // Mock for INSERT INTO vec_documents
         if (query.includes("INSERT INTO vec_documents")) {
           return {
-            run: vi.fn().mockReturnValue({ lastInsertRowid: 1 }),
+            run: jest.fn().mockReturnValue({ lastInsertRowid: 1 }),
           };
         }
         // Mock for INSERT OR REPLACE INTO documents
         if (query.includes("INSERT OR REPLACE INTO documents")) {
           return {
-            run: vi.fn(),
+            run: jest.fn(),
           };
         }
         // Mock for SELECT FROM sources
         if (query.includes("SELECT source_id FROM sources")) {
           return {
-            get: vi.fn().mockReturnValue(null),
+            get: jest.fn().mockReturnValue(null),
           };
         }
         // Mock for INSERT INTO sources
         if (query.includes("INSERT INTO sources")) {
           return {
-            run: vi.fn(),
+            run: jest.fn(),
           };
         }
         // Mock for INSERT INTO documents
         if (query.includes("INSERT INTO documents")) {
           return {
-            run: vi.fn(),
+            run: jest.fn(),
           };
         }
         // Default mock
         return {
-          get: vi.fn(),
-          run: vi.fn(),
-          all: vi.fn().mockReturnValue([]),
+          get: jest.fn(),
+          run: jest.fn(),
+          all: jest.fn().mockReturnValue([]),
         };
       }),
-      close: vi.fn(),
-      loadExtension: vi.fn(),
+      close: jest.fn(),
+      loadExtension: jest.fn(),
     })),
 }));
 
 // Mock sqlite-vec
-vi.mock("sqlite-vec", () => ({
-  load: vi.fn(),
-  getLoadablePath: vi.fn().mockReturnValue("/mock/path/to/sqlite-vec.so"),
+mock.module("sqlite-vec", () => ({
+  load: jest.fn(),
+  getLoadablePath: jest.fn().mockReturnValue("/mock/path/to/sqlite-vec.so"),
 }));
 
 describe("SQLiteAdapter", () => {
@@ -87,7 +95,7 @@ describe("SQLiteAdapter", () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     adapter = createSQLiteAdapter(config);
   });
 

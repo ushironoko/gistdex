@@ -1,10 +1,11 @@
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { handleReadCachedTool } from "./read-cached-tool.js";
 
 // Mock getCacheDir to use a test directory
-vi.mock("../utils/cache-utils.js", () => ({
+mock.module("../utils/cache-utils.js", () => ({
   getCacheDir: () => join(process.cwd(), "test-cache"),
 }));
 

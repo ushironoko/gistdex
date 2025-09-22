@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, jest } from "bun:test";
 import type { DatabaseService } from "../../core/database/database-service.js";
 import {
   buildStructuredResult,
@@ -13,9 +13,9 @@ describe("query-chain", () => {
       "should execute query stages sequentially",
       async () => {
         const mockService = {
-          search: vi.fn(),
-          hybridSearch: vi.fn(),
-          searchItems: vi.fn(),
+          search: jest.fn(),
+          hybridSearch: jest.fn(),
+          searchItems: jest.fn(),
         };
 
         // Mock searchItems which is called by semanticSearch and hybridSearch
@@ -77,7 +77,7 @@ describe("query-chain", () => {
       "should handle empty results gracefully",
       async () => {
         const mockService = {
-          searchItems: vi.fn().mockResolvedValue([]),
+          searchItems: jest.fn().mockResolvedValue([]),
         };
 
         const chain: QueryChain = {
@@ -105,7 +105,7 @@ describe("query-chain", () => {
       "should combine results from all stages",
       async () => {
         const mockService = {
-          searchItems: vi.fn(),
+          searchItems: jest.fn(),
         };
 
         mockService.searchItems

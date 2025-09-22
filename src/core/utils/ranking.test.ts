@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { calculateCosineSimilarity } from "./math-utils.js";
 import { sortByScore } from "./ranking.js";
 
