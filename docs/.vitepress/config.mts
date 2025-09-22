@@ -76,6 +76,7 @@ export default defineConfig({
           collapsed: false,
           items: [
             { text: 'CLI Commands', link: '/reference/cli' },
+            { text: 'CI Integration', link: '/reference/ci' },
             { text: 'Troubleshooting', link: '/reference/troubleshooting' }
           ]
         }
