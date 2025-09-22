@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.3] - 2025-09-22
+
+- Merge pull request #128 from ushironoko/docs/add-ci-documentation
+- fix: restore main branch reference for reusable workflow
+- fix: use PR branch reusable workflow temporarily
+- fix: remove interactive init command from CI workflow
+- fix: add required permissions for reusable workflow
+- fix: use main branch reference for reusable workflow
+- fix: correct Node.js minimum version requirement
+- docs: add comprehensive CI integration documentation
+
+
 ## [1.5.2] - 2025-09-22
 
 - Merge pull request #127 from ushironoko/feat/reusable-doc-impact-workflow
