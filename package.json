@@ -28,7 +28,7 @@
     "start": "node dist/cli/index.js",
     "test": "vitest run --config vitest.config.unit.ts",
     "test:integration": "vitest run --config vitest.config.integration.ts && tsx scripts/cleanup-test-dirs.ts",
-    "test:all": "pnpm run test:unit && pnpm run test:integration",
+    "test:all": "pnpm run test && pnpm run test:integration",
     "lint": "biome check --write .",
     "format": "biome format --write .",
     "tsc": "tsgo --project tsconfig.app.json --noEmit && tsgo --project tsconfig.test.json --noEmit",

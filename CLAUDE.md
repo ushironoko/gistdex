@@ -7,17 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Core Development Commands
 
 - `pnpm test` - Run unit tests using Vitest
-- `pnpm run test:unit` - Run unit tests (same as `pnpm test`)
 - `pnpm run test:integration` - Run integration tests and cleanup test directories
-- `pnpm run test:integration:build` - Build then run integration tests
-- `pnpm run test:all` - Run all tests (unit + integration with build)
-- `pnpm run test:watch` - Run tests in watch mode for TDD
-- `pnpm run test:coverage` - Run tests with coverage report
+- `pnpm run test:all` - Run all tests (unit + integration)
 - `pnpm run lint` - Run Biome linter (auto-fixes issues)
 - `pnpm run format` - Format code with Biome
-- `pnpm run tsc` - Type check without emitting files using tsgo
-- `pnpm run dev` - Compile TypeScript in watch mode
-- `pnpm run build` - Build TypeScript to JavaScript
+- `pnpm run tsc` - Type check without emitting files using tsgo (TypeScript native preview)
+- `pnpm run dev` - Compile TypeScript in watch mode using tsdown
+- `pnpm run build` - Build TypeScript to JavaScript using tsdown
 - `pnpm start` - Run compiled CLI from dist/
 - `pnpm run run-all` - Complete check: format, lint, typecheck, unit test, build, and docs build
 
@@ -478,14 +474,17 @@ Tests are colocated with source files using `.test.ts` suffix. Run tests with co
 ## Important Development Notes
 
 - **Node.js Version**: Must use Node.js 24.2.0+ (see `.node-version`)
-- **Package Manager**: Must use pnpm 10.0.0+
+- **Package Manager**: Must use pnpm 10.0.0+ (specified in packageManager field)
 - **Module System**: Pure ESM, no CommonJS support
+- **Build Tool**: tsdown for TypeScript compilation with bundling
+- **Type Checking**: tsgo (TypeScript native preview) for faster type checking
 - **TypeScript**: Compiles to JavaScript for execution, uses `.js` extensions in imports for compiled code
 - **Error Handling**: All async operations must handle errors properly with cause chains
 - **Security**: Input validation required for all user inputs, no secrets in code
 - **Function-based Programming**: Function-based coding is strongly recommended. Class-based coding is prohibited in principle
-- **Testing**: Vitest with 80% coverage threshold
+- **Testing**: Vitest with separate unit and integration test configurations
 - **Linting/Formatting**: Biome with minimal customization
+- **CI/CD**: Automated workflows for testing, building, releases, and security checks
 
 ## Adding New Vector Database Adapters
 
@@ -620,14 +619,10 @@ gistdex/
 │   │   │   ├── list.ts     # List indexed items
 │   │   │   ├── info.ts     # Show adapter info
 │   │   │   ├── version.ts  # Show CLI version
-│   │   │   ├── ci-doc.ts   # CI documentation analysis
-│   │   │   └── ci-github-comment.ts # GitHub PR comment
+│   │   │   └── ci-doc.ts   # CI documentation analysis
 │   │   └── utils/     # CLI utilities
 │   │       ├── command-handler.ts  # Command abstraction
-│   │       ├── config-helper.ts    # Config loading
-│   │       ├── arg-parser.ts       # Argument parsing
-│   │       ├── error-handler.ts    # Error handling
-│   │       └── progress.ts         # Progress reporting
+│   │       └── config-helper.ts    # Config loading
 │   ├── mcp/           # MCP server implementation
 │   │   ├── server.ts  # MCP server with StdioServerTransport
 │   │   ├── tools/     # MCP tool handlers
@@ -664,18 +659,53 @@ gistdex/
 │   │   │   ├── diff-analyzer.ts   # Git diff & symbol extraction
 │   │   │   ├── formatters.ts      # Output formatters
 │   │   │   ├── api.ts             # External API
-│   │   │   ├── github-integration.ts # GitHub PR integration (gh CLI)
-│   │   │   └── git-command.ts     # Git/GitHub CLI execution
+│   │   │   └── github-integration.ts # GitHub PR integration (gh CLI)
 │   │   └── utils/                 # Core utilities
 │   │       ├── env-loader.ts      # Environment variable loader
 │   │       ├── ranking.ts         # Search result ranking
 │   │       └── config-parser.ts   # Config parsing
 │   └── index.ts       # Library entry point
 ├── templates/         # Adapter templates
-├── docs/             # Documentation
-├── data/             # Default data directory
+├── docs/             # VitePress documentation
+├── tsdown.config.ts  # Build configuration
+├── tsconfig.json     # Base TypeScript configuration
+├── tsconfig.app.json # Application TypeScript configuration
+├── tsconfig.test.json # Test TypeScript configuration
+├── vitest.config.unit.ts # Unit test configuration
+├── vitest.config.integration.ts # Integration test configuration
 └── dist/             # Compiled JavaScript output
 ```
+
+## CI/CD Workflows
+
+The project uses GitHub Actions for continuous integration and deployment:
+
+### Main Workflows
+
+- **ci.yml**: Main CI workflow running on all branches
+  - Lint check (Biome)
+  - Type check (tsgo/TypeScript native)
+  - Format check
+  - Unit tests
+  - Build verification
+  - Runs in parallel for faster feedback
+
+- **weekly-integration.yml**: Weekly integration tests with real API
+  - Runs comprehensive integration tests
+  - Tests actual Google AI API interactions
+
+- **release.yml**: Automated release workflow
+  - Triggered by version tags (v*.*.*)
+  - Builds and publishes to npm
+  - Generates changelog automatically
+
+- **doc-impact-analysis.yml**: Documentation impact analysis for PRs
+  - Analyzes code changes and identifies affected documentation
+  - Posts results as PR comments
+
+- **security.yml**: Security scanning with CodeQL
+
+- **dependabot-auto-merge.yml**: Auto-merge Dependabot PRs
 
 ## Important Development Notes
 
