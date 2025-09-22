@@ -77,16 +77,12 @@ npx @ushironoko/gistdex@latest ci:doc --diff "main..HEAD" --format json
 
 ### GitHub Actions Integration
 
-Add to your workflow:
-
 ```yaml
 name: Documentation Impact Analysis
 
 on:
   pull_request:
-    paths:
-      - 'src/**/*.ts'
-      - 'src/**/*.js'
+    types: [opened, synchronize, reopened]
 
 jobs:
   analyze-docs:
@@ -94,20 +90,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Needed for git diff
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24.2.0'
+      - uses: pnpm/action-setup@v4
 
-      - name: Run documentation analysis
+      - name: Analyze and post to PR
         env:
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx @ushironoko/gistdex@latest ci:doc \
+          pnpm dlx @ushironoko/gistdex@latest ci:doc \
             --diff "origin/${{ github.base_ref }}...HEAD" \
-            --threshold 0.5
+            --format github-comment \
+            --github-pr
 ```
 
 ### Development Setup
