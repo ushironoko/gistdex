@@ -73,27 +73,27 @@ jobs:
         id: doc-analysis
         env:
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
-        run: |
-          # Threshold and paths are configured in gistdex.config.ts
-          # Output is now directly in GitHub comment format
-          pnpm exec tsx scripts/ci/run-doc-analysis-standalone.ts \
-            --diff "origin/${{ github.base_ref }}...HEAD" > doc-impact-comment.md || echo "Analysis failed" > doc-impact-comment.md
-
-      - name: Post PR comment
-        if: always() && steps.doc-analysis.outcome == 'success'
-        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_ISSUE_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
         run: |
-          # Always post comment, even if it's "no impact"
-          cat doc-impact-comment.md | pnpm exec tsx scripts/ci/post-github-comment-standalone.ts
+          # Use pnpm dlx to run the latest published version of the CLI
+          # Save output to file for artifact upload (stdout only)
+          pnpm dlx @ushironoko/gistdex@latest ci:doc \
+            --diff "origin/${{ github.base_ref }}...HEAD" \
+            --format github-comment \
+            --github-pr | tee doc-impact-output.md || {
+            echo "❌ Documentation analysis failed"
+            exit 1
+          }
 
       - name: Upload analysis results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: doc-impact-analysis
-          path: doc-impact-comment.md
+          path: doc-impact-output.md
           retention-days: 7
           if-no-files-found: warn
