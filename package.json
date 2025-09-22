@@ -76,7 +76,7 @@
     "picomatch": "4.0.3",
     "sqlite-vec": "0.1.6",
     "tree-sitter-wasms": "0.1.11",
-    "web-tree-sitter": "0.24.5",
+    "web-tree-sitter": "0.26.0",
     "zod": "3.25.76"
   },
   "devDependencies": {
