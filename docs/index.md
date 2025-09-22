@@ -5,7 +5,7 @@ layout: home
 hero:
   name: "Gistdex"
   text: "Semantic Search & Indexing"
-  tagline: "CLI tool for indexing and searching content using vector databases"
+  tagline: "CLI tool for indexing and searching contents. MCP and CI Itnegrations Feature"
   actions:
     - theme: brand
       text: Get Started
@@ -25,8 +25,8 @@ features:
     title: Auto Chunk Optimization
     details: Automatic chunk sizing based on file type powered by tree-sitter
   - icon: 🚀
-    title: Cross-Platform Support
-    details: Works with Node.js 24.6+ and Bun 1.1.14+ on all platforms
+    title: Document Impact Analysis on the GitHub Actions
+    details: We index your documents and recommend the impact of code diffs
   - icon: 🤖
     title: MCP Integration
     details: Direct integration with Claude through Model Context Protocol with agent capabilities
