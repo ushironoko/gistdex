@@ -10,7 +10,6 @@ export default defineGistdexConfig({
   },
   ci: {
     doc: {
-      enabled: true,
       threshold: 0.7,
       documentPaths: [
         "docs/guide/*.md",

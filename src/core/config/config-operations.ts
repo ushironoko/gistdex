@@ -32,7 +32,6 @@ export interface GistdexConfig {
   };
   ci?: {
     doc?: {
-      enabled?: boolean;
       threshold?: number;
       documentPaths?: string[];
     };

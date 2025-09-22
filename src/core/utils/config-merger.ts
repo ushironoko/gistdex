@@ -63,7 +63,6 @@ export const getDefaultGistdexConfig = (): GistdexConfig => {
     },
     ci: {
       doc: {
-        enabled: false,
         threshold: 0.7,
         documentPaths: ["docs/**/*.md", "README.md"],
       },
