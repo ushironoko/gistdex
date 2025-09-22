@@ -79,7 +79,7 @@ npx @ushironoko/gistdex@latest ci:doc --diff "main..HEAD" --format json
 
 Use the reusable workflow for easy integration:
 
-**Quick Setup (Recommended):**
+**Quick Setup**
 
 1. Create `.github/workflows/doc-impact.yml` in your repository:
 
@@ -93,6 +93,12 @@ on:
 jobs:
   analyze-docs:
     uses: ushironoko/gistdex/.github/workflows/reusable-doc-impact.yml@main
+    with:
+      threshold: "0.6" # Sensitivity (0-1, default: 0.7)
+      doc-paths: "docs/**/*.md,README.md" # Document patterns
+      node-version: "24" # Node.js version
+      gistdex-version: "1.5.0" # Pin Gistdex version
+      add-label: true # Add PR label
     secrets:
       GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
 ```
@@ -102,27 +108,11 @@ jobs:
    - Add `GOOGLE_GENERATIVE_AI_API_KEY` with your API key
 
 That's it! The workflow will automatically:
+
 - Cache dependencies and database for faster runs
 - Index your documentation incrementally
 - Post analysis results as PR comments
 - Upload results as artifacts
-
-**Advanced Configuration:**
-
-```yaml
-jobs:
-  analyze-docs:
-    uses: ushironoko/gistdex/.github/workflows/reusable-doc-impact.yml@main
-    with:
-      threshold: '0.6'  # Sensitivity (0-1, default: 0.7)
-      doc-paths: 'docs/**/*.md,README.md'  # Document patterns
-      node-version: '20'  # Node.js version
-      gistdex-version: '1.5.0'  # Pin Gistdex version
-      add-label: true  # Add PR label
-      label-name: 'docs-needed'  # Custom label
-    secrets:
-      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
-```
 
 **Direct Usage (Alternative):**
 
@@ -139,7 +129,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed for git diff
+          fetch-depth: 0 # Needed for git diff
 
       - uses: pnpm/action-setup@v4
 
@@ -153,7 +143,6 @@ jobs:
             --format github-comment \
             --github-pr
 ```
-
 
 ### Development Setup
 
