@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.1] - 2025-09-22
+
+- fix type
+- remove ci doc enabled option
+- fix CLAUDE.md
+- refactor: chorefix
+- fix readme
+- Merge pull request #126 from ushironoko/feat/use-cli-in-workflow
+- feat: update GitHub Actions workflow to use CLI directly (#118)
+- Merge pull request #120 from ushironoko/feat/cli-stderr-output-phase1
+- feat: improve CLI ci:doc command output handling
+- fix CLAUDE.md
+
+
 ## [1.5.0] - 2025-09-21
 
 - Merge pull request #115 from ushironoko/fix/ci-doc-analysis-improvements
