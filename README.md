@@ -41,7 +41,7 @@ claude mcp add gistdex -- npx @ushironoko/gistdex --mcp
 
 ## Requirements
 
-- Node.js >= 24.6.0 or Bun >= 1.1.14
+- Node.js >= 24.2.0 or Bun >= 1.1.14
 - Google AI API key for embeddings ([Get one here](https://makersuite.google.com/app/apikey))
 
 ## Features
