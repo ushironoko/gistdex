@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.2] - 2025-09-22
+
+- Merge pull request #127 from ushironoko/feat/reusable-doc-impact-workflow
+- fix README
+- .
+- feat: add reusable GitHub Actions workflow for documentation impact analysis
+
+
 ## [1.5.1] - 2025-09-22
 
 - fix type
