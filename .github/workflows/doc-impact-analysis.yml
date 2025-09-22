@@ -18,6 +18,11 @@ on:
       - ".github/workflows/doc-impact-analysis.yml"
       - ".github/workflows/reusable-doc-impact.yml"
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   analyze-docs:
     # Skip for draft PRs to save resources
