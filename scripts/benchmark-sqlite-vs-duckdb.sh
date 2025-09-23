@@ -8,7 +8,7 @@ set -e
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TMP_DIR="$PROJECT_ROOT/tmp"
+TMP_DIR="$PROJECT_ROOT/data"
 SQLITE_DB="$TMP_DIR/benchmark-sqlite.db"
 DUCKDB_DB="$TMP_DIR/benchmark-duckdb.db"
 DUCKDB_REPO="$TMP_DIR/duckdb"
@@ -68,34 +68,6 @@ check_prerequisites() {
     print_success "Found $file_count C++ files in DuckDB repository"
 }
 
-# Function to create initial indexes for search benchmarks
-create_initial_indexes() {
-    print_info "Creating initial indexes for search benchmarks..."
-
-    # SQLite index
-    print_info "Creating SQLite index..."
-    npx gistdex index \
-        --provider sqlite \
-        --db "$SQLITE_DB" \
-        --files "$DUCKDB_REPO/src/**/*.cpp" \
-        --chunk-size 1000 \
-        --chunk-overlap 200 \
-        -p
-
-    # DuckDB index (with HNSW enabled via config)
-    print_info "Creating DuckDB index with HNSW enabled..."
-    GOOGLE_GENERATIVE_AI_API_KEY="$GOOGLE_GENERATIVE_AI_API_KEY" \
-    npx gistdex index \
-        --provider duckdb \
-        --db "$DUCKDB_DB" \
-        --files "$DUCKDB_REPO/src/**/*.cpp" \
-        --chunk-size 1000 \
-        --chunk-overlap 200 \
-        -p
-
-    print_success "Initial indexes created"
-}
-
 # Function to benchmark indexing performance
 benchmark_indexing() {
     print_info "==================================================="
@@ -112,8 +84,8 @@ benchmark_indexing() {
         --export-json "$TMP_DIR/indexing-benchmark.json" \
         -n "SQLite Indexing" \
         -n "DuckDB Indexing" \
-        "npx gistdex index --provider sqlite --db '$TMP_DIR/bench-sqlite.db' --files '$DUCKDB_REPO/src/**/*.cpp' --chunk-size 1000 --chunk-overlap 200 -p" \
-        "npx gistdex index --provider duckdb --db '$TMP_DIR/bench-duckdb.db' --files '$DUCKDB_REPO/src/**/*.cpp' --chunk-size 1000 --chunk-overlap 200 -p"
+        "node dist/cli/index.js index --provider sqlite --db '$TMP_DIR/bench-sqlite.db' --files '$DUCKDB_REPO/src/**/*.cpp' --chunk-size 1000 --chunk-overlap 200 -p" \
+        "node dist/cli/index.js index --provider duckdb --db '$TMP_DIR/bench-duckdb.db' --files '$DUCKDB_REPO/src/**/*.cpp' --chunk-size 1000 --chunk-overlap 200 -p"
 
     # Clean up temp databases after benchmark
     rm -f "$TMP_DIR/bench-sqlite.db" "$TMP_DIR/bench-duckdb.db"
@@ -136,8 +108,8 @@ benchmark_single_query() {
         --export-json "$TMP_DIR/single-query-benchmark.json" \
         -n "SQLite Query" \
         -n "DuckDB Query" \
-        "npx gistdex query --provider sqlite --db '$SQLITE_DB' -k 10 '$query'" \
-        "npx gistdex query --provider duckdb --db '$DUCKDB_DB' -k 10 '$query'"
+        "node dist/cli/index.js query --provider sqlite --db '$SQLITE_DB' -k 10 '$query'" \
+        "node dist/cli/index.js query --provider duckdb --db '$DUCKDB_DB' -k 10 '$query'"
 }
 
 # Function to benchmark multiple queries
@@ -151,7 +123,7 @@ benchmark_multiple_queries() {
 #!/bin/bash
 queries=("database" "vector" "index" "query optimization" "storage engine")
 for query in "${queries[@]}"; do
-    npx gistdex query --provider sqlite --db "$1" -k 10 "$query" > /dev/null
+    node dist/cli/index.js query --provider sqlite --db "$1" -k 10 "$query" > /dev/null
 done
 EOF
 
@@ -159,7 +131,7 @@ EOF
 #!/bin/bash
 queries=("database" "vector" "index" "query optimization" "storage engine")
 for query in "${queries[@]}"; do
-    npx gistdex query --provider duckdb --db "$1" -k 10 "$query" > /dev/null
+    node dist/cli/index.js query --provider duckdb --db "$1" -k 10 "$query" > /dev/null
 done
 EOF
 
@@ -230,7 +202,6 @@ main() {
 
     case $choice in
         1)
-            create_initial_indexes
             benchmark_indexing
             benchmark_single_query
             benchmark_multiple_queries
@@ -239,11 +210,6 @@ main() {
             benchmark_indexing
             ;;
         3)
-            # Check if indexes exist
-            if [ ! -f "$SQLITE_DB" ] || [ ! -f "$DUCKDB_DB" ]; then
-                print_warning "Indexes not found. Creating them first..."
-                create_initial_indexes
-            fi
             benchmark_single_query
             benchmark_multiple_queries
             ;;
