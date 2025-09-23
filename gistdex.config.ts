@@ -2,10 +2,13 @@ import { defineGistdexConfig } from "@ushironoko/gistdex";
 
 export default defineGistdexConfig({
   vectorDB: {
-    provider: "sqlite",
+    provider: "duckdb",
     options: {
-      path: "./gistdex.db",
+      path: "./gistdex-duck.db",
       dimension: 768,
+      enableHNSW: true,
+      hnswMetric: "cosine",
+      hnswPersistence: true,
     },
   },
   ci: {
