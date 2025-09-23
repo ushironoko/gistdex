@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.6.0] - 2025-09-23
+
+- Merge pull request #129 from ushironoko/feature/duckdb-adapter-and-benchmarks
+- fix
+- chore: ignore DuckDB data directory
+- chore: update config to use DuckDB adapter
+- feat: add automated benchmark execution scripts
+- feat: add performance benchmark scripts
+- test: add DuckDB support to test infrastructure
+- feat: register DuckDB adapter in registry
+- feat: implement DuckDB vector database adapter
+- fix: prevent data loss in base adapter close method
+- feat: add DuckDB dependencies
+- handover
+- fix ci
+- fix test scripts
+- fix
+- fix document
+
+
 ## [1.5.3] - 2025-09-22
 
 - Merge pull request #128 from ushironoko/docs/add-ci-documentation
