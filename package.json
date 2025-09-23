@@ -65,7 +65,7 @@
     "@ai-sdk/google": "2.0.13",
     "@duckdb/node-api": "1.4.0-r.1",
     "@inquirer/prompts": "7.8.4",
-    "@modelcontextprotocol/sdk": "1.17.5",
+    "@modelcontextprotocol/sdk": "1.18.1",
     "ai": "5.0.38",
     "consola": "3.2.3",
     "defu": "6.1.4",
