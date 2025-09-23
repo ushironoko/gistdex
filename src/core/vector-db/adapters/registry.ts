@@ -63,6 +63,14 @@ export const createRegistry = (): RegistryInterface => {
       }
     }
 
+    // Register DuckDB adapter
+    try {
+      const { createDuckDBAdapter } = await import("./duckdb-adapter.js");
+      register("duckdb", createDuckDBAdapter);
+    } catch {
+      // DuckDB not available
+    }
+
     initialized = true;
   };
 
