@@ -6,15 +6,23 @@ import { createDatabaseService } from "../../src/core/database/database-service.
 import type { VectorDBConfig } from "../../src/core/vector-db/adapters/types.js";
 
 export interface TestDatabaseOptions {
-  provider?: "memory" | "sqlite";
+  provider?: "memory" | "sqlite" | "duckdb";
   dimension?: number;
   persistData?: boolean;
+  dbPath?: string; // Optional custom path for database
+  options?: Record<string, unknown>; // Additional provider-specific options
 }
 
 export async function createTestDatabase(
   options: TestDatabaseOptions = {},
 ): Promise<DatabaseService> {
-  const { provider = "memory", dimension = 768, persistData = false } = options;
+  const {
+    provider = "memory",
+    dimension = 768,
+    persistData = false,
+    dbPath,
+    options: providerOptions = {},
+  } = options;
 
   const service = createDatabaseService();
 
@@ -31,19 +39,49 @@ export async function createTestDatabase(
 
   if (provider === "sqlite") {
     const tempDir = await mkdtemp(join(tmpdir(), "gistdex-test-"));
-    const dbPath = join(tempDir, "test.db");
+    const finalDbPath = dbPath || join(tempDir, "test.db");
 
     const config: VectorDBConfig = {
       provider: "sqlite",
       options: {
-        path: dbPath,
+        path: finalDbPath,
         dimension,
+        ...providerOptions,
       },
     };
 
     await service.initialize(config);
 
     if (!persistData) {
+      const originalClose = service.close.bind(service);
+      service.close = async () => {
+        await originalClose();
+        await rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      };
+    }
+
+    return service;
+  }
+
+  if (provider === "duckdb") {
+    const tempDir = !dbPath
+      ? await mkdtemp(join(tmpdir(), "gistdex-duckdb-test-"))
+      : null;
+    const finalDbPath =
+      dbPath || (tempDir ? join(tempDir, "test.db") : ":memory:");
+
+    const config: VectorDBConfig = {
+      provider: "duckdb",
+      options: {
+        path: finalDbPath,
+        dimension,
+        ...providerOptions,
+      },
+    };
+
+    await service.initialize(config);
+
+    if (!persistData && tempDir) {
       const originalClose = service.close.bind(service);
       service.close = async () => {
         await originalClose();
