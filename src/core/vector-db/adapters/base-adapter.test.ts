@@ -252,13 +252,14 @@ describe("createBaseAdapter", () => {
   });
 
   describe("close", () => {
-    it("should close and clear storage", async () => {
+    it("should close without clearing storage", async () => {
       const adapter = createBaseAdapter(config, mockStorage);
       await adapter.initialize();
 
       await adapter.close();
 
-      expect(mockStorage.clear).toHaveBeenCalled();
+      // close() should NOT clear data - that would delete all stored data!
+      expect(mockStorage.clear).not.toHaveBeenCalled();
 
       // Should need to reinitialize after close
       await expect(adapter.count()).rejects.toThrow("Adapter not initialized");

@@ -154,9 +154,8 @@ export function createBaseAdapter(
     },
 
     async close(): Promise<void> {
-      if (storage.clear) {
-        await storage.clear();
-      }
+      // Don't clear data on close - that deletes all stored data!
+      // clear() should only be called when explicitly wanting to delete data
       initialized = false;
     },
 
