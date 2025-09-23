@@ -33,3 +33,4 @@ data/test-*/
 .serena/
 !.serena/memories/handover.md
 
+data/duckdb/
