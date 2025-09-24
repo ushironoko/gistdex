@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.1] - 2025-09-24
+
+- Merge pull request #137 from ushironoko/feature/refactor-adapters-and-fix-bugs
+- fix: update AdapterFactory type to support async factories
+- fix: resolve DuckDB adapter initialization and filter issues
+- fix: properly release database connections in SQLite adapters close()
+- refactor: migrate base-sqlite-adapter to use base-adapter pattern
+- feat: add SQLiteStorageOperations abstraction for base adapter
+
+
 ## [1.6.0] - 2025-09-23
 
 - Merge pull request #129 from ushironoko/feature/duckdb-adapter-and-benchmarks
