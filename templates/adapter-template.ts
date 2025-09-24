@@ -14,15 +14,15 @@
  * 4. Register your adapter for use
  */
 
-import { createBaseAdapter } from "../src/core/vector-db/adapters/base-adapter.js";
-import { VectorDBError } from "../src/core/vector-db/errors.js";
 import type { StorageOperations } from "../src/core/vector-db/adapters/base-adapter.js";
+import { createBaseAdapter } from "../src/core/vector-db/adapters/base-adapter.js";
 import type {
   VectorDBAdapter,
   VectorDBConfig,
   VectorDocument,
   VectorSearchResult,
 } from "../src/core/vector-db/adapters/types.js";
+import { VectorDBError } from "../src/core/vector-db/errors.js";
 
 /**
  * Step 1: Create StorageOperations implementation
