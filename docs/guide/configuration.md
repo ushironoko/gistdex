@@ -29,7 +29,7 @@ import { defineGistdexConfig } from "@ushironoko/gistdex";
 
 export default defineGistdexConfig({
   vectorDB: {
-    provider: "sqlite",
+    provider: "sqlite", // or "bun-sqlite", "duckdb", "memory"
     options: {
       path: "./gistdex.db",
       dimension: 768,
@@ -120,14 +120,18 @@ If you need to update your API key, edit the `.env` file directly or set the env
 
 #### vectorDB
 
-- `provider`: Database adapter to use (`sqlite`, `bun-sqlite`, `memory`, or custom)
-  - `sqlite`: Standard SQLite adapter (Node.js)
+- `provider`: Database adapter to use (`sqlite`, `bun-sqlite`, `duckdb`, `memory`, or custom)
+  - `sqlite`: Standard SQLite adapter (Node.js) with sqlite-vec extension
   - `bun-sqlite`: SQLite adapter optimized for Bun runtime
+  - `duckdb`: DuckDB adapter with HNSW index support for better performance on large datasets
   - `memory`: In-memory storage for testing
 - `options`: Provider-specific options
-  - `path`: Database file location (SQLite/Bun-SQLite)
+  - `path`: Database file location (SQLite/Bun-SQLite/DuckDB)
   - `dimension`: Vector dimensions (must match embedding model)
   - `customSqlitePath`: Path to standalone SQLite binary (required for Bun on macOS, e.g., `/opt/homebrew/bin/sqlite`)
+  - `enableHNSW`: enable NHSW (default: false)
+  - `hnswMetric`: Distance metric for DuckDB (default: `cosine`, options: `cosine`, `l2sq`, `ip`)
+  - `hnswPersistence`: Enable HNSW for disk-based databases. See the [DuckDB documentation](https://duckdb.org/docs/stable/core_extensions/vss.html#limitations) for more details (default: false)
 
 #### customAdapters
 
@@ -195,7 +199,7 @@ export default defineGistdexConfig({
     },
   },
   indexing: {
-    preserveBoundaries: true,  // Enable AST/CST-based chunking
+    preserveBoundaries: true, // Enable AST/CST-based chunking
     // chunkSize and chunkOverlap will be auto-optimized
   },
   search: {
@@ -225,7 +229,33 @@ export default defineGistdexConfig({
   },
   search: {
     defaultK: 5,
-    hybridKeywordWeight: 0.4,  // Increase keyword weight for docs
+    hybridKeywordWeight: 0.4, // Increase keyword weight for docs
+  },
+});
+```
+
+### For Large Datasets (DuckDB)
+
+```typescript
+import { defineGistdexConfig } from "@ushironoko/gistdex";
+
+export default defineGistdexConfig({
+  vectorDB: {
+    provider: "duckdb", // Use DuckDB for better performance
+    options: {
+      path: "./large-dataset.duckdb",
+      dimension: 768,
+      enableHNSW: true, // Enable HNSW indexing for better performance
+      hnswMetric: "cosine", // Distance metric (cosine, l2sq, ip)
+      hnswPersistence: false, // Enable if you need persistent HNSW index
+    },
+  },
+  indexing: {
+    batchSize: 500, // Larger batches for DuckDB
+  },
+  search: {
+    defaultK: 20,
+    enableRerank: true,
   },
 });
 ```
@@ -237,7 +267,7 @@ import { defineGistdexConfig } from "@ushironoko/gistdex";
 
 export default defineGistdexConfig({
   vectorDB: {
-    provider: "memory",  // In-memory storage
+    provider: "memory", // In-memory storage
     options: {
       dimension: 768,
     },

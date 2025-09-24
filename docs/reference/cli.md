@@ -73,20 +73,20 @@ npx @ushironoko/gistdex index [options]
 
 #### Options
 
-| Option                | Description                             | Example                              |
-| --------------------- | --------------------------------------- | ------------------------------------ |
-| `--provider <name>`   | Vector DB provider (default: sqlite)    | `--provider sqlite`                  |
-| `--db <path>`         | Database file path (for SQLite)         | `--db ./mydata.db`                   |
-| `--text <content>`    | Index plain text                        | `--text "Hello world"`               |
-| `--file <path>`       | Index a single file                     | `--file ./README.md`                 |
-| `--files <pattern>`   | Index multiple files (glob)             | `--files "src/**/*.ts"`              |
-| `--gist <url>`        | Index a GitHub Gist                     | `--gist https://gist.github.com/...` |
-| `--github <url>`      | Index a GitHub repository               | `--github https://github.com/...`    |
-| `--branch <branch>`   | GitHub branch (default: main)           | `--branch develop`                   |
-| `--paths <paths>`     | GitHub paths to index (comma-separated) | `--paths "src,docs"`                 |
-| `--chunk-size <n>`    | Set chunk size (auto-optimized by default) | `--chunk-size 2000`                  |
-| `--chunk-overlap <n>` | Set chunk overlap (auto-optimized by default) | `--chunk-overlap 100`                |
-| `--preserve-boundaries`, `-p` | Preserve semantic boundaries (code files) | `--preserve-boundaries`      |
+| Option                        | Description                                   | Example                              |
+| ----------------------------- | --------------------------------------------- | ------------------------------------ |
+| `--provider <name>`           | Vector DB provider (default: sqlite)          | `--provider sqlite`                  |
+| `--db <path>`                 | Database file path (for SQLite,DuckDB)        | `--db ./mydata.db`                   |
+| `--text <content>`            | Index plain text                              | `--text "Hello world"`               |
+| `--file <path>`               | Index a single file                           | `--file ./README.md`                 |
+| `--files <pattern>`           | Index multiple files (glob)                   | `--files "src/**/*.ts"`              |
+| `--gist <url>`                | Index a GitHub Gist                           | `--gist https://gist.github.com/...` |
+| `--github <url>`              | Index a GitHub repository                     | `--github https://github.com/...`    |
+| `--branch <branch>`           | GitHub branch (default: main)                 | `--branch develop`                   |
+| `--paths <paths>`             | GitHub paths to index (comma-separated)       | `--paths "src,docs"`                 |
+| `--chunk-size <n>`            | Set chunk size (auto-optimized by default)    | `--chunk-size 2000`                  |
+| `--chunk-overlap <n>`         | Set chunk overlap (auto-optimized by default) | `--chunk-overlap 100`                |
+| `--preserve-boundaries`, `-p` | Preserve semantic boundaries (code files)     | `--preserve-boundaries`              |
 
 #### Examples
 
@@ -233,12 +233,12 @@ npx @ushironoko/gistdex list [options]
 
 #### Options
 
-| Option              | Description                          |
-| ------------------- | ------------------------------------ |
-| `--provider <name>` | Vector DB provider (default: sqlite) |
-| `--db <path>`       | Database file path (for SQLite)      |
-| `--stats`           | Show statistics only                 |
-| `--type <type>`     | Filter by source type                |
+| Option              | Description                            |
+| ------------------- | -------------------------------------- |
+| `--provider <name>` | Vector DB provider (default: sqlite)   |
+| `--db <path>`       | Database file path (for SQLite,DuckDB) |
+| `--stats`           | Show statistics only                   |
+| `--type <type>`     | Filter by source type                  |
 
 #### Examples
 

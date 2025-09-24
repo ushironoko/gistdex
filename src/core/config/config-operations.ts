@@ -11,6 +11,14 @@ import type {
   VectorDBConfig,
 } from "../vector-db/adapters/types.js";
 
+/**
+ * Extended configuration type for Gistdex
+ *
+ * Note: VectorDBConfig.options supports provider-specific configurations:
+ * - SQLite/Bun-SQLite: { path, dimension, customSqlitePath?, sqliteVecPath? }
+ * - DuckDB: { path, dimension, enableHNSW?, hnswMetric?, hnswPersistence? }
+ * - Memory: { dimension }
+ */
 export interface GistdexConfig {
   vectorDB?: VectorDBConfig;
   customAdapters?: Record<string, string>; // provider -> adapter file path
