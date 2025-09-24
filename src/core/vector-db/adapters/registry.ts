@@ -97,7 +97,9 @@ export const createRegistry = (): RegistryInterface => {
       throw new Error(`No adapter registered for provider: ${config.provider}`);
     }
 
-    return await factory(config);
+    // Factory can return either a VectorDBAdapter or Promise<VectorDBAdapter>
+    const adapter = factory(config);
+    return await Promise.resolve(adapter);
   };
 
   // List all registered providers

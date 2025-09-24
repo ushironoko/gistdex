@@ -20,7 +20,7 @@ describe.skipIf(!isBunRuntime)("createBunSQLiteAdapter", () => {
       const { createBunSQLiteAdapter } = await import(
         "./bun-sqlite-adapter.js"
       );
-      adapter = createBunSQLiteAdapter(testConfig);
+      adapter = await createBunSQLiteAdapter(testConfig);
       await adapter.initialize();
     }
   });
