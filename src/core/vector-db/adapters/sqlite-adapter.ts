@@ -5,11 +5,8 @@
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import * as sqliteVec from "sqlite-vec";
 import { VectorDBError } from "../errors.js";
-import {
-  createSQLiteAdapterBase,
-  type SQLiteOperations,
-  type SQLitePreparedStatement,
-} from "./base-sqlite-adapter.js";
+import { createSQLiteAdapterBase } from "./base-sqlite-adapter.js";
+import type { SQLiteOperations } from "./sqlite-storage-operations.js";
 import type { VectorDBAdapter, VectorDBConfig } from "./types.js";
 
 /**
@@ -25,7 +22,7 @@ const createNodeSQLiteOperations = (db: DatabaseSync): SQLiteOperations => {
       db.exec(sql);
     },
 
-    prepare(sql: string): SQLitePreparedStatement {
+    prepare(sql: string) {
       const stmt = db.prepare(sql);
       return {
         run(...params: unknown[]) {
@@ -66,9 +63,9 @@ const createNodeSQLiteOperations = (db: DatabaseSync): SQLiteOperations => {
  * Create a SQLite vector database adapter using Node.js sqlite module
  * This adapter uses node:sqlite (requires Node.js 24.6.0+ to avoid ExperimentalWarning)
  */
-export const createSQLiteAdapter = (
+export const createSQLiteAdapter = async (
   config: VectorDBConfig,
-): VectorDBAdapter => {
+): Promise<VectorDBAdapter> => {
   const dbPath = config.options?.path ?? ":memory:";
 
   const initializeConnection = async (): Promise<SQLiteOperations> => {
@@ -115,7 +112,7 @@ Original error: ${
     }
   };
 
-  return createSQLiteAdapterBase({
+  return await createSQLiteAdapterBase({
     config,
     initializeConnection,
     providerName: "sqlite",

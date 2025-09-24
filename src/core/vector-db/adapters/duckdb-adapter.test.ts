@@ -7,7 +7,7 @@ describe("DuckDBAdapter", () => {
 
   beforeEach(async () => {
     // Create in-memory DuckDB adapter for testing
-    adapter = createDuckDBAdapter({
+    adapter = await createDuckDBAdapter({
       provider: "duckdb",
       options: {
         path: ":memory:",
@@ -217,7 +217,7 @@ describe("DuckDBAdapter with HNSW", () => {
 
   beforeEach(async () => {
     // Create DuckDB adapter with HNSW enabled
-    adapter = createDuckDBAdapter({
+    adapter = await createDuckDBAdapter({
       provider: "duckdb",
       options: {
         path: ":memory:",

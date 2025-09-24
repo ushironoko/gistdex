@@ -12,7 +12,6 @@ describe("createBaseAdapter", () => {
     searchSimilar: vi.fn(),
     countDocuments: vi.fn(),
     listDocuments: vi.fn(),
-    clear: vi.fn(),
   };
 
   const config: BaseAdapterConfig = {
@@ -258,8 +257,8 @@ describe("createBaseAdapter", () => {
 
       await adapter.close();
 
-      // close() should NOT clear data - that would delete all stored data!
-      expect(mockStorage.clear).not.toHaveBeenCalled();
+      // close() should call cleanup if available
+      // Since our mockStorage doesn't have cleanup, nothing special happens
 
       // Should need to reinitialize after close
       await expect(adapter.count()).rejects.toThrow("Adapter not initialized");

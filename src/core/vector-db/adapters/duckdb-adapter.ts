@@ -118,7 +118,7 @@ const releaseInstance = async (dbPath: string): Promise<void> => {
 const createDuckDBStorageOperations = async (
   dbPath: string,
   config: DuckDBConfig["options"],
-): Promise<{ storage: StorageOperations; cleanup: () => Promise<void> }> => {
+): Promise<{ storage: StorageOperations }> => {
   // Get or create instance
   const { connection } = await getOrCreateInstance(dbPath, config);
 
@@ -232,11 +232,35 @@ const createDuckDBStorageOperations = async (
     },
 
     countDocuments: async (
-      _filter?: Record<string, unknown>,
+      filter?: Record<string, unknown>,
     ): Promise<number> => {
-      const result = await connection.runAndReadAll(
-        "SELECT COUNT(*) as count FROM vectors",
-      );
+      let query = "SELECT COUNT(*) as count FROM vectors";
+
+      // Apply filter if provided
+      if (filter && Object.keys(filter).length > 0) {
+        const conditions: string[] = [];
+
+        for (const [key, value] of Object.entries(filter)) {
+          // Handle metadata fields (like sourceType)
+          if (typeof value === "string") {
+            // Escape single quotes in the value
+            const escapedValue = value.replace(/'/g, "''");
+            // Use JSON extraction for metadata fields
+            // DuckDB uses -> operator for JSON extraction
+            conditions.push(`metadata->>'${key}' = '${escapedValue}'`);
+          } else if (typeof value === "number") {
+            conditions.push(`metadata->>'${key}' = '${value}'`);
+          } else if (typeof value === "boolean") {
+            conditions.push(`metadata->>'${key}' = '${value}'`);
+          }
+        }
+
+        if (conditions.length > 0) {
+          query += ` WHERE ${conditions.join(" AND ")}`;
+        }
+      }
+
+      const result = await connection.runAndReadAll(query);
       await result.readAll();
       const rows = result.getRows();
 
@@ -253,12 +277,37 @@ const createDuckDBStorageOperations = async (
     listDocuments: async (options?: ListOptions): Promise<VectorDocument[]> => {
       const limit = options?.limit || 100;
       const offset = options?.offset || 0;
+      const filter = options?.filter;
 
-      const result = await connection.runAndReadAll(
-        `SELECT id, content, metadata, embedding FROM vectors
-         ORDER BY created_at DESC
-         LIMIT ${limit} OFFSET ${offset}`,
-      );
+      let query = `SELECT id, content, metadata, embedding FROM vectors`;
+
+      // Apply filter if provided
+      if (filter && Object.keys(filter).length > 0) {
+        const conditions: string[] = [];
+
+        for (const [key, value] of Object.entries(filter)) {
+          // Handle metadata fields (like sourceType)
+          if (typeof value === "string") {
+            // Escape single quotes in the value
+            const escapedValue = value.replace(/'/g, "''");
+            // Use JSON extraction for metadata fields
+            // DuckDB uses -> operator for JSON extraction
+            conditions.push(`metadata->>'${key}' = '${escapedValue}'`);
+          } else if (typeof value === "number") {
+            conditions.push(`metadata->>'${key}' = '${value}'`);
+          } else if (typeof value === "boolean") {
+            conditions.push(`metadata->>'${key}' = '${value}'`);
+          }
+        }
+
+        if (conditions.length > 0) {
+          query += ` WHERE ${conditions.join(" AND ")}`;
+        }
+      }
+
+      query += ` ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+
+      const result = await connection.runAndReadAll(query);
 
       await result.readAll();
       const rows = result.getRows();
@@ -275,17 +324,13 @@ const createDuckDBStorageOperations = async (
       });
     },
 
-    clear: async (): Promise<void> => {
-      await connection.run("DELETE FROM vectors");
+    // Add cleanup to properly release DuckDB connection
+    cleanup: async (): Promise<void> => {
+      await releaseInstance(dbPath);
     },
   };
 
-  // Cleanup function to release the instance
-  const cleanup = async () => {
-    await releaseInstance(dbPath);
-  };
-
-  return { storage, cleanup };
+  return { storage };
 };
 
 /**
@@ -367,120 +412,111 @@ const initializeDuckDB = async (
 /**
  * Create DuckDB adapter for vector database operations
  */
-export const createDuckDBAdapter = (
+export const createDuckDBAdapter = async (
   config: VectorDBConfig,
-): VectorDBAdapter => {
+): Promise<VectorDBAdapter> => {
   const duckdbConfig = config as DuckDBConfig;
   const dbPath = duckdbConfig.options?.path || ":memory:";
 
-  // Storage operations and cleanup function will be initialized on first use
-  let cleanupFn: (() => Promise<void>) | null = null;
   let baseAdapter: VectorDBAdapter | null = null;
-  let initialized = false;
+  let storage: StorageOperations | null = null;
 
-  // Initialize the adapter on first use
-  const ensureInitialized = async () => {
-    if (initialized) return;
+  // Initialize function that sets up everything
+  const initialize = async (): Promise<void> => {
+    if (baseAdapter) return; // Already initialized
 
-    // Create storage operations and get cleanup function
-    const { storage, cleanup } = await createDuckDBStorageOperations(
-      dbPath,
-      duckdbConfig.options,
-    );
+    try {
+      // Create storage operations
+      const result = await createDuckDBStorageOperations(
+        dbPath,
+        duckdbConfig.options,
+      );
+      storage = result.storage;
 
-    cleanupFn = cleanup;
+      // Create base adapter
+      baseAdapter = createBaseAdapter(
+        {
+          dimension: duckdbConfig.options.dimension,
+          provider: "duckdb",
+          version: "1.0.0",
+          capabilities: ["vector-search", "hnsw-index", "batch-operations"],
+        },
+        storage,
+      );
 
-    // Create adapter using base adapter with storage operations
-    baseAdapter = createBaseAdapter(
-      {
-        dimension: duckdbConfig.options.dimension,
-        provider: "duckdb",
-        version: "1.0.0",
-        capabilities: ["vector-search", "hnsw-index", "batch-operations"],
-      },
-      storage,
-    );
-
-    initialized = true;
+      // Initialize the base adapter
+      await baseAdapter.initialize();
+    } catch (error) {
+      console.error("DuckDB initialization error:", error);
+      throw new VectorDBError("Failed to initialize DuckDB vector database", {
+        cause: error,
+      });
+    }
   };
 
-  // Return adapter with lazy initialization
+  // Close function
+  const close = async (): Promise<void> => {
+    if (baseAdapter) {
+      await baseAdapter.close(); // This will call storage.cleanup()
+      baseAdapter = null;
+      storage = null;
+    }
+  };
+
+  // Return adapter with delegated methods
   return {
-    initialize: async () => {
-      await ensureInitialized();
+    initialize,
+
+    insert: async (document) => {
       if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      await baseAdapter.initialize();
+      return baseAdapter.insert(document);
     },
 
-    insert: async (document: VectorDocument) => {
-      await ensureInitialized();
+    insertBatch: async (documents) => {
       if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      return await baseAdapter.insert(document);
+      return baseAdapter.insertBatch(documents);
     },
 
-    insertBatch: async (documents: VectorDocument[]) => {
-      await ensureInitialized();
+    get: async (id) => {
       if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      return await baseAdapter.insertBatch(documents);
+      return baseAdapter.get(id);
     },
 
-    search: async (embedding: number[], options?: SearchOptions) => {
-      await ensureInitialized();
+    update: async (id, updates) => {
       if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      return await baseAdapter.search(embedding, options);
+      return baseAdapter.update(id, updates);
     },
 
-    update: async (id: string, document: Partial<VectorDocument>) => {
-      await ensureInitialized();
+    delete: async (id) => {
       if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      await baseAdapter.update(id, document);
+      return baseAdapter.delete(id);
     },
 
-    delete: async (id: string) => {
-      await ensureInitialized();
+    deleteBatch: async (ids) => {
       if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      await baseAdapter.delete(id);
+      return baseAdapter.deleteBatch(ids);
     },
 
-    deleteBatch: async (ids: string[]) => {
-      await ensureInitialized();
+    search: async (embedding, options) => {
       if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      await baseAdapter.deleteBatch(ids);
+      return baseAdapter.search(embedding, options);
     },
 
-    get: async (id: string) => {
-      await ensureInitialized();
+    list: async (options) => {
       if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      return await baseAdapter.get(id);
+      return baseAdapter.list(options);
     },
 
-    count: async (filter?: Record<string, unknown>) => {
-      await ensureInitialized();
+    count: async (filter) => {
       if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      return await baseAdapter.count(filter);
+      return baseAdapter.count(filter);
     },
 
-    list: async (options?: ListOptions) => {
-      await ensureInitialized();
-      if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
-      return await baseAdapter.list(options);
-    },
-
-    close: async () => {
-      if (baseAdapter) {
-        await baseAdapter.close();
-      }
-      if (cleanupFn) {
-        await cleanupFn();
-      }
-    },
+    close,
 
     getInfo: () => {
-      return {
-        provider: "duckdb",
-        version: "1.0.0",
-        capabilities: ["vector-search", "hnsw-index", "batch-operations"],
-      };
+      if (!baseAdapter) throw new VectorDBError("Adapter not initialized");
+      return baseAdapter.getInfo();
     },
   };
 };

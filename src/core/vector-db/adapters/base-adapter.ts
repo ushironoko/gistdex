@@ -32,7 +32,7 @@ export interface StorageOperations {
   ) => Promise<VectorSearchResult[]>;
   countDocuments: (filter?: Record<string, unknown>) => Promise<number>;
   listDocuments: (options?: ListOptions) => Promise<VectorDocument[]>;
-  clear: () => Promise<void>;
+  cleanup?: () => Promise<void>; // Optional cleanup for releasing resources
 }
 
 /**
@@ -154,8 +154,10 @@ export function createBaseAdapter(
     },
 
     async close(): Promise<void> {
-      // Don't clear data on close - that deletes all stored data!
-      // clear() should only be called when explicitly wanting to delete data
+      // Call storage cleanup if available (e.g., close DB connections)
+      if (storage.cleanup) {
+        await storage.cleanup();
+      }
       initialized = false;
     },
 

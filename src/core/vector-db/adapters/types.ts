@@ -98,6 +98,8 @@ export interface VectorDBConfig {
   options?: Record<string, unknown>;
 }
 
-export type AdapterFactory = (config: VectorDBConfig) => VectorDBAdapter;
+export type AdapterFactory = (
+  config: VectorDBConfig,
+) => VectorDBAdapter | Promise<VectorDBAdapter>;
 
 export type AdapterMiddleware = (adapter: VectorDBAdapter) => VectorDBAdapter;

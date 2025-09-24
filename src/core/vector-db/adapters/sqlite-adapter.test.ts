@@ -86,13 +86,15 @@ describe("SQLiteAdapter", () => {
     },
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    adapter = createSQLiteAdapter(config);
+    adapter = await createSQLiteAdapter(config);
   });
 
   afterEach(async () => {
-    await adapter.close();
+    if (adapter?.close) {
+      await adapter.close();
+    }
   });
 
   describe("Initialization", () => {
@@ -217,6 +219,9 @@ describe("SQLiteAdapter", () => {
             "vector-search",
             "metadata-filter",
             "batch-operations",
+            "sqlite-vec",
+            "sources-table",
+            "extension-stats",
           ],
         });
       });
@@ -264,9 +269,9 @@ describe("SQLiteAdapter", () => {
 
   describe("Error Handling", () => {
     it("should throw error when operations are performed before initialization", async () => {
-      const uninitializedAdapter = createSQLiteAdapter(config);
+      const uninitializedAdapter = await createSQLiteAdapter(config);
       await expect(uninitializedAdapter.insert(testDocument)).rejects.toThrow(
-        "Database not initialized",
+        "Adapter not initialized",
       );
     });
 
