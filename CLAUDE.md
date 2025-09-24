@@ -294,18 +294,35 @@ The system provides automated documentation impact analysis for code changes:
    - **GitHub Comment**: Markdown formatted with impact levels (High/Medium/Low)
    - Includes matched search terms for transparency
 
-### Pluggable Vector Database Architecture
+### Vector Database Adapter Architecture
 
-The system uses a **functional composition pattern** for vector databases, eliminating global state and ensuring proper resource management:
+The system uses a **unified hierarchical architecture** with **functional composition pattern** for vector databases, eliminating global state and ensuring proper resource management:
 
-1. **Core Abstraction**: `VectorDBAdapter` interface in `src/core/vector-db/adapters/types.ts` defines the contract all adapters must implement
-2. **Registry System**:
-   - `RegistryInterface` and `createRegistry` in `src/core/vector-db/adapters/registry.ts` provide adapter registration
-   - `withRegistry` and `withCustomRegistry` in `src/core/vector-db/adapters/registry-operations.ts` enable scoped registry usage
-3. **Factory Pattern**: `createFactory` in `src/core/vector-db/adapters/factory.ts` creates adapter instances with registry support
-4. **Service Layer**:
-   - `createDatabaseService` in `src/core/database/database-service.ts` provides high-level API
-   - `createDatabaseOperations` in `src/core/database/database-operations.ts` provides functional composition patterns
+#### Architecture Overview
+
+All adapters follow a hierarchical structure:
+
+1. **Base Layer** (`base-adapter.ts`): Core functionality used by all adapters
+   - Common CRUD operations
+   - Batch processing
+   - Error handling
+   - Resource management
+
+2. **Database-Specific Layer** (e.g., `base-sqlite-adapter.ts`): Database family features
+   - SQLite: sources table, extension stats, sqlite-vec integration
+   - Shared between Node.js and Bun SQLite implementations
+
+3. **Implementation Layer**: Runtime/platform-specific implementations
+   - `sqlite-adapter.ts`: Node.js SQLite implementation
+   - `bun-sqlite-adapter.ts`: Bun SQLite implementation
+   - `duckdb-adapter.ts`: DuckDB with HNSW support
+
+#### Key Design Principles
+
+1. **StorageOperations Interface**: All adapters implement this interface for storage abstraction
+2. **Factory Functions**: Async factory functions instead of classes for initialization
+3. **Registry System**: Dynamic adapter registration and discovery
+4. **Functional Composition**: No global state, composable operations
 
 ### Key Components
 
@@ -490,20 +507,48 @@ Tests are colocated with source files using `.test.ts` suffix. Run tests with co
 
 ### Using Base Adapter (Recommended)
 
-1. Create a `StorageOperations` implementation for your database
-2. Use `createBaseAdapter` to get common functionality
-3. Register using `withCustomRegistry` for scoped usage
+Following the unified hierarchical architecture:
 
-### Direct Implementation
+1. **Implement StorageOperations**:
+   ```typescript
+   const createMyStorageOperations = (config): StorageOperations => {
+     // Implement all required methods
+     return { storeDocument, retrieveDocument, ... };
+   };
+   ```
 
-1. Copy `templates/adapter-template.ts` to `src/core/vector-db/adapters/`
-2. Create an async factory function that returns `Promise<VectorDBAdapter>`
-3. Use one of these registration methods:
-   - **Scoped**: Use `withCustomRegistry` for temporary registration
-   - **Full Control**: Use `withRegistry` to manage the entire registry
-4. Add configuration support in `config-operations.ts` if needed
-5. Write comprehensive tests for the adapter (colocated as `my-adapter.test.ts`)
-6. Update README.md with adapter documentation
+2. **Use createBaseAdapter**:
+   ```typescript
+   export const createMyAdapter = async (config) => {
+     const storage = createMyStorageOperations(config);
+     return createBaseAdapter(metadata, storage);
+   };
+   ```
+
+3. **Register the adapter**:
+   - Use `withCustomRegistry` for scoped usage
+   - Or add to default registry for global availability
+
+### Implementation Guidelines
+
+1. **Follow the hierarchy**:
+   - If creating a family of adapters (e.g., PostgreSQL variants), create a base-postgres-adapter.ts
+   - Individual implementations should be minimal, focusing on connection initialization
+
+2. **Maintain consistency**:
+   - Use async factory functions, not classes
+   - Handle errors with VectorDBError
+   - Implement proper resource cleanup in close()
+
+3. **Testing requirements**:
+   - Unit tests colocated as `my-adapter.test.ts`
+   - Integration tests in `tests/integration/`
+   - Performance benchmarks if applicable
+
+4. **Documentation**:
+   - Update README.md with usage examples
+   - Add TypeScript definitions
+   - Document any specific requirements or limitations
 
 ### Factory Function Pattern
 

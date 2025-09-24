@@ -1,10 +1,136 @@
 /**
- * Template for creating custom vector database adapters
+ * Template for creating a new vector database adapter
+ * Follow the hierarchical architecture pattern
  *
- * To create a custom adapter:
+ * Architecture Overview:
+ * - base-adapter.ts: Core functionality (used by all adapters)
+ * - base-[db]-adapter.ts: Database-specific shared features (optional)
+ * - [implementation]-adapter.ts: Runtime/platform-specific implementation
+ *
+ * To create a new adapter:
  * 1. Copy this template to src/core/vector-db/adapters/your-adapter.ts
- * 2. Implement all required methods in the factory function
- * 3. Use one of these registration methods:
+ * 2. Implement StorageOperations interface
+ * 3. Use createBaseAdapter for common functionality
+ * 4. Register your adapter for use
+ */
+
+import { createBaseAdapter } from "../src/core/vector-db/adapters/base-adapter.js";
+import { VectorDBError } from "../src/core/vector-db/errors.js";
+import type { StorageOperations } from "../src/core/vector-db/adapters/base-adapter.js";
+import type {
+  VectorDBAdapter,
+  VectorDBConfig,
+  VectorDocument,
+  VectorSearchResult,
+} from "../src/core/vector-db/adapters/types.js";
+
+/**
+ * Step 1: Create StorageOperations implementation
+ * This contains all database-specific logic
+ */
+const createYourStorageOperations = (
+  _config: VectorDBConfig,
+): StorageOperations => {
+  // Initialize your database connection here
+  // const client = new YourDatabaseClient(config.options);
+
+  // Track state using closures
+  let _isOpen = true;
+
+  return {
+    async storeDocument(_doc: VectorDocument): Promise<string> {
+      // Implementation for storing a document
+      // Return the document ID
+      throw new Error("storeDocument not implemented");
+    },
+
+    async retrieveDocument(_id: string): Promise<VectorDocument | null> {
+      // Retrieve document by ID
+      throw new Error("retrieveDocument not implemented");
+    },
+
+    async removeDocument(_id: string): Promise<void> {
+      // Delete document by ID
+      throw new Error("removeDocument not implemented");
+    },
+
+    async searchSimilar(
+      _embedding: number[],
+      _options?: { k?: number; filter?: Record<string, unknown> },
+    ): Promise<VectorSearchResult[]> {
+      // Vector similarity search implementation
+      // Return results with scores
+      throw new Error("searchSimilar not implemented");
+    },
+
+    async countDocuments(_filter?: Record<string, unknown>): Promise<number> {
+      // Count documents matching filter
+      throw new Error("countDocuments not implemented");
+    },
+
+    async listDocuments(_options?: {
+      limit?: number;
+      offset?: number;
+      filter?: Record<string, unknown>;
+    }): Promise<VectorDocument[]> {
+      // List documents with pagination
+      throw new Error("listDocuments not implemented");
+    },
+
+    async cleanup(): Promise<void> {
+      // Clean up resources (close connections, etc.)
+      _isOpen = false;
+      // await client.close();
+    },
+  };
+};
+
+/**
+ * Step 2: Create adapter using base-adapter
+ * This is your main export
+ */
+export const createYourAdapter = async (
+  config: VectorDBConfig,
+): Promise<VectorDBAdapter> => {
+  // Validate configuration
+  const requiredOption = config.options?.requiredOption;
+  if (!requiredOption) {
+    throw new VectorDBError("Required option is missing for YourAdapter");
+  }
+
+  try {
+    // Create storage operations
+    const storage = createYourStorageOperations(config);
+
+    // Create adapter using base implementation
+    return createBaseAdapter(
+      {
+        dimension: Number(config.options?.dimension) || 768,
+        provider: "your-adapter",
+        version: "1.0.0",
+        capabilities: [
+          "vector-search",
+          "metadata-filtering",
+          // Add your adapter's capabilities
+        ],
+      },
+      storage,
+    );
+  } catch (error) {
+    throw new VectorDBError(
+      `Failed to create YourAdapter: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      { cause: error },
+    );
+  }
+};
+
+// Factory function for async consistency
+export default createYourAdapter;
+
+/**
+ * Registration Examples:
  *
  * Method 1: Using withCustomRegistry (Recommended for scoped usage):
  * ```typescript
@@ -12,208 +138,27 @@
  * import { createYourAdapter } from "./your-adapter";
  *
  * await withCustomRegistry(
- *   new Map([["your-provider", createYourAdapter]]),
+ *   new Map([["your-adapter", createYourAdapter]]),
  *   async (registry) => {
  *     const adapter = await registry.create({
- *       provider: "your-provider",
- *       options: { apiKey: "..." }
+ *       provider: "your-adapter",
+ *       options: { ... }
  *     });
  *     // Use adapter...
  *   }
  * );
  * ```
  *
- * Method 2: Using withRegistry (Full control):
+ * Method 2: Configuration file (gistdex.config.ts):
  * ```typescript
- * import { withRegistry } from "@ushironoko/gistdex";
- * import { createYourAdapter } from "./your-adapter";
- *
- * await withRegistry(async (registry) => {
- *   registry.register("your-provider", createYourAdapter);
- *   const adapter = await registry.create({
- *     provider: "your-provider",
- *     options: { apiKey: "..." }
- *   });
- *   // Use adapter...
- * });
- * ```
- *
- * Method 3: Using createBaseAdapter (Reduce code duplication):
- * ```typescript
- * import { createBaseAdapter, type StorageOperations } from "@ushironoko/gistdex";
- *
- * const createYourStorage = (config: YourAdapterConfig): StorageOperations => {
- *   // Implement only storage-specific operations
- * };
- *
- * export const createYourAdapter = async (config: YourAdapterConfig): Promise<VectorDBAdapter> => {
- *   const storage = createYourStorage(config);
- *   return createBaseAdapter(
- *     {
- *       dimension: config.options?.dimension || 768,
- *       provider: "your-provider",
- *       version: "1.0.0",
- *       capabilities: ["vector-search"],
- *     },
- *     storage
- *   );
+ * export default {
+ *   vectorDB: {
+ *     provider: "your-adapter",
+ *     options: { ... }
+ *   },
+ *   customAdapters: {
+ *     "your-adapter": "./path/to/your-adapter.js"
+ *   }
  * };
  * ```
  */
-
-import type {
-  VectorDBAdapter,
-  VectorDBConfig,
-  VectorDocument,
-  VectorSearchResult,
-} from "../src/core/vector-db/adapters/types.ts";
-
-export interface YourAdapterConfig extends VectorDBConfig {
-  provider: "your-provider";
-  options?: {
-    // Add your provider-specific options here
-    apiKey?: string;
-    endpoint?: string;
-    index?: string;
-    dimension?: number;
-  };
-}
-
-/**
- * Factory function to create your custom adapter
- *
- * IMPORTANT: Export your adapter using one of these patterns:
- * 1. Named export as 'createAdapter' (RECOMMENDED):
- *    export { createYourAdapter as createAdapter };
- * 2. Default export:
- *    export default createYourAdapter;
- * 3. Provider-specific name (auto-detected):
- *    export const createYourProviderAdapter = ...
- *
- * @param config - Configuration for the adapter
- * @returns Promise<VectorDBAdapter> instance
- */
-export const createYourAdapter = async (
-  config: YourAdapterConfig,
-): Promise<VectorDBAdapter> => {
-  // Validate required configuration
-  if (!config.options?.apiKey) {
-    throw new Error("API key is required for YourAdapter");
-  }
-
-  // Initialize any client or connection here
-  // const client = new YourDatabaseClient(config.options);
-
-  // Private state using closures
-  let isInitialized = false;
-
-  // Return the adapter object implementing VectorDBAdapter interface
-  return {
-    async initialize(): Promise<void> {
-      if (isInitialized) return;
-
-      // Initialize connection to your vector database
-      // This might include:
-      // - Establishing API connections
-      // - Creating indexes if they don't exist
-      // - Validating credentials
-      // await client.connect();
-
-      isInitialized = true;
-      throw new Error("Method not implemented");
-    },
-
-    async insert(_document: VectorDocument): Promise<string> {
-      // Insert a single document
-      // Return the document ID
-      throw new Error("Method not implemented");
-    },
-
-    async insertBatch(documents: VectorDocument[]): Promise<string[]> {
-      // Insert multiple documents
-      // Return array of document IDs
-      // You can optimize this for bulk operations if your DB supports it
-      const ids: string[] = [];
-      for (const doc of documents) {
-        const id = await this.insert(doc);
-        ids.push(id);
-      }
-      return ids;
-    },
-
-    async search(
-      _embedding: number[],
-      _options?: { k?: number; filter?: Record<string, unknown> },
-    ): Promise<VectorSearchResult[]> {
-      // Perform vector similarity search
-      // Return top k results with scores
-      throw new Error("Method not implemented");
-    },
-
-    async update(
-      _id: string,
-      _document: Partial<VectorDocument>,
-    ): Promise<void> {
-      // Update an existing document
-      throw new Error("Method not implemented");
-    },
-
-    async delete(_id: string): Promise<void> {
-      // Delete a document by ID
-      throw new Error("Method not implemented");
-    },
-
-    async deleteBatch(ids: string[]): Promise<void> {
-      // Delete multiple documents
-      // Optimize for bulk operations if possible
-      for (const id of ids) {
-        await this.delete(id);
-      }
-    },
-
-    async get(_id: string): Promise<VectorDocument | null> {
-      // Retrieve a document by ID
-      throw new Error("Method not implemented");
-    },
-
-    async count(_filter?: Record<string, unknown>): Promise<number> {
-      // Count documents matching the filter
-      throw new Error("Method not implemented");
-    },
-
-    async list(_options?: {
-      limit?: number;
-      offset?: number;
-      filter?: Record<string, unknown>;
-    }): Promise<VectorDocument[]> {
-      // List documents with pagination and filtering
-      throw new Error("Method not implemented");
-    },
-
-    async close(): Promise<void> {
-      // Clean up resources
-      // Close connections, free memory, etc.
-      // await client.disconnect();
-      isInitialized = false;
-    },
-
-    getInfo(): { provider: string; version: string; capabilities: string[] } {
-      return {
-        provider: "your-provider",
-        version: "1.0.0",
-        capabilities: [
-          // List the capabilities your adapter supports
-          "vector-search",
-          "metadata-filtering",
-          // Add more as appropriate
-        ],
-      };
-    },
-  };
-};
-
-// RECOMMENDED: Export with standard name for auto-detection
-export { createYourAdapter as createAdapter };
-
-// OR use default export:
-// export default createYourAdapter;
