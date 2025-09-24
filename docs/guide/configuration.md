@@ -129,7 +129,7 @@ If you need to update your API key, edit the `.env` file directly or set the env
   - `path`: Database file location (SQLite/Bun-SQLite/DuckDB)
   - `dimension`: Vector dimensions (must match embedding model)
   - `customSqlitePath`: Path to standalone SQLite binary (required for Bun on macOS, e.g., `/opt/homebrew/bin/sqlite`)
-  - `enableHNSW`: enable NHSW (default: false)
+  - `enableHNSW`: enable HNSW (default: false)
   - `hnswMetric`: Distance metric for DuckDB (default: `cosine`, options: `cosine`, `l2sq`, `ip`)
   - `hnswPersistence`: Enable HNSW for disk-based databases. See the [DuckDB documentation](https://duckdb.org/docs/stable/core_extensions/vss.html#limitations) for more details (default: false)
 
