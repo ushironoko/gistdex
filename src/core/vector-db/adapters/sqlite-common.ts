@@ -4,7 +4,6 @@
  */
 
 import { Buffer } from "node:buffer";
-import { DatabaseNotInitializedError } from "../errors.js";
 
 /**
  * Type guard to check if value is a Buffer
@@ -33,21 +32,6 @@ export const parseMetadata = (
     return JSON.parse(metadataJson);
   } catch {
     return undefined;
-  }
-};
-
-/**
- * Helper function to ensure database is initialized
- * @param db - Database connection object
- * @param initialized - Whether the database has been initialized
- * @throws DatabaseNotInitializedError if database is not initialized
- */
-export const ensureInitialized = (
-  db: unknown | null,
-  initialized: boolean,
-): void => {
-  if (!db || !initialized) {
-    throw new DatabaseNotInitializedError();
   }
 };
 
