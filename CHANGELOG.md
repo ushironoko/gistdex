@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.2] - 2025-09-24
+
+- fix
+- fix
+- fix format
+- fix document
+- fix
+- fix adapter-template
+- refactor: bun-sqlite-adapter
+- refactor sqlite-adapter
+
+
 ## [1.6.1] - 2025-09-24
 
 - Merge pull request #137 from ushironoko/feature/refactor-adapters-and-fix-bugs
