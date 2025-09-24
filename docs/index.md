@@ -32,7 +32,7 @@ features:
     details: Direct integration with Claude through Model Context Protocol with agent capabilities
   - icon: 🔧
     title: Extensible Architecture
-    details: Pluggable vector database adapters with SQLite built-in
+    details: Pluggable vector database adapters with SQLite and DuckDB VSS built-in
 ---
 
 ## Quick Start
@@ -83,6 +83,6 @@ Gistdex uses semantic search to find content based on meaning rather than exact 
 ### Key Features
 
 - **Semantic Boundaries**: Preserves code and document structure when chunking
-- **Local-First**: All data stays on your machine using SQLite with vector extensions
+- **Local-First**: All data stays on your machine using SQLite or DuckDB with vector extensions
 - **MCP Server**: Direct integration with Claude for AI-assisted search
 - **CLI and Library**: Use as a command-line tool or integrate as a TypeScript library
