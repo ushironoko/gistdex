@@ -3,12 +3,9 @@
  */
 
 import { VectorDBError } from "../errors.js";
-import {
-  createSQLiteAdapterBase,
-  type SQLiteOperations,
-  type SQLitePreparedStatement,
-} from "./base-sqlite-adapter.js";
+import { createSQLiteAdapterBase } from "./base-sqlite-adapter.js";
 import { SQLiteQueries } from "./sqlite-schema.js";
+import type { SQLiteOperations } from "./sqlite-storage-operations.js";
 import type { VectorDBAdapter, VectorDBConfig } from "./types.js";
 
 // Type definitions for Bun's SQLite
@@ -38,7 +35,7 @@ const createBunSQLiteOperations = (db: BunDatabase): SQLiteOperations => {
       db.exec(sql);
     },
 
-    prepare(sql: string): SQLitePreparedStatement {
+    prepare(sql: string) {
       const stmt = db.prepare(sql);
       return {
         run(...params: unknown[]) {
@@ -71,9 +68,9 @@ const createBunSQLiteOperations = (db: BunDatabase): SQLiteOperations => {
  * @param config - Vector database configuration
  * @returns VectorDBAdapter implementation for Bun SQLite
  */
-export const createBunSQLiteAdapter = (
+export const createBunSQLiteAdapter = async (
   config: VectorDBConfig,
-): VectorDBAdapter => {
+): Promise<VectorDBAdapter> => {
   const dbPath = config.options?.path ?? "./gistdex.db";
 
   const initializeConnection = async (): Promise<SQLiteOperations> => {
@@ -241,7 +238,7 @@ Original error: ${
   // Bun SQLite requires vec_f32 wrapper for vector operations
   const prepareEmbeddingForInsert = (embedding: Float32Array) => embedding;
 
-  return createSQLiteAdapterBase({
+  return await createSQLiteAdapterBase({
     config,
     initializeConnection,
     prepareEmbeddingForInsert,
