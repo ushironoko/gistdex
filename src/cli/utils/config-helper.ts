@@ -16,12 +16,15 @@ export async function getDBConfig(values: {
   // Override provider if specified
   const provider = values.provider || config.vectorDB?.provider || "sqlite";
 
-  // Determine the database path
-  let dbPath = "./data/gistdex.db";
+  // Start with the full options from the config file
+  let options = config.vectorDB?.options || {};
+
+  // Override the database path if specified
   if (values.db && typeof values.db === "string") {
-    dbPath = values.db;
-  } else if (config.vectorDB?.options?.path) {
-    dbPath = config.vectorDB.options.path as string;
+    options = { ...options, path: values.db };
+  } else if (!options.path) {
+    // Set default path if not specified
+    options = { ...options, path: "./gistdex.db" };
   }
 
   // Load custom adapters if configured
@@ -45,7 +48,7 @@ export async function getDBConfig(values: {
   return {
     config: {
       provider,
-      options: { path: dbPath },
+      options,
     },
     customAdapters,
   };

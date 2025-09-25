@@ -51,11 +51,6 @@ export interface GistdexConfig {
  * Creates configuration operations for managing Gistdex configuration
  */
 export const createConfigOperations = (configPath = "gistdex.config.json") => {
-  // Use factory helper for caching
-  const cachedConfigFactory = createCachedFactory(async () => {
-    return await loadConfigFileInternal();
-  });
-
   /**
    * Load configuration from file (internal implementation)
    */
@@ -110,6 +105,11 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
   const applyDefaults = (config: Partial<GistdexConfig>): GistdexConfig => {
     return mergeGistdexConfig(config, getDefaultGistdexConfig());
   };
+
+  // Use factory helper for caching - defined after loadConfigFileInternal
+  const cachedConfigFactory = createCachedFactory(async () => {
+    return await loadConfigFileInternal();
+  });
 
   /**
    * Load configuration from file with caching
@@ -241,36 +241,6 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
   };
 
   /**
-   * Get vector DB configuration with CLI overrides
-   */
-  const getVectorDBConfig = async (
-    cliOverrides?: Partial<VectorDBConfig> & { db?: string },
-  ): Promise<VectorDBConfig> => {
-    const config = await load();
-    let dbConfig = config.vectorDB || {
-      provider: "sqlite",
-      options: {
-        path: "./gistdex.db",
-        dimension: 768,
-      },
-    };
-
-    if (cliOverrides) {
-      // Create a new config object preserving existing options
-      dbConfig = {
-        ...dbConfig,
-        provider: cliOverrides.provider || dbConfig.provider,
-        options: {
-          ...dbConfig.options,
-          ...(cliOverrides.db && { path: cliOverrides.db }),
-        },
-      };
-    }
-
-    return dbConfig;
-  };
-
-  /**
    * Reset cached configuration
    */
   const reset = (): void => {
@@ -281,7 +251,6 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
     load,
     save,
     loadCustomAdapters,
-    getVectorDBConfig,
     reset,
   };
 };
