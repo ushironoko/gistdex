@@ -4,6 +4,10 @@
 
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import * as sqliteVec from "sqlite-vec";
+import {
+  createErrorHandler,
+  createFactoryWithDefaults,
+} from "../../utils/factory-helper.js";
 import { VectorDBError } from "../errors.js";
 import { createSQLiteAdapterBase } from "./base-sqlite-adapter.js";
 import type { SQLiteOperations } from "./sqlite-storage-operations.js";
@@ -47,6 +51,50 @@ const createNodeSQLiteOperations = (db: DatabaseSync): SQLiteOperations => {
   };
 };
 
+// Default configuration for SQLite adapter
+const defaultSQLiteConfig: Partial<VectorDBConfig> = {
+  options: {
+    path: ":memory:",
+  },
+};
+
+// Error handler for SQLite adapter
+const handleSQLiteError = createErrorHandler("SQLite adapter");
+
+/**
+ * Internal creator function with actual implementation
+ */
+const createSQLiteAdapterInternal = async (
+  config: VectorDBConfig,
+): Promise<VectorDBAdapter> => {
+  const dbPath = config.options?.path || ":memory:";
+
+  // Initialize database connection
+  const db = new DatabaseSync(String(dbPath), {
+    allowExtension: true,
+  });
+
+  // Load sqlite-vec extension
+  try {
+    db.loadExtension(sqliteVec.getLoadablePath());
+  } catch (extError) {
+    db.close();
+    throw new VectorDBError(
+      `Failed to load sqlite-vec extension: ${
+        extError instanceof Error ? extError.message : String(extError)
+      }`,
+      { cause: extError },
+    );
+  }
+
+  // Create and return adapter using base implementation
+  return await createSQLiteAdapterBase({
+    config,
+    initializeConnection: async () => createNodeSQLiteOperations(db),
+    providerName: "sqlite",
+  });
+};
+
 /**
  * Create SQLite adapter for Node.js
  * @param config - Vector database configuration
@@ -55,40 +103,15 @@ const createNodeSQLiteOperations = (db: DatabaseSync): SQLiteOperations => {
 export const createSQLiteAdapter = async (
   config: VectorDBConfig,
 ): Promise<VectorDBAdapter> => {
-  const dbPath = config.options?.path || ":memory:";
-
   try {
-    // Initialize database connection
-    const db = new DatabaseSync(String(dbPath), {
-      allowExtension: true,
-    });
-
-    // Load sqlite-vec extension
-    try {
-      db.loadExtension(sqliteVec.getLoadablePath());
-    } catch (extError) {
-      db.close();
-      throw new VectorDBError(
-        `Failed to load sqlite-vec extension: ${
-          extError instanceof Error ? extError.message : String(extError)
-        }`,
-        { cause: extError },
-      );
-    }
-
-    // Create and return adapter using base implementation
-    return await createSQLiteAdapterBase({
-      config,
-      initializeConnection: async () => createNodeSQLiteOperations(db),
-      providerName: "sqlite",
-    });
-  } catch (error) {
-    throw new VectorDBError(
-      `Failed to create SQLite adapter: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      { cause: error },
+    // Use factory helper with defaults
+    const factoryWithDefaults = createFactoryWithDefaults(
+      defaultSQLiteConfig,
+      createSQLiteAdapterInternal,
     );
+    return await factoryWithDefaults(config);
+  } catch (error) {
+    throw handleSQLiteError(error);
   }
 };
 
