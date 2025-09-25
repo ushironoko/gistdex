@@ -6,6 +6,7 @@ import {
   getDefaultGistdexConfig,
   mergeGistdexConfig,
 } from "../utils/config-merger.js";
+import { createCachedFactory } from "../utils/factory-helper.js";
 import type {
   AdapterFactory,
   VectorDBConfig,
@@ -50,12 +51,17 @@ export interface GistdexConfig {
  * Creates configuration operations for managing Gistdex configuration
  */
 export const createConfigOperations = (configPath = "gistdex.config.json") => {
-  let cachedConfig: GistdexConfig | null = null;
+  // Use factory helper for caching
+  const cachedConfigFactory = createCachedFactory(async () => {
+    return await loadConfigFileInternal();
+  });
 
   /**
-   * Load configuration from file
+   * Load configuration from file (internal implementation)
    */
-  const loadConfigFile = async (path?: string): Promise<GistdexConfig> => {
+  const loadConfigFileInternal = async (
+    path?: string,
+  ): Promise<GistdexConfig> => {
     const paths = path
       ? [path]
       : [
@@ -106,21 +112,28 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
   };
 
   /**
+   * Load configuration from file with caching
+   */
+  const loadConfigFile = async (path?: string): Promise<GistdexConfig> => {
+    if (path) {
+      // If specific path provided, don't use cache
+      return await loadConfigFileInternal(path);
+    }
+    // Use cached factory for default path
+    return await cachedConfigFactory.get();
+  };
+
+  /**
    * Load configuration from file
    * Priority: Config file > Defaults
    */
   const load = async (path?: string): Promise<GistdexConfig> => {
-    if (cachedConfig && !path) {
-      return cachedConfig;
-    }
-
-    // Load config file
+    // Load config file (with caching)
     const configFile = await loadConfigFile(path);
 
     // Apply defaults using defu (handles partial configs properly)
     const config = applyDefaults(configFile);
 
-    cachedConfig = config;
     return config;
   };
 
@@ -129,7 +142,8 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
    */
   const save = async (config: GistdexConfig): Promise<void> => {
     await writeFile(configPath, JSON.stringify(config, null, 2), "utf-8");
-    cachedConfig = config;
+    // Clear cache after save
+    cachedConfigFactory.clear();
   };
 
   /**
@@ -260,7 +274,7 @@ export const createConfigOperations = (configPath = "gistdex.config.json") => {
    * Reset cached configuration
    */
   const reset = (): void => {
-    cachedConfig = null;
+    cachedConfigFactory.clear();
   };
 
   return {

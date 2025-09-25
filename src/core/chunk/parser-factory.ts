@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import type { Language } from "web-tree-sitter";
 import Parser from "web-tree-sitter";
+import { createCachedFactory } from "../utils/factory-helper.js";
 import {
   isSupportedLanguage,
   type SupportedLanguage,
@@ -70,11 +71,19 @@ export interface ParserFactory {
   dispose: () => void;
 }
 
-// Parser factory function
+// Parser factory function with improved caching
 export const createParserFactory = (): ParserFactory => {
   const parsers = new Map<string, Parser>();
 
-  const createParser = async (language: string): Promise<Parser | null> => {
+  // Create cached factory for each language parser
+  const cachedParsers = new Map<
+    string,
+    ReturnType<typeof createCachedFactory<Parser | null>>
+  >();
+
+  const createParserInternal = async (
+    language: string,
+  ): Promise<Parser | null> => {
     // Type guard to safely check if it's a SupportedLanguage
     if (!isSupportedLanguage(language)) {
       return null;
@@ -82,12 +91,6 @@ export const createParserFactory = (): ParserFactory => {
 
     // Initialize web-tree-sitter if needed
     await initializeParser();
-
-    // Check if we already have a parser for this language
-    if (parsers.has(language)) {
-      const existingParser = parsers.get(language);
-      if (existingParser) return existingParser;
-    }
 
     // Load the language
     const lang = await loadLanguage(language);
@@ -103,12 +106,31 @@ export const createParserFactory = (): ParserFactory => {
     return parser;
   };
 
+  const createParser = async (language: string): Promise<Parser | null> => {
+    // Use cached factory for each language
+    if (!cachedParsers.has(language)) {
+      const cachedFactory = createCachedFactory(() =>
+        createParserInternal(language),
+      );
+      cachedParsers.set(language, cachedFactory);
+    }
+
+    const cachedFactory = cachedParsers.get(language);
+    return cachedFactory ? await cachedFactory.get() : null;
+  };
+
   const dispose = () => {
     // Clean up parsers
     for (const parser of parsers.values()) {
       parser.delete();
     }
     parsers.clear();
+
+    // Clear cached factories
+    for (const cachedFactory of cachedParsers.values()) {
+      cachedFactory.clear();
+    }
+    cachedParsers.clear();
   };
 
   return { createParser, dispose };
