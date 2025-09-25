@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.6.3] - 2025-09-25
+
+- fix ducdb mcp tool
+
+
 ## [1.6.2] - 2025-09-24
 
 - fix
