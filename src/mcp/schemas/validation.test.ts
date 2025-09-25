@@ -24,6 +24,23 @@ describe("MCP Schema Validation", () => {
       expect(result.preserveBoundaries).toBe(true);
     });
 
+    it("should accept duckdb as provider", () => {
+      const input = {
+        type: "text",
+        text: {
+          content: "test content for duckdb",
+        },
+        provider: "duckdb",
+        db: "./duckdb-test.db",
+        preserveBoundaries: true,
+      } as const satisfies Record<string, unknown>;
+
+      const result = indexToolSchema.parse(input);
+      expect(result.provider).toBe("duckdb");
+      expect(result.db).toBe("./duckdb-test.db");
+      expect(result.preserveBoundaries).toBe(true);
+    });
+
     it("should work without optional database config", () => {
       const input = {
         type: "file",
@@ -67,6 +84,20 @@ describe("MCP Schema Validation", () => {
       expect(result.db).toBe("./test.db");
       expect(result.k).toBe(10);
       expect(result.hybrid).toBe(true);
+    });
+
+    it("should accept duckdb as provider", () => {
+      const input = {
+        query: "duckdb search test",
+        provider: "duckdb",
+        db: "./duckdb-query.db",
+        k: 5,
+      } as const satisfies Record<string, unknown>;
+
+      const result = queryToolSchema.parse(input);
+      expect(result.provider).toBe("duckdb");
+      expect(result.db).toBe("./duckdb-query.db");
+      expect(result.k).toBe(5);
     });
 
     it("should work without optional database config", () => {
@@ -132,6 +163,21 @@ describe("MCP Schema Validation", () => {
       expect(result.db).toBe("./data.db");
       expect(result.limit).toBe(50);
       expect(result.stats).toBe(true);
+    });
+
+    it("should accept duckdb as provider", () => {
+      const input = {
+        limit: 25,
+        provider: "duckdb",
+        db: "./duckdb-list.db",
+        stats: false,
+      } as const satisfies Record<string, unknown>;
+
+      const result = listToolSchema.parse(input);
+      expect(result.provider).toBe("duckdb");
+      expect(result.db).toBe("./duckdb-list.db");
+      expect(result.limit).toBe(25);
+      expect(result.stats).toBe(false);
     });
 
     it("should work without optional database config", () => {

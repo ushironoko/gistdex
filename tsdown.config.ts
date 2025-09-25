@@ -13,5 +13,11 @@ export default defineConfig({
   outDir: "dist",
   target: "node24",
   // Keep web-tree-sitter modules external (they use WASM files)
-  external: ["web-tree-sitter", "tree-sitter-wasms"],
+  // Also keep @duckdb/node-api external since it uses native bindings
+  external: [
+    "web-tree-sitter",
+    "tree-sitter-wasms",
+    "@duckdb/node-api",
+    "@duckdb/node-bindings*",
+  ],
 });

@@ -139,7 +139,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           provider: {
             type: "string",
-            description: "Vector database provider (e.g., 'sqlite', 'memory')",
+            description:
+              "Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')",
           },
           db: {
             type: "string",
@@ -236,7 +237,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           provider: {
             type: "string",
-            description: "Vector database provider (e.g., 'sqlite', 'memory')",
+            description:
+              "Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')",
           },
           db: {
             type: "string",
@@ -321,7 +323,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           provider: {
             type: "string",
-            description: "Vector database provider (e.g., 'sqlite', 'memory')",
+            description:
+              "Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')",
           },
           db: {
             type: "string",
@@ -373,7 +376,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           provider: {
             type: "string",
-            description: "Vector database provider (e.g., 'sqlite', 'memory')",
+            description:
+              "Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')",
           },
           db: {
             type: "string",

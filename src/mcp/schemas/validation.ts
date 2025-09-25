@@ -5,7 +5,7 @@ export const databaseConfigSchema = z.object({
   provider: z
     .string()
     .optional()
-    .describe("Vector database provider (e.g., 'sqlite', 'memory')"),
+    .describe("Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')"),
   db: z.string().optional().describe("Database file path"),
 });
 
@@ -73,7 +73,7 @@ export const indexToolSchema = z.object({
   provider: z
     .string()
     .optional()
-    .describe("Vector database provider (e.g., 'sqlite', 'memory')"),
+    .describe("Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')"),
   db: z.string().optional().describe("Database file path"),
 });
 
@@ -158,7 +158,7 @@ export const queryToolSchema = z.object({
   provider: z
     .string()
     .optional()
-    .describe("Vector database provider (e.g., 'sqlite', 'memory')"),
+    .describe("Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')"),
   db: z.string().optional().describe("Database file path"),
 });
 
@@ -214,7 +214,7 @@ export const listToolSchema = z.object({
   provider: z
     .string()
     .optional()
-    .describe("Vector database provider (e.g., 'sqlite', 'memory')"),
+    .describe("Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')"),
   db: z.string().optional().describe("Database file path"),
 });
 
@@ -301,7 +301,7 @@ export const queryPlanToolSchema = z.object({
   provider: z
     .string()
     .optional()
-    .describe("Vector database provider (e.g., 'sqlite', 'memory')"),
+    .describe("Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')"),
   db: z.string().optional().describe("Database file path"),
   timeoutSeconds: z
     .number()
@@ -416,7 +416,7 @@ export const agentQueryToolSchema = z.object({
   provider: z
     .string()
     .optional()
-    .describe("Vector database provider (e.g., 'sqlite', 'memory')"),
+    .describe("Vector database provider (e.g., 'sqlite', 'memory', 'duckdb')"),
   db: z.string().optional().describe("Database file path"),
 });
 

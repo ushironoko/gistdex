@@ -60,10 +60,13 @@ const getOrCreateInstance = async (
     return { instance: cached.instance, connection: cached.connection };
   }
 
-  // Lazy load DuckDB module
+  // Load DuckDB module using createRequire (works in all environments)
   let DuckDBModule: typeof import("@duckdb/node-api");
   try {
-    DuckDBModule = await import("@duckdb/node-api");
+    const { createRequire } = await import("node:module");
+    const require = createRequire(import.meta.url);
+    const duckdbPath = require.resolve("@duckdb/node-api");
+    DuckDBModule = await import(duckdbPath);
   } catch (error) {
     throw new VectorDBError(
       "Failed to load @duckdb/node-api. Please ensure it is installed.",
@@ -447,10 +450,20 @@ export const createDuckDBAdapter = async (
       // Initialize the base adapter
       await baseAdapter.initialize();
     } catch (error) {
-      console.error("DuckDB initialization error:", error);
-      throw new VectorDBError("Failed to initialize DuckDB vector database", {
-        cause: error,
+      console.error("DuckDB initialization error details:", {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        dbPath,
+        config: duckdbConfig.options,
       });
+      throw new VectorDBError(
+        "Failed to initialize DuckDB vector database. Error: " +
+          (error instanceof Error ? error.message : String(error)),
+        {
+          cause: error,
+        },
+      );
     }
   };
 

@@ -67,7 +67,9 @@ export const createRegistry = (): RegistryInterface => {
     try {
       const { createDuckDBAdapter } = await import("./duckdb-adapter.js");
       register("duckdb", createDuckDBAdapter);
-    } catch {
+      console.log("DuckDB adapter registered successfully");
+    } catch (error) {
+      console.error("Failed to register DuckDB adapter:", error);
       // DuckDB not available
     }
 
