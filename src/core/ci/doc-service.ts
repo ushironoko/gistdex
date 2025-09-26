@@ -1,5 +1,8 @@
 import { glob } from "node:fs/promises";
-import type { DatabaseService } from "../database/database-service.js";
+import type {
+  DatabaseService,
+  SaveItemParams,
+} from "../database/database-service.js";
 import { createGlobMatcher } from "../indexer/glob-matcher.js";
 import { indexFiles } from "../indexer/indexer.js";
 import { hybridSearch } from "../search/search.js";
