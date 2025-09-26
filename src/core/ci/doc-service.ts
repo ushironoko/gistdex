@@ -1,5 +1,8 @@
 import { glob } from "node:fs/promises";
-import type { DatabaseService } from "../database/database-service.js";
+import type {
+  DatabaseService,
+  SaveItemParams,
+} from "../database/database-service.js";
 import { createGlobMatcher } from "../indexer/glob-matcher.js";
 import { indexFiles } from "../indexer/indexer.js";
 import { hybridSearch } from "../search/search.js";
@@ -48,10 +51,21 @@ export const ensureDocumentsIndexed = async (
     return;
   }
 
-  // Check what's already indexed
+  // Check what's already indexed - group by sourceId and take first chunk
   const indexed = await db.listItems();
+  const sourceGroups = new Map<string, SaveItemParams>();
+
+  // Group items by sourceId to find unique documents
+  for (const item of indexed) {
+    const sourceId = item.metadata?.sourceId;
+    if (sourceId && item.metadata?.chunkIndex === 0) {
+      sourceGroups.set(sourceId, item);
+    }
+  }
+
+  // Get unique file paths from first chunks only
   const indexedPaths = new Set(
-    indexed
+    Array.from(sourceGroups.values())
       .map((item) => item.metadata?.filePath as string | undefined)
       .filter(Boolean),
   );

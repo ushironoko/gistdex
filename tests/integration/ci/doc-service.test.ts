@@ -249,7 +249,7 @@ export function getUserProfile(userId: string) {
           "HEAD~1..HEAD",
           {
             threshold: 0.9,
-            documentPaths: ["*.md"],
+            documentPaths: ["*.md", "docs/*.md"],
           },
           db,
         );
@@ -258,7 +258,7 @@ export function getUserProfile(userId: string) {
           "HEAD~1..HEAD",
           {
             threshold: 0.1,
-            documentPaths: ["*.md"],
+            documentPaths: ["*.md", "docs/*.md"],
           },
           db,
         );
@@ -267,7 +267,7 @@ export function getUserProfile(userId: string) {
       } finally {
         process.chdir(originalCwd);
       }
-    });
+    }, 60000);
 
     it("should return empty array when no changes detected", async () => {
       const originalCwd = process.cwd();

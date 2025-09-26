@@ -5,6 +5,12 @@
     "composite": true,
     "rootDir": "."
   },
-  "include": ["src/**/*", "tests/**/*.ts", "tests/**/*.js", "vitest.config.ts"],
+  "include": [
+    "src/**/*",
+    "tests/**/*.ts",
+    "tests/**/*.js",
+    "vitest.config.integration.ts",
+    "vitest.config.unit.ts"
+  ],
   "exclude": ["node_modules", "dist", "tests/fixtures/**"]
 }
