@@ -48,10 +48,21 @@ export const ensureDocumentsIndexed = async (
     return;
   }
 
-  // Check what's already indexed
+  // Check what's already indexed - group by sourceId and take first chunk
   const indexed = await db.listItems();
+  const sourceGroups = new Map<string, any>();
+
+  // Group items by sourceId to find unique documents
+  for (const item of indexed) {
+    const sourceId = item.metadata?.sourceId;
+    if (sourceId && item.metadata?.chunkIndex === 0) {
+      sourceGroups.set(sourceId, item);
+    }
+  }
+
+  // Get unique file paths from first chunks only
   const indexedPaths = new Set(
-    indexed
+    Array.from(sourceGroups.values())
       .map((item) => item.metadata?.filePath as string | undefined)
       .filter(Boolean),
   );
