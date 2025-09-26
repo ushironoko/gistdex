@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.6.4] - 2025-09-26
+
+- fix tsconfig
+- Merge pull request #139 from ushironoko:fix/doc-service-chunking-improvements
+- chore: update TypeScript test config for vitest file split
+- chore: update TypeScript test config for vitest file split
+- chore: update TypeScript test config for vitest file split
+- fix: improve doc-service chunking logic and test stability
+- fix
+- fix
+- chore fix remove getVectorDBConfig
+- Merge pull request #138 from ushironoko:feature/factory-unification
+- refactor: unify factory patterns with common helper utilities
+
+
 ## [1.6.3] - 2025-09-25
 
 - fix ducdb mcp tool
