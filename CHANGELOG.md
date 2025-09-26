@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.6.5] - 2025-09-26
+
+- fix mcp error
+
+
 ## [1.6.4] - 2025-09-26
 
 - fix tsconfig
