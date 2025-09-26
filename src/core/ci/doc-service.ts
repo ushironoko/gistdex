@@ -50,7 +50,7 @@ export const ensureDocumentsIndexed = async (
 
   // Check what's already indexed - group by sourceId and take first chunk
   const indexed = await db.listItems();
-  const sourceGroups = new Map<string, any>();
+  const sourceGroups = new Map<string, SaveItemParams>();
 
   // Group items by sourceId to find unique documents
   for (const item of indexed) {
