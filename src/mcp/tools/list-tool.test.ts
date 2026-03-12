@@ -145,7 +145,7 @@ describe("list-tool", () => {
       const result = listToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain("Invalid enum value");
+        expect(result.error.issues[0]?.message).toContain("Invalid option");
       }
     });
 
@@ -157,9 +157,7 @@ describe("list-tool", () => {
       const result = listToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain(
-          "Number must be greater than 0",
-        );
+        expect(result.error.issues[0]?.message).toContain("Too small");
       }
     });
 
@@ -171,9 +169,7 @@ describe("list-tool", () => {
       const result = listToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain(
-          "Number must be greater than 0",
-        );
+        expect(result.error.issues[0]?.message).toContain("Too small");
       }
     });
 
@@ -185,7 +181,7 @@ describe("list-tool", () => {
       const result = listToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain("Expected integer");
+        expect(result.error.issues[0]?.message).toContain("expected int");
       }
     });
 
@@ -877,9 +873,11 @@ describe("list-tool", () => {
           // With the new union schema for boolean fields, string values are transformed
           // so "not_boolean" gets converted to false instead of causing an error
           expect(errors).toHaveLength(2);
-          expect(errors).toContain("Expected number, received string");
-          expect(errors).toContain(
-            "Invalid enum value. Expected 'gist' | 'github' | 'file' | 'text', received 'invalid_type'",
+          expect(
+            errors.some((e: string) => e.includes("expected number")),
+          ).toBe(true);
+          expect(errors.some((e: string) => e.includes("Invalid option"))).toBe(
+            true,
           );
         }
       }

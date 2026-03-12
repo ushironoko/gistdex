@@ -199,7 +199,7 @@ function second() {}`;
 
     it("should fall back gracefully for unsupported files", async () => {
       const operations = createCSTChunkingOperations();
-      const code = "<template><div></div></template>";
+      const code = "some unknown format content";
 
       let fallbackCalled = false;
       const fallback = (code: string, _lang: string, _opts: unknown) => {
@@ -216,7 +216,7 @@ function second() {}`;
 
       const chunks = await operations.chunkWithFallback(
         code,
-        "test.vue",
+        "test.unknown",
         { maxChunkSize: 1000, overlap: 100 },
         fallback,
       );

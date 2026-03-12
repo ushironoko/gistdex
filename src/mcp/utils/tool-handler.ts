@@ -1,5 +1,5 @@
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
-import type { ZodType, ZodTypeDef } from "zod";
+import type { ZodType } from "zod";
 import type { DatabaseService } from "../../core/database/database-service.js";
 
 /**
@@ -36,7 +36,7 @@ export function createToolHandler<
   TOptions extends BaseToolOptions,
   TResult extends BaseToolResult,
 >(
-  schema: ZodType<TInput, ZodTypeDef, TInput>,
+  schema: ZodType<TInput>,
   handler: ToolHandler<TInput, TOptions, TResult>,
 ): (input: unknown, options: TOptions) => Promise<TResult> {
   return async (input: unknown, options: TOptions): Promise<TResult> => {
@@ -44,7 +44,7 @@ export function createToolHandler<
     const validationResult = schema.safeParse(input);
     if (!validationResult.success) {
       // Throw McpError for invalid parameters
-      const errors = validationResult.error.errors.map((e) => e.message);
+      const errors = validationResult.error.issues.map((e) => e.message);
       throw new McpError(
         ErrorCode.InvalidParams,
         `Invalid input: ${errors.join(", ")}`,

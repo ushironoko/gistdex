@@ -95,6 +95,9 @@ const createCSTOperations = (factory: ParserFactory) => {
 
     const traverser = createNodeTraverser(language);
     const tree = parser.parse(code);
+    if (!tree) {
+      throw new Error(`Failed to parse code for language: ${language}`);
+    }
     return traverser.traverse(tree.rootNode);
   };
 

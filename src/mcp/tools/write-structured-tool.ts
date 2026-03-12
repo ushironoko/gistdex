@@ -100,7 +100,7 @@ export async function handleWriteStructuredTool(
     if (error instanceof z.ZodError) {
       return createErrorResponse(
         "Invalid input parameters",
-        error.errors.map((e) => `${e.path.join(".")}: ${e.message}`),
+        error.issues.map((e) => `${e.path.join(".")}: ${e.message}`),
       );
     }
     const errorMessage = error instanceof Error ? error.message : String(error);
