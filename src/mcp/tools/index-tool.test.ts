@@ -222,7 +222,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain("Invalid enum value");
+        expect(result.error.issues[0]?.message).toContain("Invalid option");
       }
     });
 
@@ -236,9 +236,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain(
-          "Number must be greater than 0",
-        );
+        expect(result.error.issues[0]?.message).toContain("Too small");
       }
     });
 
@@ -252,9 +250,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain(
-          "Number must be greater than or equal to 0",
-        );
+        expect(result.error.issues[0]?.message).toContain("Too small");
       }
     });
 
@@ -267,7 +263,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain("Invalid url");
+        expect(result.error.issues[0]?.message).toContain("Invalid URL");
       }
     });
 
@@ -280,7 +276,7 @@ describe("index-tool", () => {
       const result = indexToolSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toContain("Invalid url");
+        expect(result.error.issues[0]?.message).toContain("Invalid URL");
       }
     });
 

@@ -27,7 +27,9 @@ describe("SQLiteStorageOperations", () => {
 
     // Create mock database
     db = {
-      prepare: vi.fn(() => mockPreparedStatement),
+      prepare: vi.fn(
+        () => mockPreparedStatement,
+      ) as SQLiteOperations["prepare"],
       isOpen: vi.fn(() => true),
       close: vi.fn(),
     };

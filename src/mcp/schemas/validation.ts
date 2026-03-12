@@ -13,29 +13,44 @@ export const databaseConfigSchema = z.object({
 export const indexTextSchema = z.object({
   content: z.string().describe("The text content to index"),
   title: z.string().optional().describe("Optional title for the content"),
-  metadata: z.record(z.string()).optional().describe("Optional metadata"),
+  metadata: z
+    .record(z.string(), z.string())
+    .optional()
+    .describe("Optional metadata"),
 });
 
 export const indexFileSchema = z.object({
   path: z.string().describe("Path to the file to index"),
-  metadata: z.record(z.string()).optional().describe("Optional metadata"),
+  metadata: z
+    .record(z.string(), z.string())
+    .optional()
+    .describe("Optional metadata"),
 });
 
 export const indexFilesSchema = z.object({
   pattern: z
     .string()
     .describe("Glob pattern for files to index (e.g., 'src/**/*.ts')"),
-  metadata: z.record(z.string()).optional().describe("Optional metadata"),
+  metadata: z
+    .record(z.string(), z.string())
+    .optional()
+    .describe("Optional metadata"),
 });
 
 export const indexGistSchema = z.object({
   url: z.string().url().describe("GitHub Gist URL"),
-  metadata: z.record(z.string()).optional().describe("Optional metadata"),
+  metadata: z
+    .record(z.string(), z.string())
+    .optional()
+    .describe("Optional metadata"),
 });
 
 export const indexGitHubSchema = z.object({
   url: z.string().url().describe("GitHub repository or file URL"),
-  metadata: z.record(z.string()).optional().describe("Optional metadata"),
+  metadata: z
+    .record(z.string(), z.string())
+    .optional()
+    .describe("Optional metadata"),
 });
 
 export const indexToolSchema = z.object({

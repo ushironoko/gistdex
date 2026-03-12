@@ -37,7 +37,6 @@ let service: DatabaseService | null = null;
 // Create MCP server
 const server = new Server(
   {
-    protocolVersion: "2025-06-18",
     name: "gistdex-mcp",
     version: "1.0.0",
   },

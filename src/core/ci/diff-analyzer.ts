@@ -422,6 +422,9 @@ export const extractSymbols = async (
       const parser = await factory.createParser(fileName);
       if (parser) {
         const tree = parser.parse(content);
+        if (!tree) {
+          return extractSymbolsWithRegex(content, ext);
+        }
         const symbols = extractSymbolsFromCST(tree.rootNode, language);
         if (symbols.length > 0) {
           return [...new Set(symbols)]; // Remove duplicates
