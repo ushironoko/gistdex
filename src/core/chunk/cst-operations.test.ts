@@ -3,7 +3,11 @@ import {
   createCSTChunkingOperations,
   withCSTParsing,
 } from "./cst-operations.js";
-import { createParserFactory } from "./parser-factory.js";
+import {
+  createParserFactory,
+  type Parser,
+  type ParserFactory,
+} from "./parser-factory.js";
 
 describe("CST operations - JavaScript", () => {
   const factory = createParserFactory();
@@ -195,6 +199,26 @@ function second() {}`;
       expect(chunks).toHaveLength(2);
       expect(chunks[0]?.boundary.name).toBe("first");
       expect(chunks[1]?.boundary.name).toBe("second");
+    });
+
+    it("should throw when parser.parse() returns null", async () => {
+      const nullParseFactory: ParserFactory = {
+        createParser: async () =>
+          ({
+            parse: () => null,
+            delete: () => {},
+          }) as unknown as Parser,
+        dispose: () => {},
+      };
+
+      await expect(
+        withCSTParsing(nullParseFactory, async (ops) => {
+          return ops.parseAndExtractBoundaries(
+            "function test() {}",
+            "javascript",
+          );
+        }),
+      ).rejects.toThrow("Failed to parse code for language: javascript");
     });
 
     it("should fall back gracefully for unsupported files", async () => {
